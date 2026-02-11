@@ -37,7 +37,7 @@
 ssh root@<your-server-ip>
 
 # Download deployment script
-curl -fsSL https://raw.githubusercontent.com/goot27/chopsticks-bot/main/scripts/deploy-hetzner.sh -o deploy.sh
+curl -fsSL https://raw.githubusercontent.com/wokspecialists/chopsticks/main/scripts/deploy-hetzner.sh -o deploy.sh
 
 # Run deployment script
 sudo bash deploy.sh
@@ -57,7 +57,7 @@ This script will:
 cd /opt/chopsticks
 
 # Clone your repository
-git clone https://github.com/goot27/chopsticks-bot.git .
+git clone https://github.com/wokspecialists/chopsticks.git .
 
 # Create environment file
 cp .env.example .env

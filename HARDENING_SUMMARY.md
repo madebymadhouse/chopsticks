@@ -95,14 +95,14 @@ Discord (Your servers)
 3. **Run deployment script** (10 min)
    ```bash
    ssh root@<server-ip>
-   curl -fsSL https://raw.githubusercontent.com/goot27/chopsticks-bot/main/scripts/deploy-hetzner.sh -o deploy.sh
+   curl -fsSL https://raw.githubusercontent.com/wokspecialists/chopsticks/main/scripts/deploy-hetzner.sh -o deploy.sh
    sudo bash deploy.sh
    ```
 
 4. **Deploy bot** (10 min)
    ```bash
    cd /opt/chopsticks
-   git clone https://github.com/goot27/chopsticks-bot.git .
+   git clone https://github.com/wokspecialists/chopsticks.git .
    cp .env.example .env
    nano .env  # Add your tokens
    docker compose -f docker-compose.production.yml up -d

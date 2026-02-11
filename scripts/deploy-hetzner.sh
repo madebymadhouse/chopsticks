@@ -135,7 +135,7 @@ echo "==================================="
 echo "1. Switch to deploy user: su - $DEPLOY_USER"
 echo "2. Clone your repo:"
 echo "   cd /opt/chopsticks"
-echo "   git clone https://github.com/goot27/chopsticks-bot.git ."
+echo "   git clone https://github.com/wokspecialists/chopsticks.git ."
 echo
 echo "3. Create .env file:"
 echo "   cp .env.example .env"

@@ -616,12 +616,16 @@ export async function execute(interaction) {
         tracks
       });
 
-      const controlLabel = config.controlMode === "voice" ? "Voice channel" : "Owner/Admin";
+      const queueAddLabel = "Voice channel";
+      const controlLabel = config.defaultMode === "dj"
+        ? "DJ only"
+        : (config.controlMode === "voice" ? "Voice channel" : "Owner/Admin");
       const row = buildSearchMenu(tracks, cacheKey);
       await interaction.editReply({
         embeds: [makeEmbed("Music Search", `Select a result to play.`, [
           { name: "Results", value: `${tracks.length} found`, inline: true },
-          { name: "Queue Control", value: controlLabel, inline: true }
+          { name: "Queue Add", value: queueAddLabel, inline: true },
+          { name: "Skip/Stop", value: controlLabel, inline: true }
         ], null, null, QUEUE_COLOR)],
         components: [row]
       });

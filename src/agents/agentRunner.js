@@ -872,12 +872,6 @@ async function startAgent(agentConfig) {
         stopGraceMs
       });
 
-      const actorIsAdmin = adminOverride ? true : isAdmin(actorMember);
-      const requireOwnerMode = requireOwnerControl(ctx, controlMode);
-      if (requireOwnerMode && ctx.ownerId && ctx.ownerId !== actorUserId && !actorIsAdmin) {
-        throw new Error("not-owner");
-      }
-
       const query = payload.query;
       const requester = payload.requester ?? null;
       const res = await mgr.search(ctx, query, requester);
@@ -907,12 +901,6 @@ async function startAgent(agentConfig) {
         fallbackProviders,
         stopGraceMs
       });
-
-      const actorIsAdmin = adminOverride ? true : isAdmin(actorMember);
-      const requireOwnerMode = requireOwnerControl(ctx, controlMode);
-      if (requireOwnerMode && ctx.ownerId && ctx.ownerId !== actorUserId && !actorIsAdmin) {
-        throw new Error("not-owner");
-      }
 
       const query = payload.query;
       const requester = payload.requester ?? null;
