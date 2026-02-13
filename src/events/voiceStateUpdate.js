@@ -127,33 +127,37 @@ export default {
     }
 
     try {
-      // FIRST: Check if user has ANY temp channels (from any lobby) and clean them up
-      const allUserTempChannels = await findAllUserTempChannels(guild.id, member.id, voice);
-      
-      for (const oldTempId of allUserTempChannels) {
-        const oldTemp = guild.channels.cache.get(oldTempId) ?? 
-                        await guild.channels.fetch(oldTempId).catch(() => null);
-        
-        if (oldTemp) {
-          // Move user out if they're still in the old temp channel
-          if (member.voice.channelId === oldTempId) {
-            log("user still in old temp, cleanup deferred", { oldTempId });
-            // Don't cleanup yet - will happen via LEAVE TEMP logic
-            continue;
-          }
-          
-          // Check if empty
-          const humans = Array.from(oldTemp.members.values()).filter(m => !m.user?.bot).length;
-          if (humans === 0) {
-            await removeTempChannel(guild.id, oldTempId, voice);
-            await oldTemp.delete().catch(() => {});
-            log("cleaned up old temp channel", { oldTempId });
-          }
-        } else {
-          // Stale record
+      // FIRST: Reuse existing temp channel if the owner already has one active.
+      const ownedTempEntries = Object.entries(voice.tempChannels)
+        .filter(([, data]) => data.ownerId === member.id)
+        .sort((a, b) => (b[1].createdAt ?? 0) - (a[1].createdAt ?? 0));
+
+      for (const [oldTempId] of ownedTempEntries) {
+        const oldTemp =
+          guild.channels.cache.get(oldTempId) ??
+          (await guild.channels.fetch(oldTempId).catch(() => null));
+
+        if (!oldTemp) {
           await removeTempChannel(guild.id, oldTempId, voice);
           log("removed stale temp channel record", { oldTempId });
+          continue;
         }
+
+        if (member.voice.channelId === oldTempId) {
+          log("user already in temp channel", { oldTempId });
+          return;
+        }
+
+        const humans = Array.from(oldTemp.members.values()).filter(m => !m.user?.bot).length;
+        if (humans > 0) {
+          await member.voice.setChannel(oldTemp).catch(() => {});
+          log("reused existing temp channel", { oldTempId });
+          return;
+        }
+
+        await removeTempChannel(guild.id, oldTempId, voice);
+        await oldTemp.delete().catch(() => {});
+        log("cleaned up empty temp channel", { oldTempId });
       }
       
       // THEN: Check if user already has a temp channel for THIS specific lobby

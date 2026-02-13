@@ -25,6 +25,9 @@ export async function addLobby(guildId, channelId, categoryId, template, opts = 
     userLimit: Number.isFinite(opts.userLimit) ? Math.max(0, Math.trunc(opts.userLimit)) : 0,
     bitrateKbps: Number.isFinite(opts.bitrateKbps)
       ? Math.max(8, Math.min(512, Math.trunc(opts.bitrateKbps)))
+      : null,
+    maxChannels: Number.isInteger(opts.maxChannels) && opts.maxChannels > 0
+      ? Math.trunc(opts.maxChannels)
       : null
   };
 
@@ -63,6 +66,14 @@ export async function updateLobby(guildId, channelId, patch = {}) {
     lobby.bitrateKbps = null;
   } else if (Number.isFinite(patch.bitrateKbps)) {
     lobby.bitrateKbps = Math.max(8, Math.min(512, Math.trunc(patch.bitrateKbps)));
+  }
+  if (patch.maxChannels === null) {
+    lobby.maxChannels = null;
+  } else if (Number.isInteger(patch.maxChannels)) {
+    if (patch.maxChannels < 1) {
+      return { ok: false, error: "invalid-max-channels" };
+    }
+    lobby.maxChannels = Math.trunc(patch.maxChannels);
   }
 
   await saveVoiceState(guildId, voice);

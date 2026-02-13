@@ -77,7 +77,6 @@ export const data = new SlashCommandBuilder()
           .setDescription("Deploy from specific pool (leave empty to use guild default)")
           .setRequired(false)
       )
-      )
   )
   .addSubcommand(s => s.setName("sessions").setDescription("List active sessions for this guild"))
   .addSubcommand(s =>
