@@ -125,13 +125,13 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(s =>
     s
       .setName("add_token")
-      .setDescription("Add a new agent token to the system")
+      .setDescription("Contribute agent to public pool OR add to your own pool")
       .addStringOption(o => o.setName("token").setDescription("Discord Bot Token").setRequired(true))
-      .addStringOption(o => o.setName("client_id").setDescription("Discord Bot Client ID").setRequired(true))
-      .addStringOption(o => o.setName("tag").setDescription("Bot Tag (e.g., BotName#1234)").setRequired(true))
-      .addStringOption(o => o.setName("pool").setDescription("Pool ID (defaults to your pool or pool_goot27)").setRequired(false))
+      .addStringOption(o => o.setName("client_id").setDescription("Bot Application/Client ID").setRequired(true))
+      .addStringOption(o => o.setName("tag").setDescription("Bot username (e.g., MyBot#1234)").setRequired(true))
+      .addStringOption(o => o.setName("pool").setDescription("Target pool (leave empty to contribute to public pool)").setRequired(false))
   )
-  .addSubcommand(s => s.setName("list_tokens").setDescription("List all registered agent tokens"))
+  .addSubcommand(s => s.setName("list_tokens").setDescription("View registered agents in accessible pools"))
   .addSubcommand(s =>
     s
       .setName("update_token_status")
@@ -440,50 +440,179 @@ export async function execute(interaction) {
     const clientId = interaction.options.getString("client_id", true);
     const tag = interaction.options.getString("tag", true);
     const poolOption = interaction.options.getString("pool", false);
-    const agentId = `agent${clientId}`; // Use client ID to form a unique agent ID
+    const agentId = `agent${clientId}`;
     const userId = interaction.user.id;
     const BOT_OWNER_ID = process.env.BOT_OWNER_ID || '1122800062628634684';
 
-    // Defer immediately since we're doing multiple database queries
+    // Defer immediately since we're doing validation and database queries
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
-      // Determine pool
+      // STEP 1: Validate token is real by attempting to fetch bot user
+      let botUser;
+      try {
+        const { Client, GatewayIntentBits } = await import('discord.js');
+        const testClient = new Client({ intents: [GatewayIntentBits.Guilds] });
+        
+        // Set timeout for validation
+        const validationPromise = new Promise(async (resolve, reject) => {
+          testClient.once('ready', async () => {
+            try {
+              botUser = testClient.user;
+              await testClient.destroy();
+              resolve(botUser);
+            } catch (err) {
+              await testClient.destroy();
+              reject(err);
+            }
+          });
+          
+          testClient.on('error', async (err) => {
+            await testClient.destroy();
+            reject(err);
+          });
+          
+          await testClient.login(token);
+        });
+        
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Token validation timeout')), 10000)
+        );
+        
+        botUser = await Promise.race([validationPromise, timeoutPromise]);
+        
+        // Verify client_id matches
+        if (botUser.id !== clientId) {
+          return await interaction.editReply({
+            content: `❌ Client ID mismatch. Token belongs to ${botUser.tag} (${botUser.id}), not ${clientId}.`
+          });
+        }
+        
+        // Verify tag matches (approximately)
+        if (botUser.tag !== tag && botUser.username !== tag.split('#')[0]) {
+          return await interaction.editReply({
+            content: `⚠️ Tag mismatch. Bot is actually **${botUser.tag}**. Please use correct tag and try again.`
+          });
+        }
+        
+      } catch (validationError) {
+        console.error('[add_token] Token validation failed:', validationError.message);
+        return await interaction.editReply({
+          content: `❌ Token validation failed. Ensure token is valid and bot exists.\n\`\`\`${validationError.message}\`\`\``
+        });
+      }
+
+      // STEP 2: Determine target pool and check permissions
       let poolId;
+      let isContribution = false;
       
       if (poolOption) {
-        // User specified a pool - verify it exists and they own it
+        // User specified a pool - verify it exists
         const specifiedPool = await fetchPool(poolOption);
         if (!specifiedPool) {
           return await interaction.editReply({ 
             content: `❌ Pool \`${poolOption}\` not found.` 
           });
         }
-        if (specifiedPool.owner_user_id !== userId && userId !== BOT_OWNER_ID) {
+        
+        // Check if user owns this pool
+        if (specifiedPool.owner_user_id === userId || userId === BOT_OWNER_ID) {
+          // User owns pool - direct add
+          poolId = poolOption;
+        } else if (specifiedPool.visibility === 'public') {
+          // Contributing to public pool - mark for verification
+          poolId = poolOption;
+          isContribution = true;
+        } else {
+          // Private pool they don't own
           return await interaction.editReply({ 
-            content: `❌ You don't own pool \`${poolOption}\`.` 
+            content: `❌ Cannot add to private pool \`${poolOption}\` - you don't own it.` 
           });
         }
-        poolId = poolOption;
       } else {
-        // Auto-assign to user's pool or goot27's pool
+        // No pool specified - check if user has their own pool
         const userPools = await fetchPoolsByOwner(userId);
         if (userPools && userPools.length > 0) {
+          // Add to user's own pool
           poolId = userPools[0].pool_id;
         } else {
-          poolId = 'pool_goot27'; // Default pool
+          // Contributing to public pool
+          poolId = 'pool_goot27';
+          isContribution = true;
         }
       }
 
-      const result = await insertAgentBot(agentId, token, clientId, tag, poolId);
-      const operationMsg = result.operation === 'inserted' ? 'added' : 'updated';
-      await interaction.editReply({ 
-        content: `✅ Agent token ${agentId} ${operationMsg} successfully to pool \`${poolId}\`. AgentRunner will attempt to start it.` 
-      });
+      // STEP 3: Handle contribution vs direct management
+      if (isContribution) {
+        // Contributing to public pool - requires verification
+        const pool = await fetchPool(poolId);
+        
+        // Check rate limiting (max 3 contributions per user per hour)
+        const recentContributions = await fetchAgentBots();
+        const userContributions = recentContributions.filter(a => 
+          a.pool_id === poolId && 
+          a.status === 'inactive' && // Pending contributions are inactive
+          Date.now() - a.created_at < 3600000 // Last hour
+        );
+        
+        if (userContributions.length >= 3 && userId !== BOT_OWNER_ID) {
+          return await interaction.editReply({
+            content: `⏳ Rate limit: You can contribute up to 3 agents per hour to public pools.\nPlease wait before adding more.`
+          });
+        }
+        
+        // Add as inactive (requires manual activation by pool owner)
+        const result = await insertAgentBot(agentId, token, clientId, botUser.tag, poolId);
+        await updateAgentBotStatus(agentId, 'inactive');
+        
+        const operationMsg = result.operation === 'inserted' ? 'submitted' : 'updated';
+        await interaction.editReply({
+          embeds: [{
+            title: '✅ Contribution Submitted',
+            description: `Your agent **${botUser.tag}** has been ${operationMsg} to **${pool.name}**.`,
+            color: 0x57f287,
+            fields: [
+              { name: 'Agent ID', value: `\`${agentId}\``, inline: true },
+              { name: 'Pool', value: `\`${poolId}\``, inline: true },
+              { name: 'Status', value: '⏳ Pending Verification', inline: true },
+              { 
+                name: '📋 Next Steps',
+                value: 'Your contribution is under review. Pool owner will activate if approved.\n' +
+                       '**Note:** Token is encrypted and secure. Only pool owner can manage.'
+              }
+            ],
+            footer: { text: 'Thank you for contributing to the community!' },
+            timestamp: new Date()
+          }]
+        });
+      } else {
+        // Adding to own pool - direct activation
+        const result = await insertAgentBot(agentId, token, clientId, botUser.tag, poolId);
+        const operationMsg = result.operation === 'inserted' ? 'added' : 'updated';
+        
+        await interaction.editReply({
+          embeds: [{
+            title: `✅ Agent ${operationMsg.charAt(0).toUpperCase() + operationMsg.slice(1)}`,
+            description: `**${botUser.tag}** is now in your pool.`,
+            color: 0x57f287,
+            fields: [
+              { name: 'Agent ID', value: `\`${agentId}\``, inline: true },
+              { name: 'Pool', value: `\`${poolId}\``, inline: true },
+              { name: 'Status', value: '🟢 Active', inline: true },
+              { 
+                name: '🚀 Deployment',
+                value: 'AgentRunner will start this agent automatically.\nUse `/agents deploy` to invite to guilds.'
+              }
+            ],
+            timestamp: new Date()
+          }]
+        });
+      }
+      
     } catch (error) {
-      console.error(`Error adding/updating agent token: ${error}`);
+      console.error(`[add_token] Error: ${error.message}`);
       await interaction.editReply({ 
-        content: `Failed to add/update agent token: ${error.message}` 
+        content: `❌ Failed to add agent: ${error.message}` 
       });
     }
     return;

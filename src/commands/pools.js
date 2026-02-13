@@ -95,6 +95,39 @@ export const data = new SlashCommandBuilder()
     )
     .addSubcommand((sub) =>
       sub
+        .setName('contributions')
+        .setDescription('View and manage pending contributions to your pool')
+        .addStringOption((opt) =>
+          opt
+            .setName('pool')
+            .setDescription('Pool ID (defaults to your pool)')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('approve')
+        .setDescription('Approve a pending contribution to your pool')
+        .addStringOption((opt) =>
+          opt
+            .setName('agent_id')
+            .setDescription('Agent ID to approve')
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('reject')
+        .setDescription('Reject a pending contribution to your pool')
+        .addStringOption((opt) =>
+          opt
+            .setName('agent_id')
+            .setDescription('Agent ID to reject')
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
         .setName('admin_list')
         .setDescription('List all pools including private (master only)')
     )
@@ -129,6 +162,15 @@ export async function execute(interaction) {
           break;
         case 'settings':
           await handleSettings(interaction);
+          break;
+        case 'contributions':
+          await handleContributions(interaction);
+          break;
+        case 'approve':
+          await handleApprove(interaction);
+          break;
+        case 'reject':
+          await handleReject(interaction);
           break;
         case 'delete':
           await handleDelete(interaction);
@@ -529,6 +571,184 @@ async function handleTransfer(interaction) {
     )
     .setTimestamp();
 
+  await interaction.editReply({ embeds: [embed] });
+}
+
+// ========== CONTRIBUTIONS ==========
+
+async function handleContributions(interaction) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const userId = interaction.user.id;
+  const poolOption = interaction.options.getString('pool', false);
+  
+  // Determine which pool to check
+  let poolId;
+  if (poolOption) {
+    poolId = poolOption;
+  } else {
+    const userPools = await storageLayer.fetchPoolsByOwner(userId);
+    if (!userPools || userPools.length === 0) {
+      return interaction.editReply({
+        content: '❌ You don\'t own any pools. Create one with `/pools create`.',
+      });
+    }
+    poolId = userPools[0].pool_id;
+  }
+  
+  const pool = await storageLayer.fetchPool(poolId);
+  if (!pool) {
+    return interaction.editReply({
+      content: `❌ Pool \`${poolId}\` not found.`,
+    });
+  }
+  
+  // Check ownership
+  if (pool.owner_user_id !== userId && !isMaster(userId)) {
+    return interaction.editReply({
+      content: '❌ You can only view contributions to pools you own.',
+    });
+  }
+  
+  // Fetch inactive agents (pending contributions)
+  const allAgents = await storageLayer.fetchPoolAgents(poolId);
+  const pending = allAgents.filter(a => a.status === 'inactive');
+  
+  if (pending.length === 0) {
+    return interaction.editReply({
+      content: `✅ No pending contributions for **${pool.name}**.`,
+    });
+  }
+  
+  const embed = new EmbedBuilder()
+    .setTitle(`📥 Pending Contributions - ${pool.name}`)
+    .setColor(0xfee75c)
+    .setDescription(`Pool: \`${poolId}\``)
+    .setTimestamp();
+  
+  for (const agent of pending.slice(0, 10)) {
+    const ageMs = Date.now() - agent.created_at;
+    const ageHours = Math.floor(ageMs / 3600000);
+    const ageText = ageHours < 1 ? 'Just now' : `${ageHours}h ago`;
+    
+    embed.addFields({
+      name: `${agent.tag}`,
+      value: `ID: \`${agent.agent_id}\`\nClient: \`${agent.client_id}\`\nSubmitted: ${ageText}\n` +
+             `**Actions:** \`/pools approve agent_id:${agent.agent_id}\` or \`/pools reject agent_id:${agent.agent_id}\``,
+      inline: false,
+    });
+  }
+  
+  if (pending.length > 10) {
+    embed.setFooter({ text: `Showing 10 of ${pending.length} pending contributions` });
+  } else {
+    embed.setFooter({ text: `${pending.length} pending contribution${pending.length === 1 ? '' : 's'}` });
+  }
+  
+  await interaction.editReply({ embeds: [embed] });
+}
+
+// ========== APPROVE ==========
+
+async function handleApprove(interaction) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const userId = interaction.user.id;
+  const agentId = interaction.options.getString('agent_id');
+  
+  // Import updateAgentBotStatus
+  const { updateAgentBotStatus, fetchAgentBots, fetchPool } = await import('../utils/storage.js');
+  
+  // Find the agent
+  const allAgents = await fetchAgentBots();
+  const agent = allAgents.find(a => a.agent_id === agentId);
+  
+  if (!agent) {
+    return interaction.editReply({
+      content: `❌ Agent \`${agentId}\` not found.`,
+    });
+  }
+  
+  // Check pool ownership
+  const pool = await fetchPool(agent.pool_id);
+  if (!pool) {
+    return interaction.editReply({
+      content: `❌ Pool not found for this agent.`,
+    });
+  }
+  
+  if (pool.owner_user_id !== userId && !isMaster(userId)) {
+    return interaction.editReply({
+      content: '❌ You can only approve contributions to pools you own.',
+    });
+  }
+  
+  // Approve by setting status to active
+  await updateAgentBotStatus(agentId, 'active');
+  
+  const embed = new EmbedBuilder()
+    .setTitle('✅ Contribution Approved')
+    .setColor(0x57f287)
+    .setDescription(`**${agent.tag}** is now active in **${pool.name}**.`)
+    .addFields(
+      { name: 'Agent ID', value: `\`${agentId}\``, inline: true },
+      { name: 'Pool', value: `\`${agent.pool_id}\``, inline: true },
+      { name: 'Status', value: '🟢 Active', inline: true }
+    )
+    .setFooter({ text: 'AgentRunner will start this agent automatically' })
+    .setTimestamp();
+  
+  await interaction.editReply({ embeds: [embed] });
+}
+
+// ========== REJECT ==========
+
+async function handleReject(interaction) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const userId = interaction.user.id;
+  const agentId = interaction.options.getString('agent_id');
+  
+  // Import storage functions
+  const { deleteAgentBot, fetchAgentBots, fetchPool } = await import('../utils/storage.js');
+  
+  // Find the agent
+  const allAgents = await fetchAgentBots();
+  const agent = allAgents.find(a => a.agent_id === agentId);
+  
+  if (!agent) {
+    return interaction.editReply({
+      content: `❌ Agent \`${agentId}\` not found.`,
+    });
+  }
+  
+  // Check pool ownership
+  const pool = await fetchPool(agent.pool_id);
+  if (!pool) {
+    return interaction.editReply({
+      content: `❌ Pool not found for this agent.`,
+    });
+  }
+  
+  if (pool.owner_user_id !== userId && !isMaster(userId)) {
+    return interaction.editReply({
+      content: '❌ You can only reject contributions to pools you own.',
+    });
+  }
+  
+  // Reject by deleting
+  await deleteAgentBot(agentId);
+  
+  const embed = new EmbedBuilder()
+    .setTitle('🗑️ Contribution Rejected')
+    .setColor(0xed4245)
+    .setDescription(`**${agent.tag}** contribution has been removed.`)
+    .addFields(
+      { name: 'Agent ID', value: `\`${agentId}\``, inline: true },
+      { name: 'Pool', value: `\`${agent.pool_id}\``, inline: true }
+    )
+    .setTimestamp();
+  
   await interaction.editReply({ embeds: [embed] });
 }
 
