@@ -71,6 +71,13 @@ export const data = new SlashCommandBuilder()
           .setMinValue(10) // Enforce minimum package size
           .setMaxValue(50)  // Enforce maximum total agents
       )
+      .addStringOption(o =>
+        o
+          .setName("from_pool")
+          .setDescription("Deploy from specific pool (leave empty to use guild default)")
+          .setRequired(false)
+      )
+      )
   )
   .addSubcommand(s => s.setName("sessions").setDescription("List active sessions for this guild"))
   .addSubcommand(s =>
@@ -125,11 +132,11 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(s =>
     s
       .setName("add_token")
-      .setDescription("Contribute agent to public pool OR add to your own pool")
+      .setDescription("Register your bot agent")
       .addStringOption(o => o.setName("token").setDescription("Discord Bot Token").setRequired(true))
       .addStringOption(o => o.setName("client_id").setDescription("Bot Application/Client ID").setRequired(true))
       .addStringOption(o => o.setName("tag").setDescription("Bot username (e.g., MyBot#1234)").setRequired(true))
-      .addStringOption(o => o.setName("pool").setDescription("Target pool (leave empty to contribute to public pool)").setRequired(false))
+      .addStringOption(o => o.setName("pool").setDescription("Target pool ID (use /pools public to see options)").setRequired(false))
   )
   .addSubcommand(s => s.setName("list_tokens").setDescription("View registered agents in accessible pools"))
   .addSubcommand(s =>
@@ -274,6 +281,7 @@ export async function execute(interaction) {
 
   if (sub === "deploy") {
     const desiredTotal = interaction.options.getInteger("desired_total", true);
+    const fromPoolOption = interaction.options.getString("from_pool", false);
 
     if (desiredTotal % 10 !== 0) {
       await interaction.reply({
@@ -286,14 +294,47 @@ export async function execute(interaction) {
     // Defer reply because verification may take time
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    // Get guild's selected pool
-    const selectedPoolId = await getGuildSelectedPool(guildId);
+    // Determine which pool to use
+    let selectedPoolId;
+    if (fromPoolOption) {
+      // User specified a pool - verify it exists and is accessible
+      const specifiedPool = await fetchPool(fromPoolOption);
+      if (!specifiedPool) {
+        return await interaction.editReply({
+          content: `❌ Pool \`${fromPoolOption}\` not found.\nUse \`/pools public\` to see available pools.`
+        });
+      }
+      
+      // Check if pool is accessible
+      const userId = interaction.user.id;
+      const BOT_OWNER_ID = process.env.BOT_OWNER_ID || '1122800062628634684';
+      const isOwner = specifiedPool.owner_user_id === userId || userId === BOT_OWNER_ID;
+      const isPublic = specifiedPool.visibility === 'public';
+      
+      if (!isOwner && !isPublic) {
+        return await interaction.editReply({
+          content: `❌ Cannot access private pool \`${fromPoolOption}\`.\nUse \`/pools public\` to see available pools.`
+        });
+      }
+      
+      selectedPoolId = fromPoolOption;
+    } else {
+      // Use guild's default pool
+      selectedPoolId = await getGuildSelectedPool(guildId);
+    }
+    
     const pool = await fetchPool(selectedPoolId);
     
     const plan = await mgr.buildDeployPlan(guildId, desiredTotal, selectedPoolId); // Now async with poolId
 
     const lines = [];
-    lines.push(`**Pool:** ${pool ? pool.name : selectedPoolId} (\`${selectedPoolId}\`)`);
+    lines.push(`**📦 Pool:** ${pool ? pool.name : selectedPoolId} (\`${selectedPoolId}\`)`);
+    if (fromPoolOption) {
+      lines.push(`_Using specified pool (guild default: \`${await getGuildSelectedPool(guildId)}\`)_`);
+    } else {
+      lines.push(`_Guild default pool • Change with \`/pools select\`_`);
+    }
+    lines.push("");
     lines.push(`Desired total agents in this guild: ${plan.desired}`);
     lines.push(`Currently present: ${plan.presentCount}`);
     lines.push(`Need invites: ${plan.needInvites}`);
@@ -313,13 +354,18 @@ export async function execute(interaction) {
     // If there's an issue and still need invites but none are available for invite
     if (plan.needInvites > 0 && plan.invites.length === 0) {
         lines.push("");
-        lines.push("💡 If you need more agents, ensure they are registered and active:");
-        lines.push("1. Use `/agents add_token` to register new agents.");
-        lines.push("2. Ensure registered agents are marked `active` using `/agents update_token_status`.");
-        lines.push("3. Start `chopsticks-agent-runner` processes (e.g., via PM2) to bring agents online.");
-        lines.push("4. Rerun `/agents deploy`.");
+        lines.push("💡 **No agents available from this pool.**");
         lines.push("");
-        lines.push(`Or use \`/pools select\` to choose a different pool.`);
+        lines.push("**Options:**");
+        lines.push("• Deploy from different pool: `/agents deploy from_pool:pool_id`");
+        lines.push("• See public pools: `/pools public`");
+        lines.push("• Change guild default: `/pools select pool:pool_id`");
+        lines.push("");
+        lines.push("**Or contribute agents to this pool:**");
+        lines.push("1. Use `/agents add_token pool:"+selectedPoolId+"` to register agents.");
+        lines.push("2. Ensure agents are marked `active` using `/agents update_token_status`.");
+        lines.push("3. Start `chopsticks-agent-runner` to bring agents online.");
+        lines.push("4. Rerun `/agents deploy`.");
     }
 
     await interaction.editReply({ content: lines.join("\n").slice(0, 1900) });
@@ -530,15 +576,35 @@ export async function execute(interaction) {
           });
         }
       } else {
-        // No pool specified - check if user has their own pool
+        // No pool specified - show available options
         const userPools = await fetchPoolsByOwner(userId);
+        const publicPools = await storageLayer.listPools();
+        const availablePublicPools = publicPools.filter(p => p.visibility === 'public');
+        
         if (userPools && userPools.length > 0) {
-          // Add to user's own pool
+          // User has their own pool - add there
           poolId = userPools[0].pool_id;
         } else {
-          // Contributing to public pool
-          poolId = 'pool_goot27';
-          isContribution = true;
+          // No personal pool - must contribute to public pool
+          if (availablePublicPools.length === 0) {
+            return await interaction.editReply({
+              content: `❌ No public pools available for contribution.\nCreate your own with \`/pools create\``
+            });
+          }
+          
+          // Show available public pools
+          let poolList = '**Available Public Pools:**\n';
+          for (const p of availablePublicPools) {
+            const owner = p.owner_user_id === BOT_OWNER_ID ? 'goot27 (Master)' : `<@${p.owner_user_id}>`;
+            poolList += `• \`${p.pool_id}\` - ${p.name} (by ${owner})\n`;
+          }
+          poolList += `\n**Choose a pool:**\nRe-run this command with \`pool:pool_id\` parameter`;
+          poolList += `\nExample: \`/agents add_token pool:pool_goot27\``;
+          poolList += `\n\nOr create your own pool: \`/pools create\``;
+          
+          return await interaction.editReply({
+            content: poolList
+          });
         }
       }
 

@@ -15,7 +15,12 @@ export const data = new SlashCommandBuilder()
     .addSubcommand((sub) =>
       sub
         .setName('list')
-        .setDescription('View available pools')
+        .setDescription('View all accessible pools')
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('public')
+        .setDescription('View all public pools (for contribution)')
     )
     .addSubcommand((sub) =>
       sub
@@ -151,6 +156,9 @@ export async function execute(interaction) {
         case 'list':
           await handleList(interaction);
           break;
+        case 'public':
+          await handlePublic(interaction);
+          break;
         case 'create':
           await handleCreate(interaction);
           break;
@@ -284,6 +292,55 @@ async function handleList(interaction) {
   }
 
   embed.setFooter({ text: `Total visible pools: ${visiblePools.length}` });
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+// ========== PUBLIC POOLS (FOR CONTRIBUTION) ==========
+
+async function handlePublic(interaction) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const allPools = await storageLayer.listPools();
+  const publicPools = allPools.filter(pool => pool.visibility === 'public');
+  
+  if (publicPools.length === 0) {
+    return interaction.editReply({
+      content: '📦 No public pools available for contribution.',
+    });
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle('🌐 Public Pools - Available for Contribution')
+    .setColor(0x5865f2)
+    .setDescription('Choose a pool to contribute your agents to')
+    .setTimestamp();
+
+  // Fetch all pool agents in parallel
+  const agentPromises = publicPools.map(pool => storageLayer.fetchPoolAgents(pool.pool_id));
+  const allAgents = await Promise.all(agentPromises);
+
+  for (let i = 0; i < publicPools.length; i++) {
+    const pool = publicPools[i];
+    const agents = allAgents[i];
+    const agentCount = agents ? agents.length : 0;
+    const activeAgents = agents ? agents.filter(a => a.status === 'active') : [];
+    const owner = pool.owner_user_id === BOT_OWNER_ID ? 'goot27 (Master)' : `<@${pool.owner_user_id}>`;
+    
+    let fieldValue = `**Owner:** ${owner}\n`;
+    fieldValue += `**Agents:** ${agentCount} total (${activeAgents.length} active)\n`;
+    fieldValue += `**To contribute:** \`/agents add_token pool:${pool.pool_id}\``;
+    
+    embed.addFields({
+      name: `${pool.name} \`${pool.pool_id}\``,
+      value: fieldValue,
+      inline: false,
+    });
+  }
+
+  embed.setFooter({ 
+    text: `${publicPools.length} public pool${publicPools.length === 1 ? '' : 's'} available • Contributions require approval` 
+  });
 
   await interaction.editReply({ embeds: [embed] });
 }
