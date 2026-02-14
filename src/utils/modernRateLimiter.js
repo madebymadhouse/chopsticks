@@ -32,6 +32,7 @@ async function initRateLimiter() {
     securityLogger.info("Rate limiter initialized with Redis backend");
   } catch (err) {
     securityLogger.warn({ err }, "Rate limiter falling back to in-memory");
+    redisClient = null;
     
     // Fallback to in-memory rate limiter
     rateLimiter = new RateLimiterMemory({
@@ -80,13 +81,20 @@ export async function checkSensitiveActionLimit(identifier) {
   }
 
   const key = `sensitive:${identifier}`;
-  const limiter = new RateLimiterRedis({
-    storeClient: redisClient || await createMemoryFallback(),
-    keyPrefix: "rl:sensitive:",
-    points: 3, // Only 3 attempts
-    duration: 300, // Per 5 minutes
-    blockDuration: 3600, // Block for 1 hour if exceeded
-  });
+  const limiter = redisClient
+    ? new RateLimiterRedis({
+        storeClient: redisClient,
+        keyPrefix: "rl:sensitive:",
+        points: 3, // Only 3 attempts
+        duration: 300, // Per 5 minutes
+        blockDuration: 3600, // Block for 1 hour if exceeded
+      })
+    : new RateLimiterMemory({
+        keyPrefix: "rl:sensitive:",
+        points: 3,
+        duration: 300,
+        blockDuration: 3600,
+      });
 
   try {
     await limiter.consume(key, 1);
@@ -108,33 +116,48 @@ export async function checkSensitiveActionLimit(identifier) {
   }
 }
 
-async function createMemoryFallback() {
-  return new RateLimiterMemory({
-    points: 3,
-    duration: 300,
-    blockDuration: 3600,
-  });
-}
-
 // Distributed rate limiting for API endpoints (Express middleware)
 export function createApiRateLimiter(options = {}) {
-  const limiter = new RateLimiterRedis({
-    storeClient: redisClient,
-    keyPrefix: options.keyPrefix || "rl:api:",
-    points: options.points || 100,
-    duration: options.duration || 60,
-    blockDuration: options.blockDuration || 300,
-  });
+  let limiter = null;
+
+  async function ensureLimiter() {
+    if (limiter) return limiter;
+    if (!redisClient) await initRateLimiter();
+
+    if (redisClient) {
+      limiter = new RateLimiterRedis({
+        storeClient: redisClient,
+        keyPrefix: options.keyPrefix || "rl:api:",
+        points: options.points || 100,
+        duration: options.duration || 60,
+        blockDuration: options.blockDuration || 300,
+      });
+      return limiter;
+    }
+
+    limiter = new RateLimiterMemory({
+      keyPrefix: options.keyPrefix || "rl:api:",
+      points: options.points || 100,
+      duration: options.duration || 60,
+      blockDuration: options.blockDuration || 300,
+    });
+    return limiter;
+  }
 
   return async (req, res, next) => {
+    const activeLimiter = await ensureLimiter();
     const key = options.keyGenerator 
       ? options.keyGenerator(req)
       : req.ip || req.connection.remoteAddress;
 
     try {
-      await limiter.consume(key, 1);
+      await activeLimiter.consume(key, 1);
       next();
     } catch (rejRes) {
+      if (rejRes instanceof Error) {
+        securityLogger.error({ err: rejRes }, "API rate limiter backend error; allowing request");
+        return next();
+      }
       res.status(429).json({
         error: "Too Many Requests",
         retryAfter: Math.round(rejRes.msBeforeNext / 1000),

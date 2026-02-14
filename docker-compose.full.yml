@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Full stack: core + voice services
 # Usage:
 #   docker compose -f docker-compose.stack.yml -f docker-compose.voice.yml -f docker-compose.full.yml up -d --build

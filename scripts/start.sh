@@ -18,13 +18,18 @@ fi
 
 echo "Using compose file: $COMPOSE_FILE"
 
+COMPOSE_ARGS=(-f "$COMPOSE_FILE")
+if [ "$COMPOSE_FILE" = "docker-compose.production.yml" ]; then
+  COMPOSE_ARGS+=(--profile dashboard)
+fi
+
 # Check prerequisites
 if ! command -v docker &> /dev/null; then
   echo "❌ Docker not installed"
   exit 1
 fi
 
-if ! command -v docker compose &> /dev/null; then
+if ! docker compose version &> /dev/null; then
   echo "❌ Docker Compose not installed"
   exit 1
 fi
@@ -45,36 +50,55 @@ fi
 
 # Start services
 echo "Starting services..."
-docker compose -f "$COMPOSE_FILE" up -d
+docker compose "${COMPOSE_ARGS[@]}" up -d --remove-orphans
+
+# Keep production bring-up focused on bot + agents + dashboard
+if [ "$COMPOSE_FILE" = "docker-compose.production.yml" ]; then
+  docker compose -f "$COMPOSE_FILE" stop prometheus >/dev/null 2>&1 || true
+fi
 
 echo ""
 echo "⏳ Waiting for services to be ready..."
 sleep 5
 
-# Check health
-HEALTH_URL="http://localhost:8080/health"
-MAX_WAIT=60
+# Check service readiness from Docker health/state (works even without published health ports)
+SERVICES="$(docker compose "${COMPOSE_ARGS[@]}" config --services 2>/dev/null || true)"
+PRIMARY_SERVICE="bot"
+if echo "$SERVICES" | grep -qx "bot"; then
+  PRIMARY_SERVICE="bot"
+elif echo "$SERVICES" | grep -qx "main-bot"; then
+  PRIMARY_SERVICE="main-bot"
+elif [ -n "$SERVICES" ]; then
+  PRIMARY_SERVICE="$(echo "$SERVICES" | head -n 1)"
+fi
+
+MAX_WAIT=90
 
 for i in $(seq 1 $MAX_WAIT); do
-  if curl -f -s "$HEALTH_URL" > /dev/null 2>&1; then
+  CONTAINER_ID="$(docker compose "${COMPOSE_ARGS[@]}" ps -q "$PRIMARY_SERVICE" 2>/dev/null || true)"
+  STATUS="unknown"
+
+  if [ -n "$CONTAINER_ID" ]; then
+    STATUS="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$CONTAINER_ID" 2>/dev/null || echo unknown)"
+  fi
+
+  if [ "$STATUS" = "healthy" ] || [ "$STATUS" = "running" ]; then
     echo "✅ Platform is ready!"
     echo ""
     echo "Services:"
-    docker compose -f "$COMPOSE_FILE" ps
+    docker compose "${COMPOSE_ARGS[@]}" ps
     echo ""
-    echo "Health: $HEALTH_URL"
-    echo "Dashboard: http://localhost:3003"
-    echo "Metrics: http://localhost:8080/metrics"
-    echo ""
-    echo "View logs: docker logs chopsticks-bot -f"
+    echo "Primary service: $PRIMARY_SERVICE ($STATUS)"
+    echo "View logs: docker compose ${COMPOSE_ARGS[*]} logs -f $PRIMARY_SERVICE"
     exit 0
   fi
-  
+
   if [ $i -eq $MAX_WAIT ]; then
     echo "❌ Platform did not become ready in time"
-    echo "Check logs: docker logs chopsticks-bot"
+    echo "Last status for '$PRIMARY_SERVICE': $STATUS"
+    echo "Check logs: docker compose ${COMPOSE_ARGS[*]} logs $PRIMARY_SERVICE"
     exit 1
   fi
-  
+
   sleep 1
 done

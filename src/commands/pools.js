@@ -1,7 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import * as storageLayer from '../utils/storage.js';
-
-const BOT_OWNER_ID = process.env.BOT_OWNER_ID || '1122800062628634684'; // goot27
+import { isBotOwner } from '../utils/owners.js';
 
 export const meta = {
   guildOnly: false, // Pool management can be done outside guilds
@@ -211,11 +210,11 @@ export async function execute(interaction) {
 // ========== HELPERS ==========
 
 function isMaster(userId) {
-  return userId === BOT_OWNER_ID;
+  return isBotOwner(userId);
 }
 
 function isGuildAdmin(member) {
-  return member.permissions.has(PermissionFlagsBits.Administrator);
+  return Boolean(member?.permissions?.has(PermissionFlagsBits.Administrator));
 }
 
 async function canAccessPool(userId, poolId, pool) {
@@ -272,17 +271,33 @@ async function handleList(interaction) {
   for (let i = 0; i < visiblePools.length; i++) {
     const pool = visiblePools[i];
     const agents = allAgents[i];
-    const agentCount = agents ? agents.length : 0;
-    const visIcon = pool.visibility === 'public' ? '' : '';
-    const owner = pool.owner_user_id === BOT_OWNER_ID ? 'goot27 (Master)' : `<@${pool.owner_user_id}>`;
+    const totalAgents = agents ? agents.length : 0;
     
-    let fieldValue = `${visIcon} **${pool.visibility}** | Owner: ${owner}\n`;
-    fieldValue += `Agents: **${agentCount}**`;
+    // Visibility icon
+    const visIcon = pool.visibility === 'public' ? '🌐' : '🔒';
     
-    if (pool.visibility === 'public' && agentCount > 0) {
+    // Owner display
+    const owner = isMaster(pool.owner_user_id) ? 'Bot Owner' : `<@${pool.owner_user_id}>`;
+    
+    // Agent status
+    let agentStatus = '';
+    if (totalAgents === 0) {
+      agentStatus = '**0 agents** ⚠️';
+    } else {
       const activeAgents = agents.filter(a => a.status === 'active');
-      fieldValue += ` (${activeAgents.length} active)`;
+      const inactiveAgents = totalAgents - activeAgents.length;
+      
+      if (activeAgents.length === 0) {
+        agentStatus = `**${totalAgents} agents** (⚠️ all inactive)`;
+      } else if (inactiveAgents === 0) {
+        agentStatus = `**${totalAgents} agents** (✅ all active)`;
+      } else {
+        agentStatus = `**${totalAgents} agents** (✅ ${activeAgents.length} active, ⚠️ ${inactiveAgents} inactive)`;
+      }
     }
+    
+    let fieldValue = `${visIcon} ${pool.visibility === 'public' ? '**Public**' : '**Private**'} | Owner: ${owner}\n`;
+    fieldValue += `${agentStatus}`;
     
     embed.addFields({
       name: `${pool.name} \`${pool.pool_id}\``,
@@ -323,13 +338,19 @@ async function handlePublic(interaction) {
   for (let i = 0; i < publicPools.length; i++) {
     const pool = publicPools[i];
     const agents = allAgents[i];
-    const agentCount = agents ? agents.length : 0;
+    const totalAgents = agents ? agents.length : 0;
     const activeAgents = agents ? agents.filter(a => a.status === 'active') : [];
-    const owner = pool.owner_user_id === BOT_OWNER_ID ? 'goot27 (Master)' : `<@${pool.owner_user_id}>`;
+    const owner = isMaster(pool.owner_user_id) ? 'Bot Owner' : `<@${pool.owner_user_id}>`;
     
-    let fieldValue = `**Owner:** ${owner}\n`;
-    fieldValue += `**Agents:** ${agentCount} total (${activeAgents.length} active)\n`;
-    fieldValue += `**To contribute:** \`/agents add_token pool:${pool.pool_id}\``;
+    // Health indicator
+    let healthIcon = '🟢';
+    if (totalAgents === 0) healthIcon = '🔴';
+    else if (activeAgents.length === 0) healthIcon = '🟡';
+    else if (activeAgents.length < totalAgents / 2) healthIcon = '🟡';
+    
+    let fieldValue = `${healthIcon} **${totalAgents} agents** (✅ ${activeAgents.length} active)\n`;
+    fieldValue += `**Owner:** ${owner}\n`;
+    fieldValue += `**Contribute:** \`/agents add_token pool:${pool.pool_id}\``;
     
     embed.addFields({
       name: `${pool.name} \`${pool.pool_id}\``,
@@ -465,6 +486,13 @@ async function handleSelect(interaction) {
 
   const userId = interaction.user.id;
   const poolId = interaction.options.getString('pool');
+  const guildId = interaction.guildId;
+
+  if (!guildId) {
+    return interaction.editReply({
+      content: 'Pool selection must be run inside a server.',
+    });
+  }
 
   // Check if user is guild admin or master
   if (!isGuildAdmin(interaction.member) && !isMaster(userId)) {
@@ -482,7 +510,6 @@ async function handleSelect(interaction) {
   }
 
   // Set guild's selected pool
-  const guildId = interaction.guild.id;
   await storageLayer.setGuildSelectedPool(guildId, poolId);
 
   const embed = new EmbedBuilder()

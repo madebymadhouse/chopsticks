@@ -22,6 +22,12 @@ import { handleInteractionError, handleSafeError, ErrorCategory } from "../utils
 import { getCache, setCache } from "../utils/redis.js";
 import { makeEmbed } from "../utils/discordOutput.js";
 
+export const meta = {
+  guildOnly: true,
+  userPerms: [],
+  category: "music"
+};
+
 export const data = new SlashCommandBuilder()
   .setName("music")
   .setDescription("Voice-channel music (agent-backed, one session per voice channel)")

@@ -20,9 +20,11 @@ import {
   fetchPool,
   fetchPoolsByOwner,
   getGuildSelectedPool,
-  fetchPoolAgents
+  fetchPoolAgents,
+  listPools
 } from "../utils/storage.js";
 import { replyEmbed, replyEmbedWithJson, buildEmbed } from "../utils/discordOutput.js";
+import { getBotOwnerIds, isBotOwner } from "../utils/owners.js";
 
 export const meta = {
   guildOnly: true,
@@ -67,10 +69,10 @@ export const data = new SlashCommandBuilder()
       .addIntegerOption(o =>
         o
           .setName("desired_total")
-          .setDescription("Total number of agents you want available in this guild (multiples of 10, max 50)")
+          .setDescription("Total number of agents you want available in this guild (multiples of 10, max 49)")
           .setRequired(true)
           .setMinValue(10) // Enforce minimum package size
-          .setMaxValue(50)  // Enforce maximum total agents
+          .setMaxValue(49)  // Enforce maximum total agents (Level 1: Invariants Locked)
       )
       .addStringOption(o =>
         o
@@ -188,8 +190,8 @@ export async function execute(interaction) {
   const guildId = interaction.guildId;
 
   // --- Bot Owner Permissions ---
-  const ownerIds = (process.env.BOT_OWNER_IDS || "").split(",").filter(id => id.length > 0);
-  const isBotOwner = ownerIds.includes(interaction.user.id);
+  const ownerIds = getBotOwnerIds();
+  const requesterIsBotOwner = isBotOwner(interaction.user.id);
   const ownerOnlySubcommands = new Set([
     "add_token",
     "delete_token",
@@ -199,7 +201,7 @@ export async function execute(interaction) {
     "restart"
   ]);
 
-  if (ownerOnlySubcommands.has(sub) && !isBotOwner) {
+  if (ownerOnlySubcommands.has(sub) && !requesterIsBotOwner) {
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
       content: "This command is restricted to the Bot Owner."
@@ -209,171 +211,218 @@ export async function execute(interaction) {
   // -----------------------------
 
   if (sub === "status") {
-    const allAgents = await fetchAgentBots(); // Fetch all registered agents from DB
-    const liveAgents = await mgr.listAgents(); // Currently connected agents
-    const liveAgentIds = new Set(liveAgents.map(a => a.agentId));
+    try {
+      const allAgents = await fetchAgentBots(); // Fetch all registered agents from DB
+      const liveAgents = await mgr.listAgents(); // Currently connected agents
+      const liveAgentIds = new Set(liveAgents.map(a => a.agentId));
 
-    const inGuild = liveAgents.filter(a => a.guildIds.includes(guildId));
-    const idleInGuild = inGuild.filter(a => a.ready && !a.busyKey);
-    const busyInGuild = inGuild.filter(a => a.ready && a.busyKey);
+      const inGuild = liveAgents.filter(a => a.guildIds.includes(guildId));
+      const idleInGuild = inGuild.filter(a => a.ready && !a.busyKey);
+      const busyInGuild = inGuild.filter(a => a.ready && a.busyKey);
 
-    const registeredButNotInGuild = allAgents.filter(a => !liveAgentIds.has(a.agent_id) || !liveAgents.find(la => la.agentId === a.agent_id)?.guildIds.includes(guildId));
-    const invitable = registeredButNotInGuild.filter(a => a.status === 'active'); // Only active registered agents are invitable
+      const registeredButNotInGuild = allAgents.filter(a => !liveAgentIds.has(a.agent_id) || !liveAgents.find(la => la.agentId === a.agent_id)?.guildIds.includes(guildId));
+      const invitable = registeredButNotInGuild.filter(a => a.status === 'active'); // Only active registered agents are invitable
 
-    const embed = new EmbedBuilder()
-      .setTitle("Agent Status")
-      .setColor(0x00ff00)
-      .setTimestamp()
-      .addFields(
-        { name: "Summary", value: `Registered: **${allAgents.length}**\nLive: **${liveAgents.length}**\nInvitable: **${invitable.length}**` },
-        { name: `Agents in this Guild (${inGuild.length})`, value: `Idle: **${idleInGuild.length}**\nBusy: **${busyInGuild.length}**` }
-      );
+      const embed = new EmbedBuilder()
+        .setTitle("🤖 Agent Status")
+        .setColor(0x5865f2)
+        .setTimestamp()
+        .addFields(
+          { 
+            name: "📊 Overview", 
+            value: `**Registered:** ${allAgents.length} agents\n**Connected:** ${liveAgents.length} online\n**Available:** ${idleInGuild.length} ready for music` 
+          },
+          { 
+            name: `📍 This Guild (${inGuild.length} total)`, 
+            value: `✅ **Idle:** ${idleInGuild.length}\n⏳ **Busy:** ${busyInGuild.length}\n🔴 **Offline:** ${registeredButNotInGuild.length}` 
+          }
+        );
 
-    const liveInGuildText = inGuild
-      .sort((x, y) => String(x.agentId).localeCompare(String(y.agentId)))
-      .map(a => {
-        const state = a.ready ? (a.busyKey ? `busy(${a.busyKind || "?"})` : "idle") : "down";
-        const ident = a.tag ? `${a.tag} (${a.botUserId})` : (a.botUserId ? String(a.botUserId) : "unknown-id");
-        return `\`${a.agentId}\` - ${state} - seen ${fmtTs(a.lastSeen)} - ${ident}`;
-      })
-      .join("\n");
+      const liveInGuildText = inGuild
+        .sort((x, y) => String(x.agentId).localeCompare(String(y.agentId)))
+        .map(a => {
+          let statusIcon = '🔴';
+          let statusText = 'down';
+          
+          if (a.ready) {
+            if (a.busyKey) {
+              statusIcon = '⏳';
+              statusText = `busy (${a.busyKind || "?"})`;
+            } else {
+              statusIcon = '✅';
+              statusText = 'idle';
+            }
+          }
+          
+          const ident = a.tag ? `${a.tag}` : (a.botUserId ? `User ${a.botUserId}` : "unknown-id");
+          return `${statusIcon} \`${a.agentId}\` - **${statusText}** - ${ident}`;
+        })
+        .join("\n");
 
-    if (liveInGuildText) {
-      embed.addFields({ name: "Live Agents in Guild", value: liveInGuildText.slice(0, 1024) });
+      if (liveInGuildText) {
+        embed.addFields({ name: "🟢 Connected Agents", value: liveInGuildText.slice(0, 1024) });
+      } else {
+        embed.addFields({ name: "🟢 Connected Agents", value: "No agents connected to this guild.\n💡 Use `/agents deploy <count>` to get started." });
+      }
+
+      const invitableText = invitable
+        .sort((x, y) => String(x.agent_id).localeCompare(String(y.agent_id)))
+        .map(a => `⭕ \`${a.agent_id}\` - ${a.tag}`)
+        .join("\n");
+
+      if (invitableText) {
+        embed.addFields({ name: "Invitable Agents", value: invitableText.slice(0, 1024) });
+      }
+
+      await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
+    } catch (error) {
+      console.error(`[agents:status] Error: ${error.message}`);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Failed to fetch agent status: ${error.message}` });
     }
-
-    const invitableText = invitable
-      .sort((x, y) => String(x.agent_id).localeCompare(String(y.agent_id)))
-      .map(a => `\`${a.agent_id}\` - ${a.tag} (${a.client_id}) - Status: ${a.status}`)
-      .join("\n");
-
-    if (invitableText) {
-      embed.addFields({ name: "Invitable Agents", value: invitableText.slice(0, 1024) });
-    }
-
-    await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
     return;
   }
 
   if (sub === "manifest") {
-    const agents = await fetchAgentBots(); // Fetch all registered agents from DB
-    const liveAgents = await mgr.listAgents(); // Currently connected agents
-    const liveAgentMap = new Map(liveAgents.map(a => [a.agentId, a]));
+    try {
+      const agents = await fetchAgentBots(); // Fetch all registered agents from DB
+      const liveAgents = await mgr.listAgents(); // Currently connected agents
+      const liveAgentMap = new Map(liveAgents.map(a => [a.agentId, a]));
 
-    const embed = new EmbedBuilder()
-      .setTitle("Agent Manifest")
-      .setColor(0x0099ff)
-      .setTimestamp();
-      
-    const descriptionLines = agents
-      .sort((x, y) => String(x.agent_id).localeCompare(String(y.agent_id)))
-      .map(a => {
-        const liveStatus = liveAgentMap.get(a.agent_id);
-        const state = liveStatus ? (liveStatus.ready ? (liveStatus.busyKey ? `busy(${liveStatus.busyKind || "?"})` : "idle") : "down") : "offline";
-        const inGuildState = liveStatus?.guildIds.includes(guildId) ? "in-guild" : "not-in-guild";
-        const profileState = a.profile ? "Yes" : "No";
-        return `**${a.agent_id}** (${a.tag})\nDB: \`${a.status}\` | Live: \`${state}\` | Guild: \`${inGuildState}\` | Profile: \`${profileState}\``;
+      const embed = new EmbedBuilder()
+        .setTitle("Agent Manifest")
+        .setColor(0x0099ff)
+        .setTimestamp();
+        
+      const descriptionLines = agents
+        .sort((x, y) => String(x.agent_id).localeCompare(String(y.agent_id)))
+        .map(a => {
+          const liveStatus = liveAgentMap.get(a.agent_id);
+          const state = liveStatus ? (liveStatus.ready ? (liveStatus.busyKey ? `busy(${liveStatus.busyKind || "?"})` : "idle") : "down") : "offline";
+          const inGuildState = liveStatus?.guildIds.includes(guildId) ? "in-guild" : "not-in-guild";
+          const profileState = a.profile ? "Yes" : "No";
+          return `**${a.agent_id}** (${a.tag})\nDB: \`${a.status}\` | Live: \`${state}\` | Guild: \`${inGuildState}\` | Profile: \`${profileState}\``;
+        });
+
+      embed.setDescription(descriptionLines.join("\n\n").slice(0, 4096));
+
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        embeds: [embed]
       });
-
-    embed.setDescription(descriptionLines.join("\n\n").slice(0, 4096));
-
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
-      embeds: [embed]
-    });
+    } catch (error) {
+      console.error(`[agents:manifest] Error: ${error.message}`);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Failed to fetch agent manifest: ${error.message}` });
+    }
     return;
   }
 
   if (sub === "deploy") {
-    const desiredTotal = interaction.options.getInteger("desired_total", true);
-    const fromPoolOption = interaction.options.getString("from_pool", false);
+    try {
+      const desiredTotal = interaction.options.getInteger("desired_total", true);
+      const fromPoolOption = interaction.options.getString("from_pool", false);
 
-    if (desiredTotal % 10 !== 0) {
-      await interaction.reply({
-        flags: MessageFlags.Ephemeral,
-        content: `The desired total number of agents must be a multiple of 10. You entered ${desiredTotal}.`
-      });
-      return;
-    }
-
-    // Defer reply because verification may take time
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-    // Determine which pool to use
-    let selectedPoolId;
-    if (fromPoolOption) {
-      // User specified a pool - verify it exists and is accessible
-      const specifiedPool = await fetchPool(fromPoolOption);
-      if (!specifiedPool) {
-        return await interaction.editReply({
-          content: `Pool \`${fromPoolOption}\` not found.\nUse \`/pools public\` to see available pools.`
+      if (desiredTotal % 10 !== 0) {
+        await interaction.reply({
+          flags: MessageFlags.Ephemeral,
+          content: `The desired total number of agents must be a multiple of 10. You entered ${desiredTotal}.`
         });
+        return;
+      }
+
+      // Defer reply because verification may take time
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      // Determine which pool to use
+      let selectedPoolId;
+      if (fromPoolOption) {
+        // User specified a pool - verify it exists and is accessible
+        const specifiedPool = await fetchPool(fromPoolOption);
+        if (!specifiedPool) {
+          return await interaction.editReply({
+            content: `Pool \`${fromPoolOption}\` not found.\nUse \`/pools public\` to see available pools.`
+          });
+        }
+        
+        // Check if pool is accessible
+        const userId = interaction.user.id;
+        const isOwner = specifiedPool.owner_user_id === userId || ownerIds.has(userId);
+        const isPublic = specifiedPool.visibility === 'public';
+        
+        if (!isOwner && !isPublic) {
+          return await interaction.editReply({
+            content: `Cannot access private pool \`${fromPoolOption}\`.\nUse \`/pools public\` to see available pools.`
+          });
+        }
+        
+        selectedPoolId = fromPoolOption;
+      } else {
+        // Use guild's default pool
+        selectedPoolId = await getGuildSelectedPool(guildId);
       }
       
-      // Check if pool is accessible
-      const userId = interaction.user.id;
-      const BOT_OWNER_ID = process.env.BOT_OWNER_ID || '1122800062628634684';
-      const isOwner = specifiedPool.owner_user_id === userId || userId === BOT_OWNER_ID;
-      const isPublic = specifiedPool.visibility === 'public';
+      const pool = await fetchPool(selectedPoolId);
       
-      if (!isOwner && !isPublic) {
-        return await interaction.editReply({
-          content: `Cannot access private pool \`${fromPoolOption}\`.\nUse \`/pools public\` to see available pools.`
+      const plan = await mgr.buildDeployPlan(guildId, desiredTotal, selectedPoolId); // Now async with poolId
+
+      // Check for limit error (Level 1: Invariants Locked)
+      if (plan.error) {
+        await interaction.editReply({
+          content: `❌ ${plan.error}\n\nThe platform enforces a maximum of 49 agents per guild to ensure system stability.`
         });
+        return;
       }
-      
-      selectedPoolId = fromPoolOption;
-    } else {
-      // Use guild's default pool
-      selectedPoolId = await getGuildSelectedPool(guildId);
-    }
-    
-    const pool = await fetchPool(selectedPoolId);
-    
-    const plan = await mgr.buildDeployPlan(guildId, desiredTotal, selectedPoolId); // Now async with poolId
 
-    const lines = [];
-    lines.push(`** Pool:** ${pool ? pool.name : selectedPoolId} (\`${selectedPoolId}\`)`);
-    if (fromPoolOption) {
-      lines.push(`_Using specified pool (guild default: \`${await getGuildSelectedPool(guildId)}\`)_`);
-    } else {
-      lines.push(`_Guild default pool - Change with \`/pools select\`_`);
-    }
-    lines.push("");
-    lines.push(`Desired total agents in this guild: ${plan.desired}`);
-    lines.push(`Currently present: ${plan.presentCount}`);
-    lines.push(`Need invites: ${plan.needInvites}`);
-    lines.push("");
-
-    if (plan.invites.length) {
-      lines.push("To deploy more agents, invite these bot identities:");
-      for (const inv of plan.invites) {
-        const label = inv.tag ? `${inv.agentId} (${inv.tag})` : inv.agentId;
-        // Use client_id from the stored agent bot for the invite URL
-        lines.push(`- **${label}**: <${buildMainInvite(inv.botUserId)}>`);
+      const lines = [];
+      lines.push(`** Pool:** ${pool ? pool.name : selectedPoolId} (\`${selectedPoolId}\`)`);
+      if (fromPoolOption) {
+        lines.push(`_Using specified pool (guild default: \`${await getGuildSelectedPool(guildId)}\`)_`);
+      } else {
+        lines.push(`_Guild default pool - Change with \`/pools select\`_`);
       }
-    } else {
-      lines.push("No invites needed (already at or above desired count, or no available agents to invite).");
-    }
+      lines.push("");
+      lines.push(`Desired total agents in this guild: ${plan.desired}`);
+      lines.push(`Currently present: ${plan.presentCount}`);
+      lines.push(`Need invites: ${plan.needInvites}`);
+      lines.push("");
 
-    // If there's an issue and still need invites but none are available for invite
-    if (plan.needInvites > 0 && plan.invites.length === 0) {
-        lines.push("");
-        lines.push("No agents available from this pool.");
-        lines.push("");
-        lines.push("**Options:**");
-        lines.push("- Deploy from different pool: `/agents deploy from_pool:pool_id`");
-        lines.push("- See public pools: `/pools public`");
-        lines.push("- Change guild default: `/pools select pool:pool_id`");
-        lines.push("");
-        lines.push("**Or contribute agents to this pool:**");
-        lines.push("1. Use `/agents add_token pool:"+selectedPoolId+"` to register agents.");
-        lines.push("2. Ensure agents are marked `active` using `/agents update_token_status`.");
-        lines.push("3. Start `chopsticks-agent-runner` to bring agents online.");
-        lines.push("4. Rerun `/agents deploy`.");
-    }
+      if (plan.invites.length) {
+        lines.push("To deploy more agents, invite these bot identities:");
+        for (const inv of plan.invites) {
+          const label = inv.tag ? `${inv.agentId} (${inv.tag})` : inv.agentId;
+          // Use client_id from the stored agent bot for the invite URL
+          lines.push(`- **${label}**: <${buildMainInvite(inv.botUserId)}>`);
+        }
+      } else {
+        lines.push("No invites needed (already at or above desired count, or no available agents to invite).");
+      }
 
-    await interaction.editReply({ content: lines.join("\n").slice(0, 1900) });
+      // If there's an issue and still need invites but none are available for invite
+      if (plan.needInvites > 0 && plan.invites.length === 0) {
+          lines.push("");
+          lines.push("No agents available from this pool.");
+          lines.push("");
+          lines.push("**Options:**");
+          lines.push("- Deploy from different pool: `/agents deploy from_pool:pool_id`");
+          lines.push("- See public pools: `/pools public`");
+          lines.push("- Change guild default: `/pools select pool:pool_id`");
+          lines.push("");
+          lines.push("**Or contribute agents to this pool:**");
+          lines.push("1. Use `/agents add_token pool:"+selectedPoolId+"` to register agents.");
+          lines.push("2. Ensure agents are marked `active` using `/agents update_token_status`.");
+          lines.push("3. Start `chopsticks-agent-runner` to bring agents online.");
+          lines.push("4. Rerun `/agents deploy`.");
+      }
+
+      await interaction.editReply({ content: lines.join("\n").slice(0, 1900) });
+    } catch (error) {
+      console.error(`[agents:deploy] Error: ${error.message}`);
+      const content = `Failed to deploy agents: ${error.message}`;
+      if (interaction.deferred) {
+        await interaction.editReply({ content });
+      } else {
+        await interaction.reply({ flags: MessageFlags.Ephemeral, content });
+      }
+    }
     return;
   }
 
@@ -412,8 +461,15 @@ export async function execute(interaction) {
       force: true // Force cache refresh
     }).catch(err => {
       console.error("[VERIFY_MEMBERSHIP] Error fetching members:", err);
-      return new Map();
+      return null; // Indicate failure
     });
+
+    if (members === null) {
+      await interaction.editReply({
+        content: "Failed to verify agent membership due to Discord API error.\n\nAgents were not removed from cache. Please try again later."
+      });
+      return;
+    }
 
     const lines = [];
     lines.push(`**Agent Membership Verification**`);
@@ -449,73 +505,88 @@ export async function execute(interaction) {
   }
 
   if (sub === "sessions") {
-    const sessions = mgr
-      .listSessions()
-      .filter(s => s.guildId === guildId)
-      .map(s => `music ${s.voiceChannelId} -> ${s.agentId}`);
+    try {
+      const sessions = mgr
+        .listSessions()
+        .filter(s => s.guildId === guildId)
+        .map(s => `music ${s.voiceChannelId} -> ${s.agentId}`);
 
-    const assistantSessions = mgr
-      .listAssistantSessions()
-      .filter(s => s.guildId === guildId)
-      .map(s => `assistant ${s.voiceChannelId} -> ${s.agentId}`);
+      const assistantSessions = mgr
+        .listAssistantSessions()
+        .filter(s => s.guildId === guildId)
+        .map(s => `assistant ${s.voiceChannelId} -> ${s.agentId}`);
 
-    const lines = [...sessions, ...assistantSessions];
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
-      content: lines.length ? lines.join("\n") : "No sessions for this guild."
-    });
+      const lines = [...sessions, ...assistantSessions];
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: lines.length ? lines.join("\n") : "No sessions for this guild."
+      });
+    } catch (error) {
+      console.error(`[agents:sessions] Error: ${error.message}`);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Failed to fetch sessions: ${error.message}` });
+    }
     return;
   }
 
   if (sub === "assign") {
-    const channel = interaction.options.getChannel("channel", true);
-    const agentId = interaction.options.getString("agent_id", true);
-    const kind = interaction.options.getString("kind") || "music";
-    const agent = mgr.agents.get(agentId);
-    if (!agent?.ready || !agent.ws) {
-      await interaction.reply({ flags: MessageFlags.Ephemeral, content: "Agent not ready." });
-      return;
+    try {
+      const channel = interaction.options.getChannel("channel", true);
+      const agentId = interaction.options.getString("agent_id", true);
+      const kind = interaction.options.getString("kind") || "music";
+      const agent = mgr.agents.get(agentId);
+      if (!agent?.ready || !agent.ws) {
+        await interaction.reply({ flags: MessageFlags.Ephemeral, content: "Agent not ready." });
+        return;
+      }
+      if (kind === "assistant") {
+        mgr.setPreferredAssistant(guildId, channel.id, agentId, 300_000);
+      } else {
+        mgr.setPreferredAgent(guildId, channel.id, agentId, 300_000);
+      }
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Pinned ${agentId} to ${channel.id} (${kind}).` });
+    } catch (error) {
+      console.error(`[agents:assign] Error: ${error.message}`);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Failed to assign agent: ${error.message}` });
     }
-    if (kind === "assistant") {
-      mgr.setPreferredAssistant(guildId, channel.id, agentId, 300_000);
-    } else {
-      mgr.setPreferredAgent(guildId, channel.id, agentId, 300_000);
-    }
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Pinned ${agentId} to ${channel.id} (${kind}).` });
     return;
   }
 
   if (sub === "release") {
-    const channel = interaction.options.getChannel("channel", true);
-    const kind = interaction.options.getString("kind") || "music";
+    try {
+      const channel = interaction.options.getChannel("channel", true);
+      const kind = interaction.options.getString("kind") || "music";
 
-    if (kind === "assistant") {
-      const sess = mgr.getAssistantSessionAgent(guildId, channel.id);
-      if (sess.ok) {
-        try {
-          await mgr.request(sess.agent, "assistantLeave", {
-            guildId,
-            voiceChannelId: channel.id,
-            actorUserId: interaction.user.id
-          });
-        } catch {}
-        mgr.releaseAssistantSession(guildId, channel.id);
+      if (kind === "assistant") {
+        const sess = mgr.getAssistantSessionAgent(guildId, channel.id);
+        if (sess.ok) {
+          try {
+            await mgr.request(sess.agent, "assistantLeave", {
+              guildId,
+              voiceChannelId: channel.id,
+              actorUserId: interaction.user.id
+            });
+          } catch {}
+          mgr.releaseAssistantSession(guildId, channel.id);
+        }
+      } else {
+        const sess = mgr.getSessionAgent(guildId, channel.id);
+        if (sess.ok) {
+          try {
+            await mgr.request(sess.agent, "stop", {
+              guildId,
+              voiceChannelId: channel.id,
+              actorUserId: interaction.user.id
+            });
+          } catch {}
+          mgr.releaseSession(guildId, channel.id);
+        }
       }
-    } else {
-      const sess = mgr.getSessionAgent(guildId, channel.id);
-      if (sess.ok) {
-        try {
-          await mgr.request(sess.agent, "stop", {
-            guildId,
-            voiceChannelId: channel.id,
-            actorUserId: interaction.user.id
-          });
-        } catch {}
-        mgr.releaseSession(guildId, channel.id);
-      }
+
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Released ${kind} session for ${channel.id}.` });
+    } catch (error) {
+      console.error(`[agents:release] Error: ${error.message}`);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Failed to release session: ${error.message}` });
     }
-
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Released ${kind} session for ${channel.id}.` });
     return;
   }
 
@@ -564,7 +635,6 @@ export async function execute(interaction) {
     const poolOption = interaction.options.getString("pool", false);
     const agentId = `agent${clientId}`;
     const userId = interaction.user.id;
-    const BOT_OWNER_ID = process.env.BOT_OWNER_ID || '1122800062628634684';
 
     // Defer immediately since we're doing validation and database queries
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -638,7 +708,7 @@ export async function execute(interaction) {
         }
         
         // Check if user owns this pool
-        if (specifiedPool.owner_user_id === userId || userId === BOT_OWNER_ID) {
+        if (specifiedPool.owner_user_id === userId || ownerIds.has(userId)) {
           // User owns pool - direct add
           poolId = poolOption;
         } else if (specifiedPool.visibility === 'public') {
@@ -654,7 +724,7 @@ export async function execute(interaction) {
       } else {
         // No pool specified - show available options
         const userPools = await fetchPoolsByOwner(userId);
-        const publicPools = await storageLayer.listPools();
+        const publicPools = await listPools();
         const availablePublicPools = publicPools.filter(p => p.visibility === 'public');
         
         if (userPools && userPools.length > 0) {
@@ -671,7 +741,7 @@ export async function execute(interaction) {
           // Show available public pools
           let poolList = '**Available Public Pools:**\n';
           for (const p of availablePublicPools) {
-            const owner = p.owner_user_id === BOT_OWNER_ID ? 'goot27 (Master)' : `<@${p.owner_user_id}>`;
+            const owner = ownerIds.has(p.owner_user_id) ? 'Bot Owner' : `<@${p.owner_user_id}>`;
             poolList += `- \`${p.pool_id}\` - ${p.name} (by ${owner})\n`;
           }
           poolList += `\n**Choose a pool:**\nRe-run this command with \`pool:pool_id\` parameter`;
@@ -697,7 +767,7 @@ export async function execute(interaction) {
           Date.now() - a.created_at < 3600000 // Last hour
         );
         
-        if (userContributions.length >= 3 && userId !== BOT_OWNER_ID) {
+        if (userContributions.length >= 3 && !ownerIds.has(userId)) {
           return await interaction.editReply({
             content: `Rate limit: You can contribute up to 3 agents per hour to public pools.\nPlease wait before adding more.`
           });

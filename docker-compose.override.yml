@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   main-bot:
     build:
@@ -9,13 +7,13 @@ services:
     container_name: chopsticks-main-bot
     environment:
       # Discord Bot Token (REQUIRED)
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_TOKEN=${DISCORD_TOKEN:?DISCORD_TOKEN is required}
       # Storage driver
       - STORAGE_DRIVER=postgres
       # Agent Manager Host and Port (for internal communication with agent-runners)
       - AGENT_CONTROL_HOST=0.0.0.0 # Listen on all interfaces inside the container
       - AGENT_CONTROL_PORT=8787
-      - AGENT_TOKEN_KEY=882fa533ccceb75afd234e5b46036a13eb594c100b2136c6d9e68fd08c6bc68b
+      - AGENT_TOKEN_KEY=${AGENT_TOKEN_KEY:?AGENT_TOKEN_KEY is required}
       # Health server port
       - HEALTH_SERVER_PORT=8080
       # Database connection details (from docker-compose.stack.yml)
@@ -33,8 +31,8 @@ services:
       - VOICE_ASSIST_LLM_URL=http://voice-llm:9001
       - VOICE_ASSIST_TTS_URL=http://voice-tts:9002
       # Dev API Credentials
-      - DEV_API_USERNAME=${DEV_API_USERNAME}
-      - DEV_API_PASSWORD=${DEV_API_PASSWORD}
+      - DEV_API_USERNAME=${DEV_API_USERNAME:-}
+      - DEV_API_PASSWORD=${DEV_API_PASSWORD:-}
       # Other environment variables as needed by the main bot
     ports:
       - "8080:8080" # Expose health server
@@ -44,10 +42,7 @@ services:
       - postgres
       - redis
       - lavalink
-      # If voice services are always on, add them here
-      - voice-stt
-      - voice-llm
-      - voice-tts
+      # Voice services are optional and can be layered via docker-compose.voice.yml
     restart: unless-stopped
     volumes:
       - .:/app # Mount the entire project for easier development and configuration access
@@ -74,9 +69,9 @@ services:
       - LAVALINK_PORT=2333
       - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
       # Agent encryption key
-      - AGENT_TOKEN_KEY=882fa533ccceb75afd234e5b46036a13eb594c100b2136c6d9e68fd08c6bc68b
+      - AGENT_TOKEN_KEY=${AGENT_TOKEN_KEY:?AGENT_TOKEN_KEY is required}
       # Unique ID for the runner, useful for tracking in DB
-      - RUNNER_ID=${HOSTNAME} # Docker sets HOSTNAME to container ID by default
+      - RUNNER_ID=${HOSTNAME:-agent-runner}
       # Polling interval for DB changes (e.g., agent status updates)
       - AGENT_RUNNER_POLL_INTERVAL_MS=10000
       # Agent Invite Permissions (from AgentManager config)
@@ -96,10 +91,7 @@ services:
       - postgres
       - redis
       - lavalink
-      # If voice services are always on, add them here
-      - voice-stt
-      - voice-llm
-      - voice-tts
+      # Voice services are optional and can be layered via docker-compose.voice.yml
     restart: unless-stopped
     volumes:
       - .:/app # Mount the entire project for easier development and configuration access
