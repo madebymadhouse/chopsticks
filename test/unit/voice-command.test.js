@@ -25,6 +25,7 @@ describe('Voice command definition', function () {
     const json = voiceCommand.toJSON();
     const names = new Set((json.options || []).map(o => o.name));
 
+    assert.ok(names.has('console'));
     assert.ok(names.has('panel'));
     assert.ok(names.has('panel_user_default'));
     assert.ok(names.has('panel_guild_default'));

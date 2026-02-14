@@ -82,12 +82,17 @@ Voice lobby system supports:
 - auto-create temp rooms from lobby channels
 - owner handoff/claim/transfer lifecycle
 - per-lobby owner permission templates (`Manage Channels`, `Move Members`, `Mute/Deafen`, `Priority Speaker`)
+- interactive VC control console (`/voice console`) with buttons + dropdowns
 - room controls (`/voice room_status`, `/voice room_rename`, `/voice room_limit`, `/voice room_lock`, `/voice room_unlock`, `/voice room_claim`, `/voice room_transfer`)
 - room dashboard delivery controls:
   - manual `/voice panel`
   - user default `/voice panel_user_default`
   - guild default `/voice panel_guild_default`
   - delivery modes: `temp`, `dm`, `channel`, `here`, `both`, `off`
+
+## Bot-wide UI
+
+- `/commands ui` opens an interactive command center with category and command dropdowns.
 
 ## Testing
 
