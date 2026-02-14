@@ -145,12 +145,15 @@ export async function deliverVoiceRoomDashboard({
 
   let dmSent = false;
   let channelSent = false;
+  const errors = [];
 
   if (mode === "dm" || mode === "both") {
     try {
       await member.send({ embeds: [embed] });
       dmSent = true;
-    } catch {}
+    } catch (err) {
+      errors.push(`dm:${err?.code ?? err?.message ?? "send-failed"}`);
+    }
   }
 
   if (mode !== "dm") {
@@ -165,15 +168,31 @@ export async function deliverVoiceRoomDashboard({
     });
 
     if (textTarget && canSendInChannel(textTarget, me)) {
-      await textTarget.send({ embeds: [embed] }).catch(() => {});
-      channelSent = true;
+      try {
+        await textTarget.send({ embeds: [embed] });
+        channelSent = true;
+      } catch (err) {
+        errors.push(`channel:${err?.code ?? err?.message ?? "send-failed"}`);
+      }
+    } else {
+      errors.push("channel:missing-target");
     }
   }
 
+  const ok = dmSent || channelSent;
+  let deliveryReason = null;
+  if (!ok) {
+    if (errors.some(e => e.endsWith("missing-target"))) deliveryReason = "missing-target";
+    else if (errors.length) deliveryReason = "send-failed";
+    else deliveryReason = "unknown";
+  }
+
   return {
-    ok: dmSent || channelSent,
+    ok,
     dmSent,
     channelSent,
-    mode
+    mode,
+    reason: deliveryReason,
+    errors
   };
 }

@@ -13,6 +13,11 @@ import { getVoiceState } from "./schema.js";
 import { auditLog } from "../../utils/audit.js";
 import { deliverVoiceRoomDashboard } from "./panel.js";
 import {
+  handleVoiceUIButton,
+  handleVoiceUISelect,
+  showVoiceConsole
+} from "./ui.js";
+import {
   OWNER_PERMISSION_FIELDS,
   describeOwnerPermissions,
   ownerPermissionOverwrite
@@ -419,6 +424,12 @@ export const data = new SlashCommandBuilder()
 
   .addSubcommand(sub =>
     sub
+      .setName("console")
+      .setDescription("Interactive VoiceMaster control panel")
+  )
+
+  .addSubcommand(sub =>
+    sub
       .setName("panel_user_default")
       .setDescription("Set your default room dashboard delivery")
       .addStringOption(o =>
@@ -735,6 +746,11 @@ export async function execute(interaction) {
     return;
   }
 
+  if (sub === "console") {
+    await showVoiceConsole(interaction);
+    return;
+  }
+
   if (sub === "panel_user_default") {
     const mode = interaction.options.getString("mode", true);
     const channel = interaction.options.getChannel("channel");
@@ -1033,7 +1049,11 @@ export async function execute(interaction) {
 
       const status = sent.ok
         ? `Delivered (DM: ${sent.dmSent ? "yes" : "no"}, channel: ${sent.channelSent ? "yes" : "no"}).`
-        : "No destination available. Set `/voice panel_user_default` or try a different delivery mode.";
+        : sent.reason === "missing-target"
+          ? "No writable destination found. Set `/voice panel_user_default` with a channel or run in a text channel."
+          : sent.reason === "off"
+            ? "Panel delivery is currently off. Change your default mode first."
+            : "Panel delivery failed. Check bot permissions for DM/text channels.";
       await interaction.reply({
         embeds: [buildEmbed("Voice panel", status)],
         ephemeral: true
@@ -1055,4 +1075,12 @@ export async function execute(interaction) {
       return;
     }
   }
+}
+
+export async function handleButton(interaction) {
+  return handleVoiceUIButton(interaction);
+}
+
+export async function handleSelect(interaction) {
+  return handleVoiceUISelect(interaction);
 }

@@ -23,6 +23,8 @@ import { Client, Collection, GatewayIntentBits, Events, EmbedBuilder } from "dis
 import { AgentManager } from "./agents/agentManager.js";
 import { handleButton as handleMusicButton, handleSelect as handleMusicSelect } from "./commands/music.js";
 import { handleButton as handleAssistantButton } from "./commands/assistant.js";
+import { handleButton as handleCommandsButton, handleSelect as handleCommandsSelect } from "./commands/commands.js";
+import { handleButton as handleVoiceButton, handleSelect as handleVoiceSelect } from "./commands/voice.js";
 import {
   startHealthServer,
   getAndResetCommandDeltas
@@ -555,6 +557,8 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isStringSelectMenu?.()) {
     try {
       if (await handleMusicSelect(interaction)) return;
+      if (await handleCommandsSelect(interaction)) return;
+      if (await handleVoiceSelect(interaction)) return;
     } catch (err) {
       console.error("[select]", err?.stack ?? err?.message ?? err);
       try {
@@ -572,6 +576,8 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
       if (await handleMusicButton(interaction)) return;
       if (await handleAssistantButton(interaction)) return;
+      if (await handleCommandsButton(interaction)) return;
+      if (await handleVoiceButton(interaction)) return;
     } catch (err) {
       console.error("[button]", err?.stack ?? err?.message ?? err);
       try {
