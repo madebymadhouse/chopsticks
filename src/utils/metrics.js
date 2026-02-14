@@ -85,6 +85,82 @@ export const agentDeployCounter = new client.Counter({
   registers: [register],
 });
 
+// === Level 2: Agent Lifecycle Metrics ===
+export const agentRegistrations = new client.Counter({
+  name: "chopsticks_agent_registrations_total",
+  help: "Total agent registration attempts",
+  labelNames: ["status"], // status: success | failure | rejected
+  registers: [register],
+});
+
+export const agentRestarts = new client.Counter({
+  name: "chopsticks_agent_restarts_total",
+  help: "Total agent reconnections/restarts",
+  registers: [register],
+});
+
+export const agentDisconnects = new client.Counter({
+  name: "chopsticks_agent_disconnects_total",
+  help: "Total agent disconnections",
+  labelNames: ["reason"], // reason: timeout | error | manual | unknown
+  registers: [register],
+});
+
+export const agentConnectedGauge = new client.Gauge({
+  name: "chopsticks_agent_connected",
+  help: "Number of currently connected agents",
+  registers: [register],
+});
+
+export const agentReadyGauge = new client.Gauge({
+  name: "chopsticks_agent_ready",
+  help: "Number of agents in ready state",
+  registers: [register],
+});
+
+export const agentBusyGauge = new client.Gauge({
+  name: "chopsticks_agent_busy",
+  help: "Number of agents currently busy",
+  labelNames: ["kind"], // kind: music | assistant
+  registers: [register],
+});
+
+export const sessionsActiveGauge = new client.Gauge({
+  name: "chopsticks_sessions_active",
+  help: "Number of active sessions (music + assistant)",
+  labelNames: ["kind"], // kind: music | assistant
+  registers: [register],
+});
+
+export const sessionAllocations = new client.Counter({
+  name: "chopsticks_session_allocations_total",
+  help: "Total session allocation attempts",
+  labelNames: ["kind", "status"], // kind: music | assistant, status: success | no_agents | no_free_agents
+  registers: [register],
+});
+
+export const sessionReleases = new client.Counter({
+  name: "chopsticks_session_releases_total",
+  help: "Total session releases",
+  labelNames: ["kind"], // kind: music | assistant
+  registers: [register],
+});
+
+export const voiceAttachments = new client.Counter({
+  name: "chopsticks_voice_attachments_total",
+  help: "Total voice channel attachment attempts",
+  labelNames: ["status"], // status: success | failure
+  registers: [register],
+});
+
+export const sessionAllocationDuration = new client.Histogram({
+  name: "chopsticks_session_allocation_duration_seconds",
+  help: "Time taken to allocate a session",
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2],
+  registers: [register],
+});
+
+
 // === Security Metrics ===
 export const rateLimitHits = new client.Counter({
   name: "chopsticks_rate_limit_hits_total",
@@ -155,6 +231,48 @@ export function trackRateLimit(type) {
 export function trackDbQuery(operation, duration) {
   dbQueryDuration.observe({ operation }, duration / 1000);
 }
+
+// === Level 2: Agent Lifecycle Tracking ===
+
+export function trackAgentRegistration(status = 'success') {
+  agentRegistrations.inc({ status });
+}
+
+export function trackAgentRestart() {
+  agentRestarts.inc();
+}
+
+export function trackAgentDisconnect(reason = 'unknown') {
+  agentDisconnects.inc({ reason });
+}
+
+export function updateAgentGauges(connected = 0, ready = 0, busy = { music: 0, assistant: 0 }) {
+  agentConnectedGauge.set(connected);
+  agentReadyGauge.set(ready);
+  agentBusyGauge.set({ kind: 'music' }, busy.music || 0);
+  agentBusyGauge.set({ kind: 'assistant' }, busy.assistant || 0);
+}
+
+export function trackSessionAllocation(kind, status, durationMs = null) {
+  sessionAllocations.inc({ kind, status });
+  if (durationMs !== null) {
+    sessionAllocationDuration.observe(durationMs / 1000);
+  }
+}
+
+export function trackSessionRelease(kind) {
+  sessionReleases.inc({ kind });
+}
+
+export function updateSessionGauges(active = { music: 0, assistant: 0 }) {
+  sessionsActiveGauge.set({ kind: 'music' }, active.music || 0);
+  sessionsActiveGauge.set({ kind: 'assistant' }, active.assistant || 0);
+}
+
+export function trackVoiceAttachment(success = true) {
+  voiceAttachments.inc({ status: success ? 'success' : 'failure' });
+}
+
 
 // Metrics endpoint for Prometheus scraping
 export async function metricsHandler(req, res) {

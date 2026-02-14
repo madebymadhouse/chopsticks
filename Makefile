@@ -1,7 +1,7 @@
 # Chopsticks Platform Makefile
 # Enforces maturity model progression
 
-.PHONY: help start stop restart logs health status clean test-level-0 verify-clean-boot
+.PHONY: help start stop restart logs health status clean test-level-0 test-level-1 test-protocol verify-clean-boot
 
 # Default target
 help:
@@ -17,6 +17,8 @@ help:
 	@echo ""
 	@echo "Testing & Verification:"
 	@echo "  make test-level-0       - Run Level 0 maturity checks"
+	@echo "  make test-level-1       - Run Level 1 contract tests"
+	@echo "  make test-protocol      - Run protocol versioning tests"
 	@echo "  make verify-clean-boot  - Verify clean boot from scratch"
 	@echo "  make clean              - Clean all containers and volumes"
 	@echo ""
@@ -24,7 +26,7 @@ help:
 	@echo "  make rebuild            - Rebuild bot container"
 	@echo "  make deploy-commands    - Deploy slash commands"
 	@echo ""
-	@echo "Current Maturity Level: 0 (see MATURITY.md)"
+	@echo "Current Maturity Level: 1 (see MATURITY.md)"
 
 # Start the platform
 start:
@@ -64,6 +66,15 @@ test-level-0:
 	@echo "Running Level 0 maturity checks..."
 	@./scripts/ci/level-0-check.sh
 
+# Level 1 contract tests
+test-level-1:
+	@echo "Running Level 1 contract tests..."
+	@npm run test:level-1
+
+# Protocol versioning tests
+test-protocol:
+	@npx mocha test/unit/protocol-version.test.js
+
 # Verify clean boot
 verify-clean-boot:
 	@./scripts/verify-clean-boot.sh
@@ -81,6 +92,6 @@ deploy-commands:
 
 # Check current maturity level
 maturity:
-	@echo "Current Maturity Level: 0"
+	@echo "Current Maturity Level: 1"
 	@echo "See MATURITY.md for details"
 	@grep "^- \[" MATURITY.md | head -20

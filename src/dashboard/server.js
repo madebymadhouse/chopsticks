@@ -24,6 +24,7 @@ import { getUserPets, createPet, deletePet, listPools, fetchPoolsByOwner, create
 import { applySecurityMiddleware, requireAdmin as modernRequireAdmin, auditLog as modernAudit } from "./securityMiddleware.js";
 import { dashboardLogger } from "../utils/modernLogger.js";
 import { metricsHandler, healthHandler } from "../utils/metrics.js";
+import Joi from "joi";
 
 const app = express();
 
@@ -134,9 +135,36 @@ function manageGuildPerms(guild) {
   return (perms & ADMIN) === ADMIN || (perms & MANAGE_GUILD) === MANAGE_GUILD;
 }
 
-function isSnowflake(id) {
-  return typeof id === "string" && /^[0-9]{5,20}$/.test(id);
+function validateInput(schema, data) {
+  const { error } = schema.validate(data);
+  if (error) {
+    throw new Error(`Validation error: ${error.details.map(d => d.message).join(', ')}`);
+  }
 }
+
+// Validation schemas
+const guildIdSchema = Joi.string().pattern(/^[0-9]{5,20}$/);
+const agentIdSchema = Joi.string().min(1).max(100);
+const petSchema = Joi.object({
+  name: Joi.string().min(1).max(50).required(),
+  type: Joi.string().valid('cat', 'dog', 'bird', 'fish').required()
+});
+const musicConfigSchema = Joi.object({
+  mode: Joi.string().valid('open', 'dj').required(),
+  defaultVolume: Joi.number().integer().min(0).max(150).required()
+});
+const assistantConfigSchema = Joi.object({
+  enabled: Joi.boolean().required(),
+  maxListenSec: Joi.number().integer().min(2).max(30).required(),
+  silenceMs: Joi.number().integer().min(500).max(5000).required(),
+  cooldownSec: Joi.number().integer().min(0).max(120).required(),
+  allowRoleIds: Joi.array().items(Joi.string().pattern(/^[0-9]{5,20}$/)),
+  allowChannelIds: Joi.array().items(Joi.string().pattern(/^[0-9]{5,20}$/)),
+  maxSessions: Joi.number().integer().min(1).max(10).required(),
+  voice: Joi.string().optional(),
+  voicePresets: Joi.array().items(Joi.string()).optional(),
+  channelVoices: Joi.object().pattern(Joi.string(), Joi.string()).optional()
+});
 
 function requireAuth(req, res, next) {
   if (!req.session?.accessToken) {

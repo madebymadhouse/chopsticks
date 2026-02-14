@@ -1,5 +1,6 @@
 import http from "node:http";
 import { Registry, collectDefaultMetrics, Counter, Gauge, Histogram } from "prom-client";
+import { createDebugHandler, createDebugDashboard } from "./debugDashboard.js";
 
 let server = null;
 let registry = null;
@@ -7,13 +8,20 @@ let commandCounter = null;
 let commandErrorCounter = null;
 let commandLatency = null;
 let agentGauge = null;
+let agentManager = null; // For debug dashboard
 
 const commandStats = new Map(); // command -> { ok, err, totalMs, count }
 const commandStatsByGuild = new Map(); // guildId -> Map(command -> stats)
 const commandDelta = new Map(); // command -> { ok, err, totalMs, count }
 const commandDeltaByGuild = new Map(); // guildId -> Map(command -> stats)
 
-export function startHealthServer() {
+export function startHealthServer(manager = null) {
+  // Store agent manager reference for debug dashboard
+  if (manager) {
+    agentManager = manager;
+    console.log("✅ Debug dashboard enabled at /debug/dashboard");
+  }
+  
   if (server) return server;
 
   const port = Number(process.env.HEALTH_PORT || process.env.METRICS_PORT || 9100);
@@ -57,15 +65,42 @@ export function startHealthServer() {
   function createServer() {
     return http.createServer(async (req, res) => {
       const url = req.url || "/";
+      
+      // Health check
       if (url.startsWith("/healthz")) {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, ts: Date.now() }));
         return;
       }
 
+      // Prometheus metrics
       if (url.startsWith("/metrics")) {
         res.writeHead(200, { "Content-Type": registry.contentType });
         res.end(await registry.metrics());
+        return;
+      }
+
+      // Debug dashboard (HTML)
+      if (url.startsWith("/debug/dashboard")) {
+        if (agentManager) {
+          const dashboard = createDebugDashboard(agentManager);
+          await dashboard(req, res);
+        } else {
+          res.writeHead(503, { "Content-Type": "text/plain" });
+          res.end("Dashboard not available - agent manager not initialized");
+        }
+        return;
+      }
+
+      // Debug info (JSON)
+      if (url.startsWith("/debug")) {
+        if (agentManager) {
+          const handler = createDebugHandler(agentManager);
+          await handler(req, res);
+        } else {
+          res.writeHead(503, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Debug endpoint not available - agent manager not initialized" }));
+        }
         return;
       }
 

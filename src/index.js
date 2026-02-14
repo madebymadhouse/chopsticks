@@ -21,16 +21,10 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Client, Collection, GatewayIntentBits, Events, EmbedBuilder } from "discord.js";
 import { AgentManager } from "./agents/agentManager.js";
-// import { spawnAgentsProcess } from "./agents/spawn.js"; // No longer directly spawning agents
 import { handleButton as handleMusicButton, handleSelect as handleMusicSelect } from "./commands/music.js";
 import { handleButton as handleAssistantButton } from "./commands/assistant.js";
 import {
   startHealthServer,
-  metricCommand,
-  metricCommandError,
-  metricCommandLatency,
-  metricAgents,
-  recordCommandStat,
   getAndResetCommandDeltas
 } from "./utils/healthServer.js";
 import { flushCommandStats, flushCommandStatsDaily } from "./utils/audit.js";
@@ -41,8 +35,8 @@ import { canRunPrefixCommand } from "./utils/permissions.js";
 import { loadGuildData } from "./utils/storage.js";
 import { addCommandLog } from "./utils/commandlog.js";
 import { botLogger } from "./utils/modernLogger.js";
-import { trackCommand, commandCounter, agentPoolSize } from "./utils/metrics.js";
-import { checkCommandRateLimit } from "./utils/modernRateLimiter.js";
+import { trackCommand } from "./utils/metrics.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,7 +59,6 @@ client.commands = new Collection();
 /* ===================== AGENTS ===================== */
 
 global.agentManager = null;
-// global.__agentsChild = null; // No longer spawning child processes from main bot
 
 /* ===================== HEALTH/METRICS ===================== */
 
@@ -140,7 +133,8 @@ if (fs.existsSync(eventsPath)) {
 
 // Dev API Imports
 import express from 'express';
-import { updateAgentBotStatus, fetchAgentBots, fetchAgentRunners, insertAgentBot, deleteAgentBot, ensureSchema, ensureEconomySchema } from "./utils/storage.js";
+import { updateAgentBotStatus, ensureSchema, ensureEconomySchema } from "./utils/storage.js";
+import { runMigrations } from "./utils/migrations/runner.js";
 
 /* ===================== DEV API SERVER ===================== */
 const devApiApp = express();
@@ -254,7 +248,7 @@ devApiApp.post('/dev-api/agents/stop/:agentId', async (req, res) => {
     // Send stop_agent to the runner
     await mgr.sendRunnerCommand(agent.runnerWs, "stop_agent", { agentId });
     // Also mark as inactive in DB to prevent automatic restart by AgentManager
-    await updateAgentTokenStatus(agentId, 'inactive');
+    await updateAgentBotStatus(agentId, 'inactive');
     res.json({ message: `Agent ${agentId} stopped and marked inactive.` });
   } catch (error) {
     console.error(`Error stopping agent ${agentId}:`, error);
@@ -271,7 +265,7 @@ devApiApp.post('/dev-api/agents/start/:agentId', async (req, res) => {
 
   try {
     // Mark as active in DB
-    await updateAgentTokenStatus(agentId, 'active');
+    await updateAgentBotStatus(agentId, 'active');
     // Force AgentManager to refresh its registered agents
     await mgr.loadRegisteredAgentsFromDb();
     // AgentManager's ensureSessionAgent logic will pick up and start it if needed
@@ -303,6 +297,9 @@ client.once(Events.ClientReady, async () => {
   try {
     await mgr.start();
     console.log(`🧩 Agent control listening on ws://${mgr.host}:${mgr.port}`);
+    
+    // Update health server with agent manager for debug dashboard
+    startHealthServer(mgr);
   } catch (err) {
     console.error("❌ Agent control startup failed:", err?.message ?? err);
     return;
@@ -314,6 +311,10 @@ client.once(Events.ClientReady, async () => {
     console.log("✅ Database schema ensured.");
     await ensureEconomySchema();
     console.log("✅ Economy schema ensured.");
+    
+    // Run database migrations (Level 1: Invariants Locked)
+    await runMigrations();
+    console.log("✅ Database migrations completed.");
   } catch (err) {
     console.error("❌ Database schema assurance failed:", err?.message ?? err);
     return;
@@ -517,7 +518,6 @@ client.on(Events.MessageCreate, async message => {
       }
     } catch {}
   }
-  if (!cmd) return;
   if (!cmd) return;
 
   const gate = await canRunPrefixCommand(message, cmd.name, cmd);

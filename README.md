@@ -1,168 +1,120 @@
 # Chopsticks
 
-Chopsticks is a self-hosted Discord bot built for scale with agent-backed music, VoiceMaster, dashboards, and a modular command system.
+Chopsticks is a Docker-first, self-hosted Discord bot platform with:
+- a main control bot
+- pooled agent bots for voice/music workloads
+- PostgreSQL + Redis state
+- Lavalink for audio
+- optional dashboard + monitoring stack
 
-**🚨 Currently at Maturity Level 0 - See [MATURITY.md](./MATURITY.md) for platform stability status**
+## Platform Snapshot (2026-02-14)
 
-## Highlights
-- Agent-backed music (no main-bot audio)
-- VoiceMaster join-to-create
-- Per-guild music settings (/music settings)
-- Slash + prefix commands
-- Dashboard with admin controls
-- Metrics + health endpoints
+- Maturity baseline: Levels 0-2 hardening in progress/completed artifacts are in-repo
+- Agent protocol version: `1.0.0`
+- Max agents per guild: `49` (enforced)
+- Contract/unit tests: `47 passing`
+- Primary runtime target: Docker Compose production stack
 
-## Quick Start
+See `SYSTEM_STATUS.md`, `MATURITY.md`, `LEVEL_1_COMPLETION_REPORT.md`, and `LEVEL_2_COMPLETION_REPORT.md` for detailed status.
 
-The fastest way to start Chopsticks:
+## Architecture
 
+Core services in `docker-compose.production.yml`:
+- `bot` (`chopsticks-bot`): main Discord bot, command/control, health + metrics
+- `agents` (`chopsticks-agents`): agent runner for pooled music/voice bots
+- `postgres` (`chopsticks-postgres`): persistent relational state
+- `redis` (`chopsticks-redis`): cache/session acceleration
+- `lavalink` (`chopsticks-lavalink`): audio backend
+- `dashboard` (`chopsticks-dashboard`): web dashboard (profile: `dashboard`)
+- `caddy` (`chopsticks-caddy`): reverse proxy/TLS (profile: `dashboard`)
+- `prometheus` (`chopsticks-prometheus`): metrics scrape/storage (profile: `monitoring`)
+
+## Quick Start (Docker)
+
+1. Configure environment:
 ```bash
-# Copy environment template
 cp .env.example .env
+# edit .env and set at minimum: DISCORD_TOKEN, BOT_OWNER_IDS, POSTGRES_URL, REDIS_URL
+```
 
-# Edit .env with your Discord bot token and other settings
-nano .env
+2. Start platform:
+```bash
+./scripts/start.sh
+```
 
-# Start everything (one command!)
-make start
+By default, production bring-up enables profiles:
+- `dashboard`
+- `monitoring`
 
-# Check health
+To override:
+```bash
+COMPOSE_PROFILES=dashboard ./scripts/start.sh
+```
+
+3. Verify runtime:
+```bash
+make status
 make health
-
-# View logs
 make logs
 ```
 
-See `make help` for all available commands.
+4. Stop platform:
+```bash
+make stop
+```
 
-## Maturity Model
+## Music + Agent Pooling
 
-This project follows a strict **maturity-driven development model** to ensure platform stability before feature expansion.
+Typical setup flow in Discord:
+1. Register agent tokens into a pool (`/agents add_token`)
+2. Mark tokens active (`/agents update_token_status`)
+3. Deploy identities into guild (`/agents deploy <count>`)
+4. Start playback (`/music play <query>`)
 
-- **Current Level:** 0 (Running Baseline)
-- **Status:** 🔴 In Progress
-- **Next Milestone:** Complete Level 0 exit criteria
+Operational notes:
+- Agent runner requires `AGENT_CONTROL_URL` and Lavalink env (`LAVALINK_HOST`, `LAVALINK_PORT`, `LAVALINK_PASSWORD`)
+- Agent readiness is required for music allocation
+- If all agents are busy, deploy more or retry after session release
 
-**Key Rules:**
-1. No feature work until Level 0 complete
-2. No level advancement without mechanical verification
-3. Regressions block all work until fixed
+## Testing
 
-For details, see:
-- [MATURITY.md](./MATURITY.md) - Full maturity model with all 9 levels
-- [MATURITY_SUMMARY.md](./MATURITY_SUMMARY.md) - Quick reference
+Run full unit/contract tests:
+```bash
+npm test
+```
 
-## Quickstart (Local Development)
-1. Copy env:
-   ```bash
-   cp .env.example .env
-   ```
-2. Install:
-   ```bash
-   npm install
-   ```
-3. Deploy commands (guild):
-   ```bash
-   npm run deploy:guild
-   ```
-4. Start:
-   ```bash
-   npm run start:all
-   ```
+Maturity-focused checks:
+```bash
+make test-level-0
+make test-level-1
+make test-protocol
+```
 
-## Production (Ubuntu)
-See `DEPLOY.md`.
+## Monitoring + Health
 
-## Operations
-- Metrics: `http://<host>:9100/metrics`
-- Health: `http://<host>:9100/healthz`
+- Bot health: `http://localhost:8080/health` (and `/healthz` where configured)
+- Bot metrics: `http://localhost:8080/metrics`
+- Debug dashboard: `http://localhost:8080/debug/dashboard`
+- Dashboard service: `http://localhost:8788`
+- Prometheus: `http://localhost:9090`
 
 ## Repo Layout
-- `src/` bot + agents + dashboard
-- `scripts/` migrations, deploy scripts
-- `docs/` operations, architecture, runbooks
 
-## Support
-File issues in GitHub and follow `docs/support.md` for triage and resolution flow.
+- `src/` application code (bot, agents, dashboard, utils)
+- `test/` unit/contract tests
+- `migrations/` schema change framework
+- `docs/` protocol, schema, operations, architecture
+- `scripts/` startup, verification, deployment helpers
 
----
+## Key Docs
 
-## Voice Tool v1 (Spec Lock)
+- `SYSTEM_STATUS.md`
+- `MATURITY.md`
+- `TESTING_GUIDE.md`
+- `docs/AGENT_PROTOCOL.md`
+- `docs/schema/DATABASE_SCHEMA.md`
+- `docs/runbooks.md`
 
-This repository implements a VoiceMaster-style voice system.
-This document defines the behavior contract. Code must obey this contract.
+## License
 
-## Core Concepts
-
-### Lobby
-A lobby is a persistent voice channel configured by an admin.
-It is never created or deleted by the bot automatically.
-
-Purpose:
-- Entry point for users
-- Trigger for custom channel creation
-
-### Custom Voice Channel
-A custom voice channel is a temporary voice channel created by the bot.
-
-Properties:
-- Created when a user joins a lobby
-- Owned by the joining user
-- Placed under the lobby’s configured category
-- Deleted automatically when empty
-
-## Lifecycle Rules (Invariant)
-
-1. User joins a lobby  
-   → Bot creates a custom voice channel  
-   → Bot moves the user into it
-
-2. Additional users may join the custom channel  
-   → No new channel is created
-
-3. All users leave a custom channel  
-   → Channel is deleted
-
-These rules must always hold.
-
-## Ownership Rules
-
-- The user who triggered creation is the owner
-- Ownership is stored in persistent state
-- Ownership does not automatically transfer
-- Ownership logic is enforced by future features only
-
-## Persistence Rules
-
-The bot persists:
-- Lobby configuration
-- Active custom channel ownership
-
-The bot does NOT persist:
-- Voice members
-- Runtime-only Discord state
-
-After a restart:
-- Lobbies remain configured
-- Orphaned custom channels may exist and must be handled by cleanup logic
-
-## Non-Goals (Explicit)
-
-This version does NOT:
-- Rename channels
-- Lock channels
-- Transfer ownership
-- Provide UI beyond slash commands
-- Attempt recovery beyond deletion on empty
-
-These are future features and must be additive.
-
-## Stability Contract
-
-Any future change must:
-- Preserve all lifecycle rules
-- Preserve lobby → custom relationship
-- Not introduce multiple command trees
-- Not introduce implicit behavior
-
-If behavior changes, this document must change first.
+Proprietary/private deployment by repository owner.

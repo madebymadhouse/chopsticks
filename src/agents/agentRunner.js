@@ -27,6 +27,9 @@ const CONTROL_URL = process.env.AGENT_CONTROL_URL || "ws://127.0.0.1:8787"; // A
 const MUSIC_CONTROL_LOCKED = String(process.env.MUSIC_CONTROL_LOCKED ?? "true") === "true";
 const RUNNER_SECRET = String(process.env.AGENT_RUNNER_SECRET || "").trim();
 
+// Protocol version - increment when making breaking changes
+const PROTOCOL_VERSION = "1.0.0";
+
 // Polling interval for DB changes
 const POLL_INTERVAL_MS = Number(process.env.AGENT_RUNNER_POLL_INTERVAL_MS) || 10_000;
 
@@ -148,6 +151,7 @@ async function startAgent(agentConfig) {
   function sendHello() {
     sendWs({
       type: "hello",
+      protocolVersion: PROTOCOL_VERSION,
       agentId,
       botUserId: client.user?.id ?? null,
       tag: client.user?.tag ?? null,

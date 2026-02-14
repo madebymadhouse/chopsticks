@@ -1,8 +1,18 @@
 import { Pool } from "pg";
 import crypto from "node:crypto"; // Added for encryption
+import retry from "async-retry";
+import { createClient } from "redis";
 import { logger } from "./logger.js";
 
 let pool = null;
+let redisClient = null;
+
+const REDIS_URL = process.env.REDIS_URL || "";
+if (REDIS_URL) {
+  redisClient = createClient({ url: REDIS_URL });
+  redisClient.on("error", () => {});
+  redisClient.connect().catch(() => {});
+}
 
 export function getPool() {
   logger.info("--> getPool() called in storage_pg.js");
@@ -596,23 +606,57 @@ export async function deleteAgentRunner(runnerId) {
 }
 
 export async function loadGuildDataPg(guildId, fallbackFactory) {
+  const cacheKey = `guild_data:${guildId}`;
+  if (redisClient) {
+    try {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (err) {
+      logger.warn("Redis cache read failed:", { error: err.message });
+    }
+  }
+
   const p = getPool();
   const selectSql = "SELECT data, rev FROM guild_settings WHERE guild_id = $1";
   logger.info("loadGuildDataPg: Executing SQL", { sql: selectSql, guildId });
-  const res = await p.query(selectSql, [guildId]);
+
+  const res = await retry(async () => {
+    return await p.query(selectSql, [guildId]);
+  }, { retries: 3, minTimeout: 100, maxTimeout: 1000 });
+
   if (!res.rowCount) {
     const base = fallbackFactory();
     const insertSql = "INSERT INTO guild_settings (guild_id, data, rev) VALUES ($1, $2, $3) ON CONFLICT (guild_id) DO NOTHING";
     logger.info("loadGuildDataPg (insert fallback): Executing SQL", { sql: insertSql, guildId });
-    await p.query(
-      insertSql,
-      [guildId, base, base.rev ?? 0]
-    );
+    await retry(async () => {
+      return await p.query(
+        insertSql,
+        [guildId, base, base.rev ?? 0]
+      );
+    }, { retries: 3, minTimeout: 100, maxTimeout: 1000 });
+    if (redisClient) {
+      try {
+        await redisClient.setEx(cacheKey, 300, JSON.stringify(base)); // Cache for 5 min
+      } catch (err) {
+        logger.warn("Redis cache write failed:", { error: err.message });
+      }
+    }
     return base;
   }
   const row = res.rows[0];
   const data = row.data || fallbackFactory();
   data.rev = Number.isInteger(row.rev) ? row.rev : data.rev ?? 0;
+
+  if (redisClient) {
+    try {
+      await redisClient.setEx(cacheKey, 300, JSON.stringify(data));
+    } catch (err) {
+      logger.warn("Redis cache write failed:", { error: err.message });
+    }
+  }
+
   return data;
 }
 
@@ -621,16 +665,29 @@ export async function saveGuildDataPg(guildId, data, normalizeFn, mergeOnConflic
   const normalized = normalizeFn(data);
   const selectSql = "SELECT data, rev FROM guild_settings WHERE guild_id = $1";
   logger.info("saveGuildDataPg (select current): Executing SQL", { sql: selectSql, guildId });
-  const currentRes = await p.query(selectSql, [guildId]);
+
+  const currentRes = await retry(async () => {
+    return await p.query(selectSql, [guildId]);
+  }, { retries: 3, minTimeout: 100, maxTimeout: 1000 });
 
   if (!currentRes.rowCount) {
     const toWrite = { ...normalized, rev: (normalized.rev ?? 0) + 1 };
     const insertSql = "INSERT INTO guild_settings (guild_id, data, rev) VALUES ($1, $2, $3)";
     logger.info("saveGuildDataPg (insert new): Executing SQL", { sql: insertSql, guildId });
-    await p.query(
-      insertSql,
-      [guildId, toWrite, toWrite.rev]
-    );
+    await retry(async () => {
+      return await p.query(
+        insertSql,
+        [guildId, toWrite, toWrite.rev]
+      );
+    }, { retries: 3, minTimeout: 100, maxTimeout: 1000 });
+    // Invalidate cache
+    if (redisClient) {
+      try {
+        await redisClient.del(`guild_data:${guildId}`);
+      } catch (err) {
+        logger.warn("Redis cache delete failed:", { error: err.message });
+      }
+    }
     return toWrite;
   }
 
@@ -647,16 +704,20 @@ export async function saveGuildDataPg(guildId, data, normalizeFn, mergeOnConflic
   const toWrite = { ...next, rev: currentRev + 1 };
   const updateSql = "UPDATE guild_settings SET data = $2, rev = $3, updated_at = NOW() WHERE guild_id = $1 AND rev = $4";
   logger.info("saveGuildDataPg (update): Executing SQL", { sql: updateSql, guildId, newRev: toWrite.rev, oldRev: currentRev });
-  const update = await p.query(
-    updateSql,
-    [guildId, toWrite, toWrite.rev, currentRev]
-  );
+  const update = await retry(async () => {
+    return await p.query(
+      updateSql,
+      [guildId, toWrite, toWrite.rev, currentRev]
+    );
+  }, { retries: 3, minTimeout: 100, maxTimeout: 1000 });
 
   if (update.rowCount === 0) {
     // Retry once by reloading and merging
     const retrySelectSql = "SELECT data, rev FROM guild_settings WHERE guild_id = $1";
     logger.info("saveGuildDataPg (retry select): Executing SQL", { sql: retrySelectSql, guildId });
-    const retryCurrent = await p.query(retrySelectSql, [guildId]);
+    const retryCurrent = await retry(async () => {
+      return await p.query(retrySelectSql, [guildId]);
+    }, { retries: 3, minTimeout: 100, maxTimeout: 1000 });
     const cur = retryCurrent.rows[0]?.data || current;
     const curRev = Number.isInteger(retryCurrent.rows[0]?.rev) ? retryCurrent.rows[0].rev : currentRev;
     const merged = mergeOnConflict(cur, toWrite);
@@ -664,11 +725,30 @@ export async function saveGuildDataPg(guildId, data, normalizeFn, mergeOnConflic
     const final = { ...merged, rev: curRev + 1 };
     const finalUpdateSql = "UPDATE guild_settings SET data = $2, rev = $3, updated_at = NOW() WHERE guild_id = $1";
     logger.info("saveGuildDataPg (final update): Executing SQL", { sql: finalUpdateSql, guildId, newRev: final.rev });
-    await p.query(
-      finalUpdateSql,
-      [guildId, final, final.rev]
-    );
+    await retry(async () => {
+      return await p.query(
+        finalUpdateSql,
+        [guildId, final, final.rev]
+      );
+    }, { retries: 3, minTimeout: 100, maxTimeout: 1000 });
+    // Invalidate cache
+    if (redisClient) {
+      try {
+        await redisClient.del(`guild_data:${guildId}`);
+      } catch (err) {
+        logger.warn("Redis cache delete failed:", { error: err.message });
+      }
+    }
     return final;
+  }
+
+  // Invalidate cache
+  if (redisClient) {
+    try {
+      await redisClient.del(`guild_data:${guildId}`);
+    } catch (err) {
+      logger.warn("Redis cache delete failed:", { error: err.message });
+    }
   }
 
   return toWrite;
