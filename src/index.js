@@ -88,9 +88,15 @@ if (fs.existsSync(commandsPath)) {
       continue;
     }
 
-    const cmd =
+    let cmd =
       mod.default ??
-      (mod.data && mod.execute ? { data: mod.data, execute: mod.execute, meta: mod.meta } : null);
+      (mod.data && mod.execute
+        ? { data: mod.data, execute: mod.execute, meta: mod.meta, autocomplete: mod.autocomplete }
+        : null);
+
+    if (cmd && !cmd.autocomplete && typeof mod.autocomplete === "function") {
+      cmd = { ...cmd, autocomplete: mod.autocomplete };
+    }
 
     if (!cmd?.data?.name || typeof cmd.execute !== "function") continue;
 
@@ -593,7 +599,10 @@ client.on(Events.InteractionCreate, async interaction => {
 
   if (interaction.isAutocomplete?.()) {
     const command = client.commands.get(interaction.commandName);
-    if (!command?.autocomplete) return;
+    if (!command?.autocomplete) {
+      try { await interaction.respond([]); } catch {}
+      return;
+    }
     try {
       await command.autocomplete(interaction);
     } catch (err) {
