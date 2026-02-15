@@ -66,8 +66,8 @@ export function startHealthServer(manager = null) {
     return http.createServer(async (req, res) => {
       const url = req.url || "/";
       
-      // Health check
-      if (url.startsWith("/healthz")) {
+      // Health check compatibility (`/healthz` primary, `/health` alias).
+      if (url.startsWith("/healthz") || url.startsWith("/health")) {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, ts: Date.now() }));
         return;

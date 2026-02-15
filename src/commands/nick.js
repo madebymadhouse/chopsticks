@@ -1,8 +1,11 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { canModerateTarget, fetchTargetMember, moderationGuardMessage } from "../moderation/guards.js";
+import { replyModError, replyModSuccess } from "../moderation/output.js";
 
 export const meta = {
   guildOnly: true,
-  userPerms: [PermissionFlagsBits.ManageNicknames]
+  userPerms: [PermissionFlagsBits.ManageNicknames],
+  category: "mod"
 };
 
 export const data = new SlashCommandBuilder()
@@ -14,14 +17,40 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   const user = interaction.options.getUser("user", true);
   const nickname = interaction.options.getString("nickname");
-  const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+  const member = await fetchTargetMember(interaction.guild, user.id);
   if (!member) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "User not found." });
+    await replyModError(interaction, {
+      title: "Nickname Update Failed",
+      summary: "User is not a member of this guild."
+    });
     return;
   }
-  await member.setNickname(nickname || null).catch(() => null);
-  await interaction.reply({
-    flags: MessageFlags.Ephemeral,
-    content: nickname ? `Nickname set for ${user.tag}` : `Nickname cleared for ${user.tag}`
-  });
+
+  const gate = canModerateTarget(interaction, member);
+  if (!gate.ok) {
+    await replyModError(interaction, {
+      title: "Nickname Update Blocked",
+      summary: moderationGuardMessage(gate.reason)
+    });
+    return;
+  }
+
+  try {
+    await member.setNickname(nickname || null);
+    await replyModSuccess(interaction, {
+      title: "Nickname Updated",
+      summary: nickname
+        ? `Set nickname for **${user.tag}**.`
+        : `Cleared nickname for **${user.tag}**.`,
+      fields: [
+        { name: "User", value: `${user.tag} (${user.id})` },
+        { name: "Nickname", value: nickname || "(cleared)" }
+      ]
+    });
+  } catch (err) {
+    await replyModError(interaction, {
+      title: "Nickname Update Failed",
+      summary: err?.message || "Unable to update nickname."
+    });
+  }
 }

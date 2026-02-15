@@ -299,6 +299,29 @@ services:
         max-size: "5m"
         max-file: "2"
 
+  # Dozzle Live Logs UI (Optional Ops Cockpit)
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: chopsticks-dozzle
+    restart: unless-stopped
+    environment:
+      - DOZZLE_NO_ANALYTICS=true
+      - DOZZLE_LEVEL=info
+    ports:
+      - "9999:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - chopsticks
+    mem_limit: 128m
+    cpus: '0.20'
+    profiles: ["ops"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
 volumes:
   postgres_data:
     driver: local

@@ -6,13 +6,14 @@ Chopsticks is a Docker-first, self-hosted Discord bot platform with:
 - PostgreSQL + Redis state
 - Lavalink for audio
 - optional dashboard + monitoring stack
+- optional ops cockpit (live container logs)
 
 ## Platform Snapshot (2026-02-14)
 
 - Maturity baseline: Levels 0-2 hardening in progress/completed artifacts are in-repo
 - Agent protocol version: `1.0.0`
 - Max agents per guild: `49` (enforced)
-- Contract/unit tests: `62 passing`
+- Contract/unit tests: `90 passing`
 - Primary runtime target: Docker Compose production stack
 
 See `SYSTEM_STATUS.md`, `MATURITY.md`, `LEVEL_1_COMPLETION_REPORT.md`, and `LEVEL_2_COMPLETION_REPORT.md` for detailed status.
@@ -28,6 +29,7 @@ Core services in `docker-compose.production.yml`:
 - `dashboard` (`chopsticks-dashboard`): web dashboard (profile: `dashboard`)
 - `caddy` (`chopsticks-caddy`): reverse proxy/TLS (profile: `dashboard`)
 - `prometheus` (`chopsticks-prometheus`): metrics scrape/storage (profile: `monitoring`)
+- `dozzle` (`chopsticks-dozzle`): live logs cockpit for all containers (profile: `ops`)
 
 ## Quick Start (Docker)
 
@@ -153,6 +155,7 @@ make test-protocol
 - Debug dashboard: `http://localhost:8080/debug/dashboard`
 - Dashboard service: `http://localhost:8788`
 - Prometheus: `http://localhost:9090`
+- Dozzle live logs UI (optional): `http://localhost:9999` (`COMPOSE_PROFILES=dashboard,monitoring,fun,ops ./scripts/start.sh`)
 
 ## Repo Layout
 

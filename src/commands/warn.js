@@ -1,9 +1,12 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { addWarning } from "../utils/moderation.js";
+import { canModerateTarget, fetchTargetMember, moderationGuardMessage } from "../moderation/guards.js";
+import { reasonOrDefault, replyModError, replyModSuccess } from "../moderation/output.js";
 
 export const meta = {
   guildOnly: true,
-  userPerms: [PermissionFlagsBits.ModerateMembers]
+  userPerms: [PermissionFlagsBits.ModerateMembers],
+  category: "mod"
 };
 
 export const data = new SlashCommandBuilder()
@@ -14,10 +17,24 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   const user = interaction.options.getUser("user", true);
-  const reason = interaction.options.getString("reason") || "No reason";
+  const reason = reasonOrDefault(interaction.options.getString("reason"));
+  const targetMember = await fetchTargetMember(interaction.guild, user.id);
+  const gate = canModerateTarget(interaction, targetMember);
+  if (!gate.ok) {
+    await replyModError(interaction, {
+      title: "Warn Blocked",
+      summary: moderationGuardMessage(gate.reason)
+    });
+    return;
+  }
   const list = await addWarning(interaction.guildId, user.id, interaction.user.id, reason);
-  await interaction.reply({
-    flags: MessageFlags.Ephemeral,
-    content: `Warned ${user.tag}. Total warnings: ${list.length}`
+  await replyModSuccess(interaction, {
+    title: "User Warned",
+    summary: `Warning recorded for **${user.tag}**.`,
+    fields: [
+      { name: "User", value: `${user.tag} (${user.id})` },
+      { name: "Total Warnings", value: String(list.length), inline: true },
+      { name: "Reason", value: reason }
+    ]
   });
 }

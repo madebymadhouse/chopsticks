@@ -1,8 +1,10 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { replyModError, replyModSuccess } from "../moderation/output.js";
 
 export const meta = {
   guildOnly: true,
-  userPerms: [PermissionFlagsBits.ManageChannels]
+  userPerms: [PermissionFlagsBits.ManageChannels],
+  category: "mod"
 };
 
 export const data = new SlashCommandBuilder()
@@ -13,11 +15,25 @@ export async function execute(interaction) {
   if (!interaction.inGuild()) return;
   const channel = interaction.channel;
   if (!channel?.permissionOverwrites) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "Cannot lock here." });
+    await replyModError(interaction, {
+      title: "Lock Failed",
+      summary: "This channel does not support permission overwrites."
+    });
     return;
   }
-  await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-    SendMessages: false
-  });
-  await interaction.reply({ flags: MessageFlags.Ephemeral, content: "Channel locked." });
+  try {
+    await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+      SendMessages: false
+    });
+    await replyModSuccess(interaction, {
+      title: "Channel Locked",
+      summary: `Locked <#${channel.id}> for @everyone.`,
+      fields: [{ name: "Channel", value: `${channel.name || channel.id} (${channel.id})` }]
+    });
+  } catch (err) {
+    await replyModError(interaction, {
+      title: "Lock Failed",
+      summary: err?.message || "Unable to lock channel."
+    });
+  }
 }

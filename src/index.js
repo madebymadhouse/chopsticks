@@ -26,6 +26,7 @@ import { handleButton as handleAssistantButton } from "./commands/assistant.js";
 import { handleButton as handleCommandsButton, handleSelect as handleCommandsSelect } from "./commands/commands.js";
 import { handleButton as handleVoiceButton, handleSelect as handleVoiceSelect } from "./commands/voice.js";
 import { handleSelect as handleHelpSelect } from "./commands/help.js";
+import { handleButton as handlePurgeButton } from "./commands/purge.js";
 import {
   startHealthServer,
   getAndResetCommandDeltas
@@ -619,6 +620,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (await handleAssistantButton(interaction)) return;
       if (await handleCommandsButton(interaction)) return;
       if (await handleVoiceButton(interaction)) return;
+      if (await handlePurgeButton(interaction)) return;
     } catch (err) {
       console.error("[button]", err?.stack ?? err?.message ?? err);
       try {

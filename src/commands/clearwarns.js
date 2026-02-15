@@ -1,9 +1,11 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { clearWarnings } from "../utils/moderation.js";
+import { replyModSuccess } from "../moderation/output.js";
 
 export const meta = {
   guildOnly: true,
-  userPerms: [PermissionFlagsBits.ModerateMembers]
+  userPerms: [PermissionFlagsBits.ModerateMembers],
+  category: "mod"
 };
 
 export const data = new SlashCommandBuilder()
@@ -14,5 +16,9 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   const user = interaction.options.getUser("user", true);
   await clearWarnings(interaction.guildId, user.id);
-  await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Cleared warnings for ${user.tag}` });
+  await replyModSuccess(interaction, {
+    title: "Warnings Cleared",
+    summary: `Cleared all warnings for **${user.tag}**.`,
+    fields: [{ name: "User", value: `${user.tag} (${user.id})` }]
+  });
 }

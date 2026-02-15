@@ -45,7 +45,7 @@ logs:
 
 # Check health
 health:
-	@curl -s http://localhost:8080/health | jq . || echo "Health endpoint not responding"
+	@curl -s http://localhost:8080/healthz | jq . || curl -s http://localhost:8080/health | jq . || echo "Health endpoint not responding"
 
 # Show status
 status:

@@ -1,8 +1,10 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { replyModError, replyModSuccess } from "../moderation/output.js";
 
 export const meta = {
   guildOnly: true,
-  userPerms: [PermissionFlagsBits.ManageChannels]
+  userPerms: [PermissionFlagsBits.ManageChannels],
+  category: "mod"
 };
 
 export const data = new SlashCommandBuilder()
@@ -16,9 +18,23 @@ export async function execute(interaction) {
   const seconds = interaction.options.getInteger("seconds", true);
   const channel = interaction.channel;
   if (!channel?.setRateLimitPerUser) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "Cannot set slowmode here." });
+    await replyModError(interaction, {
+      title: "Slowmode Failed",
+      summary: "This channel does not support slowmode changes."
+    });
     return;
   }
-  await channel.setRateLimitPerUser(seconds);
-  await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Slowmode set to ${seconds}s.` });
+  try {
+    await channel.setRateLimitPerUser(seconds);
+    await replyModSuccess(interaction, {
+      title: "Slowmode Updated",
+      summary: `Set slowmode for <#${channel.id}> to **${seconds}s**.`,
+      fields: [{ name: "Channel", value: `${channel.name || channel.id} (${channel.id})` }]
+    });
+  } catch (err) {
+    await replyModError(interaction, {
+      title: "Slowmode Failed",
+      summary: err?.message || "Unable to set slowmode."
+    });
+  }
 }

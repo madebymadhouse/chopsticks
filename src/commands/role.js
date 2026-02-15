@@ -1,8 +1,11 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { canModerateTarget, fetchTargetMember, moderationGuardMessage } from "../moderation/guards.js";
+import { replyModError, replyModSuccess } from "../moderation/output.js";
 
 export const meta = {
   guildOnly: true,
-  userPerms: [PermissionFlagsBits.ManageRoles]
+  userPerms: [PermissionFlagsBits.ManageRoles],
+  category: "mod"
 };
 
 export const data = new SlashCommandBuilder()
@@ -27,19 +30,78 @@ export async function execute(interaction) {
   const sub = interaction.options.getSubcommand();
   const user = interaction.options.getUser("user", true);
   const role = interaction.options.getRole("role", true);
-  const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+  const member = await fetchTargetMember(interaction.guild, user.id);
   if (!member) {
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: "User not found." });
+    await replyModError(interaction, {
+      title: "Role Update Failed",
+      summary: "User is not a member of this guild."
+    });
     return;
   }
+
+  const gate = canModerateTarget(interaction, member);
+  if (!gate.ok) {
+    await replyModError(interaction, {
+      title: "Role Update Blocked",
+      summary: moderationGuardMessage(gate.reason)
+    });
+    return;
+  }
+
+  const botHighest = interaction.guild.members.me?.roles?.highest?.position ?? -1;
+  const actorHighest = interaction.member?.roles?.highest?.position ?? -1;
+  const rolePosition = role?.position ?? -1;
+  if (rolePosition >= actorHighest) {
+    await replyModError(interaction, {
+      title: "Role Update Blocked",
+      summary: "Your highest role must be above the target role."
+    });
+    return;
+  }
+  if (rolePosition >= botHighest) {
+    await replyModError(interaction, {
+      title: "Role Update Blocked",
+      summary: "Bot role hierarchy is below the target role."
+    });
+    return;
+  }
+
   if (sub === "add") {
-    await member.roles.add(role).catch(() => null);
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Added ${role.name} to ${user.tag}` });
+    try {
+      await member.roles.add(role);
+      await replyModSuccess(interaction, {
+        title: "Role Added",
+        summary: `Added **${role.name}** to **${user.tag}**.`,
+        fields: [
+          { name: "User", value: `${user.tag} (${user.id})` },
+          { name: "Role", value: `${role.name} (${role.id})` }
+        ]
+      });
+    } catch (err) {
+      await replyModError(interaction, {
+        title: "Role Update Failed",
+        summary: err?.message || "Unable to add role."
+      });
+    }
     return;
   }
   if (sub === "remove") {
-    await member.roles.remove(role).catch(() => null);
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: `Removed ${role.name} from ${user.tag}` });
+    try {
+      await member.roles.remove(role);
+      await replyModSuccess(interaction, {
+        title: "Role Removed",
+        summary: `Removed **${role.name}** from **${user.tag}**.`,
+        fields: [
+          { name: "User", value: `${user.tag} (${user.id})` },
+          { name: "Role", value: `${role.name} (${role.id})` }
+        ]
+      });
+    } catch (err) {
+      await replyModError(interaction, {
+        title: "Role Update Failed",
+        summary: err?.message || "Unable to remove role."
+      });
+    }
     return;
   }
 }
