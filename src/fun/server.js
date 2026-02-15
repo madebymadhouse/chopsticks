@@ -15,6 +15,8 @@ import {
   readFunHubSecurityConfig,
   validateApiKey
 } from "./security.js";
+import { logger, generateCorrelationId } from "../utils/logger.js";
+import { installProcessSafety } from "../utils/processSafety.js";
 
 const app = express();
 const port = Number(process.env.FUNHUB_PORT || 8790);
@@ -23,6 +25,9 @@ const limiter = makeInMemoryRateLimiter({
   max: security.rateLimitMax,
   windowMs: security.rateLimitWindowMs
 });
+const serviceLogger = logger.child({ service: "funhub" });
+
+installProcessSafety("funhub", serviceLogger);
 
 function sendJsonError(res, status, error, detail = "") {
   return res.status(status).json({ ok: false, error, detail });
@@ -99,6 +104,26 @@ function safeInt(value, min, max, fallback) {
 }
 
 app.disable("x-powered-by");
+app.use((req, res, next) => {
+  const requestId = String(req.headers["x-correlation-id"] || generateCorrelationId());
+  const startedAt = Date.now();
+  req.requestId = requestId;
+  res.setHeader("x-correlation-id", requestId);
+  serviceLogger.info({ requestId, method: req.method, path: req.path }, "funhub request");
+  res.on("finish", () => {
+    serviceLogger.info(
+      {
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - startedAt
+      },
+      "funhub response"
+    );
+  });
+  next();
+});
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -191,12 +216,18 @@ app.get("/api/fun/pack", (req, res) => {
 });
 
 app.use((err, _req, res, _next) => {
-  console.error("[funhub]", err?.stack || err?.message || err);
+  serviceLogger.error({ error: err?.stack || err?.message || err }, "funhub unhandled route error");
   return sendJsonError(res, 500, "internal-error", "Unexpected failure.");
 });
 
 app.listen(port, () => {
-  console.log(
-    `[funhub] listening on :${port} | auth=${security.requireApiKey ? "apikey" : "open"} | rate=${security.rateLimitMax}/${security.rateLimitWindowMs}ms`
+  serviceLogger.info(
+    {
+      port,
+      auth: security.requireApiKey ? "apikey" : "open",
+      rateLimitMax: security.rateLimitMax,
+      rateLimitWindowMs: security.rateLimitWindowMs
+    },
+    "funhub listening"
   );
 });

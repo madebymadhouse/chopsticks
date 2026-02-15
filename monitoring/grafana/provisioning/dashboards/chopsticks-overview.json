@@ -1,0 +1,108 @@
+{
+  "title": "Chopsticks Ops Overview",
+  "uid": "chopsticks-ops-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "tags": ["chopsticks", "ops"],
+  "editable": true,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Connected Agents",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "chopsticks_agent_connected", "refId": "A" }
+      ],
+      "datasource": "Prometheus"
+    },
+    {
+      "id": 2,
+      "title": "Ready Agents",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        { "expr": "chopsticks_agent_ready", "refId": "A" }
+      ],
+      "datasource": "Prometheus"
+    },
+    {
+      "id": 3,
+      "title": "Pool Utilization (Overall)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "chopsticks_pool_utilization_ratio{kind=\"overall\"}", "refId": "A" }
+      ],
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Deploy Outcomes (5m)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        { "expr": "sum(increase(chopsticks_agent_deployments_total{success=\"true\"}[5m]))", "legendFormat": "success", "refId": "A" },
+        { "expr": "sum(increase(chopsticks_agent_deployments_total{success=\"false\"}[5m]))", "legendFormat": "failed", "refId": "B" }
+      ],
+      "datasource": "Prometheus"
+    },
+    {
+      "id": 5,
+      "title": "Pool Utilization By Kind",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        { "expr": "chopsticks_pool_utilization_ratio", "legendFormat": "{{kind}}", "refId": "A" }
+      ],
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Agent Uptime Stats (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        { "expr": "chopsticks_agent_uptime_seconds", "legendFormat": "{{stat}}", "refId": "A" }
+      ],
+      "datasource": "Prometheus"
+    },
+    {
+      "id": 7,
+      "title": "Session Allocations",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        { "expr": "sum by (kind,status) (rate(chopsticks_session_allocations_total[5m]))", "legendFormat": "{{kind}} / {{status}}", "refId": "A" }
+      ],
+      "datasource": "Prometheus"
+    },
+    {
+      "id": 8,
+      "title": "Rate Limit Hits",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "targets": [
+        { "expr": "sum by (type) (rate(chopsticks_rate_limit_hits_total[5m]))", "legendFormat": "{{type}}", "refId": "A" }
+      ],
+      "datasource": "Prometheus"
+    }
+  ]
+}
+

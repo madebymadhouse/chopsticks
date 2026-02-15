@@ -132,6 +132,20 @@ export const sessionsActiveGauge = new client.Gauge({
   registers: [register],
 });
 
+export const agentUptimeGauge = new client.Gauge({
+  name: "chopsticks_agent_uptime_seconds",
+  help: "Aggregate agent uptime by statistic",
+  labelNames: ["stat"], // stat: min | max | avg
+  registers: [register],
+});
+
+export const poolUtilizationGauge = new client.Gauge({
+  name: "chopsticks_pool_utilization_ratio",
+  help: "Agent pool utilization ratio by workload kind",
+  labelNames: ["kind"], // kind: overall | music | assistant
+  registers: [register],
+});
+
 export const sessionAllocations = new client.Counter({
   name: "chopsticks_session_allocations_total",
   help: "Total session allocation attempts",
@@ -267,6 +281,27 @@ export function trackSessionRelease(kind) {
 export function updateSessionGauges(active = { music: 0, assistant: 0 }) {
   sessionsActiveGauge.set({ kind: 'music' }, active.music || 0);
   sessionsActiveGauge.set({ kind: 'assistant' }, active.assistant || 0);
+}
+
+export function updateAgentUptimeMetrics({ min = 0, max = 0, avg = 0 } = {}) {
+  agentUptimeGauge.set({ stat: "min" }, Math.max(0, Number(min) || 0));
+  agentUptimeGauge.set({ stat: "max" }, Math.max(0, Number(max) || 0));
+  agentUptimeGauge.set({ stat: "avg" }, Math.max(0, Number(avg) || 0));
+}
+
+export function updatePoolUtilization({ connected = 0, busyMusic = 0, busyAssistant = 0 } = {}) {
+  const c = Math.max(0, Number(connected) || 0);
+  const music = Math.max(0, Number(busyMusic) || 0);
+  const assistant = Math.max(0, Number(busyAssistant) || 0);
+  const totalBusy = music + assistant;
+  const denom = c > 0 ? c : 1;
+  poolUtilizationGauge.set({ kind: "music" }, Math.min(1, music / denom));
+  poolUtilizationGauge.set({ kind: "assistant" }, Math.min(1, assistant / denom));
+  poolUtilizationGauge.set({ kind: "overall" }, c > 0 ? Math.min(1, totalBusy / c) : 0);
+}
+
+export function trackAgentDeployment(success = true) {
+  agentDeployCounter.inc({ success: success ? "true" : "false" });
 }
 
 export function trackVoiceAttachment(success = true) {

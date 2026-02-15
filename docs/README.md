@@ -3,6 +3,7 @@
 - `architecture.md` — system overview
 - `deploy-ubuntu.md` — production deploy steps
 - `operations.md` — monitoring, metrics, backups
+- `OPS.md` — production health checks, core metrics, incident flow
 - `runbooks.md` — common incidents and fixes
 - `support.md` — support intake and workflow
 - `security.md` — security posture and secrets

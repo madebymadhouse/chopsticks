@@ -56,3 +56,18 @@ export async function cacheIncr(key, ttlSec) {
     return null;
   }
 }
+
+export async function cacheSetNx(key, value, ttlSec) {
+  try {
+    const c = await getClient();
+    const payload = JSON.stringify(value);
+    const opts = {};
+    if (Number.isFinite(ttlSec) && ttlSec > 0) {
+      opts.EX = Math.trunc(ttlSec);
+    }
+    const result = await c.set(key, payload, { NX: true, ...opts });
+    return result === "OK";
+  } catch {
+    return null;
+  }
+}

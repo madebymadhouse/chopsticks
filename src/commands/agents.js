@@ -28,6 +28,7 @@ import {
 import { replyEmbed, replyEmbedWithJson, buildEmbed } from "../utils/discordOutput.js";
 import { getBotOwnerIds, isBotOwner } from "../utils/owners.js";
 import { replyInteraction } from "../utils/interactionReply.js";
+import { trackAgentDeployment } from "../utils/metrics.js";
 
 export const meta = {
   guildOnly: true,
@@ -344,6 +345,7 @@ export async function execute(interaction) {
       const fromPoolOption = interaction.options.getString("from_pool", false);
 
       if (desiredTotal % 10 !== 0) {
+        trackAgentDeployment(false);
         await replyInteraction(interaction, {
           content: `The desired total number of agents must be a multiple of 10. You entered ${desiredTotal}.`
         });
@@ -359,6 +361,7 @@ export async function execute(interaction) {
         // User specified a pool - verify it exists and is accessible
         const specifiedPool = await fetchPool(fromPoolOption);
         if (!specifiedPool) {
+          trackAgentDeployment(false);
           return await interaction.editReply({
             content: `Pool \`${fromPoolOption}\` not found.\nUse \`/pools public\` to see available pools.`
           });
@@ -370,6 +373,7 @@ export async function execute(interaction) {
         const isPublic = specifiedPool.visibility === 'public';
         
         if (!isOwner && !isPublic) {
+          trackAgentDeployment(false);
           return await interaction.editReply({
             content: `Cannot access private pool \`${fromPoolOption}\`.\nUse \`/pools public\` to see available pools.`
           });
@@ -387,6 +391,7 @@ export async function execute(interaction) {
 
       // Check for limit error (Level 1: Invariants Locked)
       if (plan.error) {
+        trackAgentDeployment(false);
         await interaction.editReply({
           content: `❌ ${plan.error}\n\nThe platform enforces a maximum of 49 agents per guild to ensure system stability.`
         });
@@ -435,8 +440,10 @@ export async function execute(interaction) {
       }
 
       await interaction.editReply({ content: lines.join("\n").slice(0, 1900) });
+      trackAgentDeployment(true);
     } catch (error) {
       console.error(`[agents:deploy] Error: ${error.message}`);
+      trackAgentDeployment(false);
       const content = `Failed to deploy agents: ${error.message}`;
       if (interaction.deferred) {
         await interaction.editReply({ content });

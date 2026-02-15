@@ -20,6 +20,9 @@
     "monitoring:up": "docker compose -f docker-compose.monitoring.yml up -d",
     "monitoring:down": "docker compose -f docker-compose.monitoring.yml down",
     "monitoring:logs": "docker compose -f docker-compose.monitoring.yml logs -f",
+    "ci:syntax": "find src scripts test migrations -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "ci:migrations": "node scripts/ci/check-migrations.mjs",
+    "smoke:discord": "node scripts/ci/discord-smoke.mjs",
     "test": "mocha 'test/unit/**/*.test.js'",
     "test:watch": "mocha 'test/unit/**/*.test.js' --watch",
     "test:level-1": "mocha 'test/unit/protocol-version.test.js' 'test/unit/agent-limits.test.js' 'test/unit/agent-deployment.test.js' 'test/unit/session-lifecycle.test.js'"
