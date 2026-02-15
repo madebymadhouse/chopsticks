@@ -4,6 +4,7 @@
 - `deploy-ubuntu.md` — production deploy steps
 - `operations.md` — monitoring, metrics, backups
 - `OPS.md` — production health checks, core metrics, incident flow
+- `public-testing.md` — admin/user production acceptance flow for public guilds
 - `runbooks.md` — common incidents and fixes
 - `support.md` — support intake and workflow
 - `security.md` — security posture and secrets

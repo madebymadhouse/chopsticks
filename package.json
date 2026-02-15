@@ -23,6 +23,7 @@
     "ci:syntax": "find src scripts test migrations -name '*.js' -print0 | xargs -0 -n1 node --check",
     "ci:migrations": "node scripts/ci/check-migrations.mjs",
     "smoke:discord": "node scripts/ci/discord-smoke.mjs",
+    "smoke:public": "node scripts/ci/public-server-readiness.mjs",
     "ops:watchdog": "bash scripts/ops/chopsticks-watchdog.sh",
     "ops:install-systemd": "bash scripts/ops/install-systemd.sh",
     "ops:uninstall-systemd": "bash scripts/ops/uninstall-systemd.sh",

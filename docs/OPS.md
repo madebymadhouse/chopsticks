@@ -103,6 +103,7 @@ Mandatory CI gates before merge:
 Optional staging Discord smoke (manual dispatch with secrets):
 - `node scripts/deployCommands.js` in guild mode
 - `npm run smoke:discord`
+- Public guild preflight: `PUBLIC_TEST_GUILD_ID=<guild_id> npm run smoke:public`
 
 ## Control-plane invariants
 - Max deploy target per guild is hard-capped at `49`.
