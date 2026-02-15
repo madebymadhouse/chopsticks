@@ -85,6 +85,7 @@ function baseData() {
     commandLogs: [], // recent executions
     fun: {
       enabled: true,
+      mode: "clean",
       intensity: 3,
       features: { welcome: true, giveaway: true, daily: true, work: true }
     },
@@ -142,6 +143,10 @@ function normalizeData(input) {
   if (!isPlainObject(out.commandPerms)) out.commandPerms = {};
   if (!isPlainObject(out.fun)) out.fun = {};
   if (typeof out.fun.enabled !== "boolean") out.fun.enabled = true;
+  const funMode = String(out.fun.mode || "clean").toLowerCase();
+  out.fun.mode = (funMode === "off" || funMode === "creative" || funMode === "clean")
+    ? funMode
+    : "clean";
   const funIntensity = Number(out.fun.intensity);
   out.fun.intensity = Number.isFinite(funIntensity)
     ? Math.min(5, Math.max(1, Math.trunc(funIntensity)))

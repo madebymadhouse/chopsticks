@@ -27,15 +27,16 @@ export const data = new SlashCommandBuilder()
 
 async function pickWinners(msg, count) {
   const reaction = msg.reactions.cache.get("🎉");
-  if (!reaction) return [];
+  if (!reaction) return { winners: [], entrants: 0 };
   const users = await reaction.users.fetch();
   const pool = users.filter(u => !u.bot).map(u => u.id);
+  const entrants = pool.length;
   const winners = [];
   while (pool.length && winners.length < count) {
     const i = Math.floor(Math.random() * pool.length);
     winners.push(pool.splice(i, 1)[0]);
   }
-  return winners;
+  return { winners, entrants };
 }
 
 export async function execute(interaction) {
@@ -64,7 +65,7 @@ export async function execute(interaction) {
     schedule(`giveaway:${msg.id}`, minutes * 60 * 1000, async () => {
       const m = await interaction.channel.messages.fetch(msg.id).catch(() => null);
       if (!m) return;
-      const winners = await pickWinners(m, winnersCount);
+      const { winners, entrants } = await pickWinners(m, winnersCount);
       const text = winners.length ? winners.map(id => `<@${id}>`).join(", ") : "No entries.";
       const winnerFlavor = await maybeBuildGuildFunLine({
         guildId: interaction.guildId,
@@ -72,7 +73,8 @@ export async function execute(interaction) {
         actorTag: interaction.user.username,
         target: text,
         intensity: 4,
-        maxLength: 160
+        maxLength: 160,
+        context: { phase: "end", entrants, winnerCount: winners.length }
       });
       const winnerMsg = `Winner(s): ${text}` + (winnerFlavor ? `\n${winnerFlavor}` : "");
       await m.reply(winnerMsg.slice(0, 1900));
@@ -86,7 +88,7 @@ export async function execute(interaction) {
     await interaction.reply({ flags: MessageFlags.Ephemeral, content: "Message not found." });
     return;
   }
-  const winners = await pickWinners(msg, 1);
+  const { winners, entrants } = await pickWinners(msg, 1);
   const text = winners.length ? winners.map(id => `<@${id}>`).join(", ") : "No entries.";
   const flavor = await maybeBuildGuildFunLine({
     guildId: interaction.guildId,
@@ -94,7 +96,8 @@ export async function execute(interaction) {
     actorTag: interaction.user.username,
     target: text,
     intensity: 4,
-    maxLength: 160
+    maxLength: 160,
+    context: { phase: "end", entrants, winnerCount: winners.length }
   });
   await interaction.reply({ content: (`Winner(s): ${text}` + (flavor ? `\n${flavor}` : "")).slice(0, 1900) });
 }

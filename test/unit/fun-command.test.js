@@ -16,4 +16,11 @@ describe("Fun command definition", function () {
     assert.equal(typeof execute, "function");
     assert.equal(typeof autocomplete, "function");
   });
+
+  it("settings includes mode option", function () {
+    const json = funData.toJSON();
+    const settings = (json.options || []).find(o => o.name === "settings");
+    const opts = new Set((settings?.options || []).map(o => o.name));
+    assert.ok(opts.has("mode"));
+  });
 });

@@ -91,6 +91,16 @@ export const data = new SlashCommandBuilder()
     s
       .setName("settings")
       .setDescription("Configure automatic FunHub flavor integrations for this server")
+      .addStringOption(o =>
+        o
+          .setName("mode")
+          .setDescription("Auto text style for integrations")
+          .addChoices(
+            { name: "off (disable auto lines)", value: "off" },
+            { name: "clean (practical)", value: "clean" },
+            { name: "creative (flavor)", value: "creative" }
+          )
+      )
       .addBooleanOption(o => o.setName("enabled").setDescription("Enable/disable all auto fun outputs"))
       .addBooleanOption(o => o.setName("welcome").setDescription("Enable fun flavor in welcome messages"))
       .addBooleanOption(o => o.setName("giveaway").setDescription("Enable fun flavor in giveaway posts"))
@@ -152,6 +162,7 @@ function buildSettingsEmbed(config) {
     )
     .addFields(
       { name: "Status", value: config.enabled ? "enabled" : "disabled", inline: true },
+      { name: "Mode", value: String(config.mode || "clean"), inline: true },
       { name: "Intensity", value: String(config.intensity), inline: true },
       { name: "Provider", value: runtime.provider, inline: true },
       {
@@ -190,8 +201,10 @@ export async function execute(interaction) {
     const giveaway = interaction.options.getBoolean("giveaway");
     const daily = interaction.options.getBoolean("daily");
     const work = interaction.options.getBoolean("work");
+    const mode = interaction.options.getString("mode");
     const intensityOpt = interaction.options.getInteger("intensity");
     const hasPatch =
+      mode !== null ||
       enabled !== null ||
       welcome !== null ||
       giveaway !== null ||
@@ -210,6 +223,7 @@ export async function execute(interaction) {
 
     const patch = {};
     if (enabled !== null) patch.enabled = enabled;
+    if (mode !== null) patch.mode = mode;
     if (intensityOpt !== null) patch.intensity = clampIntensity(intensityOpt);
     const featurePatch = {};
     if (welcome !== null) featurePatch.welcome = welcome;

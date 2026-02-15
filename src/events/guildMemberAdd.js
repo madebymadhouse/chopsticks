@@ -31,7 +31,8 @@ export default {
             actorTag: "chopsticks",
             target: member.user?.username || member.displayName || member.id,
             intensity: 3,
-            maxLength: 160
+            maxLength: 160,
+            context: { guildName: member.guild?.name || "" }
           });
           const text = `${baseText}${flavor ? `\n${flavor}` : ""}`.slice(0, 1900);
           await ch.send(text);

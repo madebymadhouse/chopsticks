@@ -101,7 +101,7 @@ Voice lobby system supports:
 
 - `/commands ui` opens an interactive command center with category and command dropdowns.
 - `/fun play`, `/fun random`, and `/fun catalog` provide a 220-variant fun system (also available as prefix `!fun`).
-- `/fun settings` controls where automatic FunHub flavor appears in your guild (`welcome`, `giveaway`, `daily`, `work`).
+- `/fun settings` controls auto output mode and feature routing in your guild (`mode: off|clean|creative`, plus `welcome|giveaway|daily|work`).
 
 ## FunHub API
 
