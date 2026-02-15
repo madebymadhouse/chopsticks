@@ -6,6 +6,7 @@ import { Colors, replySuccess, replyError } from "../utils/discordOutput.js";
 import { maybeBuildGuildFunLine } from "../fun/integrations.js";
 import { addGameXp } from "../game/profile.js";
 import { getMultiplier } from "../game/buffs.js";
+import { recordQuestEvent } from "../game/quests.js";
 
 export const WORK_COOLDOWN = 30 * 60 * 1000; // 30 minutes
 
@@ -109,6 +110,9 @@ export default {
       // Set cooldown (can be reduced by buffs)
       const effectiveCooldown = Math.max(60 * 1000, Math.trunc(WORK_COOLDOWN * cdMult));
       await setCooldown(interaction.user.id, "work", effectiveCooldown);
+
+      // Quest progress (best-effort; do not fail command if quests are misconfigured).
+      try { await recordQuestEvent(interaction.user.id, "work_runs", 1); } catch {}
 
       // Check for item drop
       let itemDropped = null;

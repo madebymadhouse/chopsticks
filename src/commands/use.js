@@ -3,6 +3,7 @@ import { getInventory, removeItem, getItemData } from "../economy/inventory.js";
 import { addCredits } from "../economy/wallet.js";
 import { replySuccess, replyError } from "../utils/discordOutput.js";
 import { setBuff } from "../game/buffs.js";
+import { recordQuestEvent } from "../game/quests.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -70,6 +71,7 @@ export default {
         const totalValue = unitPrice * quantity;
         await removeItem(interaction.user.id, matchedItem.item_id, quantity, matchedItem.metadata);
         await addCredits(interaction.user.id, totalValue, "Sold collectible");
+        try { await recordQuestEvent(interaction.user.id, "sell_items", quantity); } catch {}
 
         await replySuccess(
           interaction,

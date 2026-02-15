@@ -8,6 +8,7 @@ import { renderGatherCardPng } from "../game/render/imCards.js";
 import { loadGuildData } from "../utils/storage.js";
 import { addGameXp } from "../game/profile.js";
 import { getMultiplier, getBuff } from "../game/buffs.js";
+import { recordQuestEvent } from "../game/quests.js";
 
 const GATHER_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 
@@ -111,6 +112,8 @@ export default {
 
       // Set cooldown
       await setCooldown(interaction.user.id, "gather", GATHER_COOLDOWN);
+
+      try { await recordQuestEvent(interaction.user.id, "gather_runs", 1); } catch {}
 
       // XP gain (rarity-weighted), affected by xp multiplier consumable.
       const rarityXp = { common: 12, rare: 20, epic: 35, legendary: 55, mythic: 120 };

@@ -927,6 +927,17 @@ export async function ensureEconomySchema() {
     `CREATE INDEX IF NOT EXISTS idx_wallets_balance ON user_wallets(balance DESC)`,
     `CREATE TABLE IF NOT EXISTS user_game_profiles (user_id TEXT PRIMARY KEY, xp BIGINT NOT NULL DEFAULT 0 CHECK (xp >= 0), level INT NOT NULL DEFAULT 1 CHECK (level >= 1), created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS idx_game_profiles_level ON user_game_profiles(level DESC, xp DESC)`,
+    `CREATE TABLE IF NOT EXISTS user_daily_quests (
+      user_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      quests JSONB NOT NULL,
+      progress JSONB NOT NULL,
+      claimed JSONB NOT NULL,
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL,
+      PRIMARY KEY (user_id, day)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_daily_quests_day ON user_daily_quests(day)`,
     `CREATE TABLE IF NOT EXISTS user_inventory (id SERIAL PRIMARY KEY, user_id TEXT NOT NULL, item_id TEXT NOT NULL, quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0), metadata JSONB DEFAULT '{}', acquired_at BIGINT NOT NULL, UNIQUE(user_id, item_id))`,
     `CREATE INDEX IF NOT EXISTS idx_inventory_user ON user_inventory(user_id)`,
     `CREATE TABLE IF NOT EXISTS user_collections (

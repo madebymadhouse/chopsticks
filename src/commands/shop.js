@@ -3,6 +3,7 @@ import { listShopCategories, listShopItems, findShopItem, searchShopItems } from
 import { addItem } from "../economy/inventory.js";
 import { getWallet, removeCredits } from "../economy/wallet.js";
 import { Colors, replyError } from "../utils/discordOutput.js";
+import { recordQuestEvent } from "../game/quests.js";
 
 function formatItemLine(it) {
   const emoji = it.emoji || "🧾";
@@ -165,6 +166,7 @@ export default {
       }
 
       await addItem(interaction.user.id, it.id, qty);
+      try { await recordQuestEvent(interaction.user.id, "shop_purchases", 1); } catch {}
 
       const embed = new EmbedBuilder()
         .setTitle("Purchase Complete")
@@ -180,4 +182,3 @@ export default {
     await replyError(interaction, "Unknown Action", "This shop action is not available.", true);
   }
 };
-

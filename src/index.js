@@ -28,6 +28,7 @@ import { handleButton as handleVoiceButton, handleSelect as handleVoiceSelect } 
 import { handleSelect as handleHelpSelect } from "./commands/help.js";
 import { handleButton as handlePurgeButton } from "./commands/purge.js";
 import { handleButton as handleGameButton, handleSelect as handleGameSelect } from "./commands/game.js";
+import { handleButton as handleQuestsButton } from "./commands/quests.js";
 import {
   startHealthServer,
   getAndResetCommandDeltas
@@ -658,6 +659,7 @@ client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isButton?.()) {
     try {
       if (await handleGameButton(interaction)) return;
+      if (await handleQuestsButton(interaction)) return;
       if (await handleMusicButton(interaction)) return;
       if (await handleAssistantButton(interaction)) return;
       if (await handleCommandsButton(interaction)) return;

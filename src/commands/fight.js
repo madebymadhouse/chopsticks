@@ -5,6 +5,7 @@ import { addItem } from "../economy/inventory.js";
 import { Colors, replyError } from "../utils/discordOutput.js";
 import { addGameXp, getGameProfile } from "../game/profile.js";
 import { getMultiplier } from "../game/buffs.js";
+import { recordQuestEvent } from "../game/quests.js";
 
 export const BATTLE_COOLDOWN = 10 * 60 * 1000; // 10 minutes
 
@@ -130,6 +131,8 @@ export default {
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
+
+      try { await recordQuestEvent(interaction.user.id, "fight_wins", 1); } catch {}
     } catch (err) {
       console.error("[fight] error:", err);
       await replyError(interaction, "Fight Failed", "Something went wrong. Try again later.", true);
