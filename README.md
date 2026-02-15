@@ -45,10 +45,13 @@ cp .env.example .env
 By default, production bring-up enables profiles:
 - `dashboard`
 - `monitoring`
+- optional `fun` profile for FunHub API (`/api/fun/*`)
 
 To override:
 ```bash
 COMPOSE_PROFILES=dashboard ./scripts/start.sh
+# or include FunHub
+COMPOSE_PROFILES=dashboard,monitoring,fun ./scripts/start.sh
 ```
 
 3. Verify runtime:
@@ -99,6 +102,7 @@ Voice lobby system supports:
 ## Bot-wide UI
 
 - `/commands ui` opens an interactive command center with category and command dropdowns.
+- `/fun play`, `/fun random`, and `/fun catalog` provide a 220-variant fun system (also available as prefix `!fun`).
 
 ## Testing
 

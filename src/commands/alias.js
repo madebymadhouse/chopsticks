@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { setAlias, clearAlias, getAliases } from "../utils/aliases.js";
 import { replyEmbed, replyEmbedWithJson } from "../utils/discordOutput.js";
+import { normalizeAliasName } from "../prefix/hardening.js";
 
 export const meta = {
   guildOnly: true,
@@ -45,13 +46,17 @@ export async function execute(interaction) {
   if (sub === "set") {
     const alias = interaction.options.getString("alias", true);
     const commandName = interaction.options.getString("command", true);
-    await setAlias(guildId, alias, commandName);
-    await replyEmbed(interaction, "Alias updated", `${alias} -> ${commandName}`);
+    try {
+      const result = await setAlias(guildId, alias, commandName);
+      await replyEmbed(interaction, "Alias updated", `${result.alias} -> ${result.commandName}`);
+    } catch (err) {
+      await replyEmbed(interaction, "Alias rejected", err?.message || "Invalid alias.");
+    }
     return;
   }
   if (sub === "clear") {
     const alias = interaction.options.getString("alias", true);
-    await clearAlias(guildId, alias);
-    await replyEmbed(interaction, "Alias removed", `${alias}`);
+    const result = await clearAlias(guildId, alias);
+    await replyEmbed(interaction, "Alias removed", `${normalizeAliasName(result.alias)}`);
   }
 }

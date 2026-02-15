@@ -4,7 +4,7 @@ import { loadGuildData, saveGuildData } from "./storage.js";
 const CATEGORY_MAP = {
   mod: new Set(["ban","unban","kick","timeout","purge","slowmode","warn","warnings","clearwarns","lock","unlock","nick","softban","role"]),
   util: new Set(["ping","uptime","help","serverinfo","userinfo","avatar","roleinfo","botinfo","invite","echo"]),
-  fun: new Set(["8ball","coinflip","roll","choose"]),
+  fun: new Set(["8ball","coinflip","roll","choose","fun"]),
   admin: new Set(["config","prefix","alias","agents"]),
   music: new Set(["music"]),
   voice: new Set(["voice","welcome","autorole"]),

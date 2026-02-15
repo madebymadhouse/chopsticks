@@ -35,6 +35,7 @@ import { checkRateLimit } from "./utils/ratelimit.js";
 import { canRunCommand } from "./utils/permissions.js";
 import { getPrefixCommands } from "./prefix/registry.js";
 import { canRunPrefixCommand } from "./utils/permissions.js";
+import { parsePrefixArgs, resolveAliasedCommand, suggestCommandNames } from "./prefix/hardening.js";
 import { loadGuildData } from "./utils/storage.js";
 import { addCommandLog } from "./utils/commandlog.js";
 import { botLogger } from "./utils/modernLogger.js";
@@ -476,11 +477,12 @@ client.on(Events.MessageCreate, async message => {
 
   let prefix = "!";
   let aliases = {};
+  let guildData = null;
   if (message.guildId) {
     try {
-      const data = await loadGuildData(message.guildId);
-      prefix = data?.prefix?.value || "!";
-      aliases = data?.prefix?.aliases || {};
+      guildData = await loadGuildData(message.guildId);
+      prefix = guildData?.prefix?.value || "!";
+      aliases = guildData?.prefix?.aliases || {};
     } catch {}
   }
 
@@ -489,20 +491,33 @@ client.on(Events.MessageCreate, async message => {
   const raw = message.content.slice(prefix.length).trim();
   if (!raw) return;
 
-  const parts = raw.split(/\s+/);
-  let name = parts.shift().toLowerCase();
-  if (aliases[name]) name = String(aliases[name]).toLowerCase();
+  const parts = parsePrefixArgs(raw);
+  if (!parts.length) return;
+  const requestedName = String(parts.shift() || "").toLowerCase();
+  const aliasResolution = resolveAliasedCommand(requestedName, aliases, 20);
+  if (!aliasResolution.ok) {
+    if (aliasResolution.error === "cycle" || aliasResolution.error === "depth" || aliasResolution.error === "invalid-target") {
+      try {
+        const hintRate = await checkRateLimit(`pfx:aliaswarn:${message.author.id}`, 1, 15);
+        if (hintRate.ok) {
+          await message.reply("Alias configuration error detected. Run `/alias list` and fix alias chains.");
+        }
+      } catch {}
+    }
+    return;
+  }
+  const name = aliasResolution.commandName;
 
   // prefix rate limit
   try {
     const rl = await checkRateLimit(`pfx:${message.author.id}:${name}`, 5, 10);
     if (!rl.ok) return;
   } catch {}
+
   let cmd = prefixCommands.get(name);
-  if (!cmd && message.guildId) {
+  if (!cmd && message.guildId && guildData) {
     try {
-      const data = await loadGuildData(message.guildId);
-      const custom = data.customCommands?.[name];
+      const custom = guildData.customCommands?.[name];
       if (custom?.response) {
         const rendered = custom.response
           .replace("{user}", `<@${message.author.id}>`)
@@ -512,7 +527,7 @@ client.on(Events.MessageCreate, async message => {
         await message.reply(rendered);
         return;
       }
-      const macro = data.macros?.[name];
+      const macro = guildData.macros?.[name];
       if (Array.isArray(macro) && macro.length) {
         let count = 0;
         for (const step of macro) {
@@ -527,7 +542,25 @@ client.on(Events.MessageCreate, async message => {
       }
     } catch {}
   }
-  if (!cmd) return;
+  if (!cmd) {
+    const candidates = [
+      ...prefixCommands.keys(),
+      ...Object.keys(aliases || {}),
+      ...Object.keys(guildData?.customCommands || {}),
+      ...Object.keys(guildData?.macros || {})
+    ];
+    const suggestions = suggestCommandNames(name, candidates, 3);
+    if (suggestions.length) {
+      try {
+        const hintRate = await checkRateLimit(`pfx:unknown:${message.author.id}`, 1, 15);
+        if (hintRate.ok) {
+          const line = suggestions.map(s => `\`${prefix}${s}\``).join(", ");
+          await message.reply(`Unknown command \`${name}\`. Try: ${line}`);
+        }
+      } catch {}
+    }
+    return;
+  }
 
   const gate = await canRunPrefixCommand(message, cmd.name, cmd);
   if (!gate.ok) return;

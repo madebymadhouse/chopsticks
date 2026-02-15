@@ -10,6 +10,7 @@
     "start:all": "concurrently --raw --prefix \"[{name}]\" --prefix-colors \"auto\" -n main,agents \"AUTO_START_AGENTS=false npm run bot\" \"npm run agents\"",
     "start:shard": "node src/shard.js",
     "dashboard": "node src/dashboard/server.js",
+    "funhub": "node src/fun/server.js",
     "migrate": "node scripts/migrate.js",
     "seed:pg": "node scripts/seedFromFiles.js",
     "deploy:guild": "DEPLOY_MODE=guild node scripts/deployCommands.js",

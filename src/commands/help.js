@@ -52,7 +52,7 @@ const KNOWN_COMMAND_GROUPS = {
   economy_fun: new Set([
     "balance", "bank", "daily", "work", "pay", "inventory", "vault",
     "collection", "gather", "use", "8ball", "coinflip", "roll", "choose",
-    "poll", "giveaway"
+    "poll", "giveaway", "fun"
   ]),
   admin_setup: new Set(["config", "prefix", "alias", "macro", "custom", "logs", "welcome", "autorole"])
 };

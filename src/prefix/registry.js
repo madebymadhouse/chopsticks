@@ -4,6 +4,20 @@ import { addWarning, listWarnings, clearWarnings } from "../utils/moderation.js"
 import { schedule } from "../utils/scheduler.js";
 import { readAgentTokensFromEnv } from "../agents/env.js";
 import { request } from "undici";
+import {
+  clampIntensity,
+  findVariants,
+  getVariantById,
+  listVariantStats,
+  randomVariantId,
+  renderFunVariant
+} from "../fun/variants.js";
+import {
+  isValidAliasName,
+  normalizeAliasName,
+  normalizePrefixValue,
+  resolveAliasedCommand
+} from "./hardening.js";
 
 function cmd(def) {
   return def;
@@ -17,32 +31,31 @@ function parseIntSafe(v, min, max) {
   return t;
 }
 
-function splitArgs(content) {
-  const out = [];
-  let cur = "";
-  let inQuote = false;
-  for (let i = 0; i < content.length; i++) {
-    const ch = content[i];
-    if (ch === "\"") {
-      inQuote = !inQuote;
-      continue;
-    }
-    if (!inQuote && /\s/.test(ch)) {
-      if (cur) out.push(cur), (cur = "");
-      continue;
-    }
-    cur += ch;
-  }
-  if (cur) out.push(cur);
-  return out;
-}
-
 async function reply(message, text) {
   return message.reply({ content: text });
 }
 
 async function dm(user, text) {
   try { await user.send(text); } catch {}
+}
+
+function parseFunIntensity(args) {
+  let intensity = 3;
+  const next = [];
+
+  for (const token of args) {
+    const match =
+      /^--?intensity=(\d+)$/i.exec(token) ||
+      /^-i=(\d+)$/i.exec(token) ||
+      /^(\d)$/.exec(token);
+    if (match) {
+      intensity = clampIntensity(Number(match[1]));
+      continue;
+    }
+    next.push(token);
+  }
+
+  return { intensity, args: next };
 }
 
 function buildInvite(clientId) {
@@ -77,23 +90,49 @@ export async function getPrefixCommands() {
       data.prefix.aliases ??= {};
 
       if (sub === "list") {
-        const entries = Object.entries(data.prefix.aliases);
+        const entries = Object.entries(data.prefix.aliases).sort((a, b) => a[0].localeCompare(b[0]));
         if (!entries.length) return reply(message, "No aliases.");
         const text = entries.map(([a, c]) => `${a} -> ${c}`).join("\n");
         return reply(message, text.slice(0, 1900));
       }
 
       if (sub === "set") {
-        const alias = args[1];
-        const target = args[2];
-        if (!alias || !target) return reply(message, "Usage: aliases set <alias> <command>");
+        const alias = normalizeAliasName(args[1]);
+        const target = normalizeAliasName(args[2]);
+        if (!alias || !target) return reply(message, "Usage: aliases set <alias> <command|alias>");
+        if (!isValidAliasName(alias)) {
+          return reply(message, "Alias must be 1-24 chars: letters, numbers, '_' or '-'.");
+        }
+        if (map.has(alias)) {
+          return reply(message, `Alias '${alias}' is reserved by a built-in prefix command.`);
+        }
+
+        const customNames = new Set([
+          ...Object.keys(data.customCommands ?? {}).map(normalizeAliasName),
+          ...Object.keys(data.macros ?? {}).map(normalizeAliasName)
+        ]);
+        const targetExists = map.has(target) || customNames.has(target) || Object.prototype.hasOwnProperty.call(data.prefix.aliases, target);
+        if (!targetExists) {
+          return reply(message, `Target '${target}' not found in prefix commands, custom commands, macros, or aliases.`);
+        }
+
+        const projected = { ...data.prefix.aliases, [alias]: target };
+        const resolved = resolveAliasedCommand(alias, projected, 20);
+        if (!resolved.ok && resolved.error === "cycle") {
+          return reply(message, "Alias rejected: this creates an alias cycle.");
+        }
+        if (!resolved.ok && resolved.error === "depth") {
+          return reply(message, "Alias rejected: chain too deep.");
+        }
+
         data.prefix.aliases[alias] = target;
         await saveGuildData(message.guildId, data);
-        return reply(message, `Alias set: ${alias} -> ${target}`);
+        const finalTarget = resolved.ok ? resolved.commandName : target;
+        return reply(message, `Alias set: ${alias} -> ${target} (resolves to ${finalTarget})`);
       }
 
       if (sub === "clear") {
-        const alias = args[1];
+        const alias = normalizeAliasName(args[1]);
         if (!alias) return reply(message, "Usage: aliases clear <alias>");
         delete data.prefix.aliases[alias];
         await saveGuildData(message.guildId, data);
@@ -263,6 +302,49 @@ export async function getPrefixCommands() {
       if (!items.length) return reply(message, "No options.");
       const pick = items[Math.floor(Math.random() * items.length)];
       return reply(message, `I choose: **${pick}**`);
+    }
+  }));
+
+  map.set("fun", cmd({
+    name: "fun",
+    description: "Run fun variants (220 total)",
+    async execute(message, args) {
+      const { intensity, args: normalizedArgs } = parseFunIntensity(args);
+      const sub = (normalizedArgs[0] || "random").toLowerCase();
+
+      if (sub === "list" || sub === "catalog") {
+        const query = normalizedArgs.slice(1).join(" ");
+        const stats = listVariantStats();
+        const hits = findVariants(query, 20);
+        const head = `Fun variants: ${stats.total} (${stats.themes} themes x ${stats.styles} styles)`;
+        if (!hits.length) return reply(message, `${head}\nNo variants found for query: ${query || "(empty)"}`);
+        const lines = hits.map(v => `${v.id} -> ${v.label}`);
+        return reply(message, `${head}\n${lines.join("\n")}`.slice(0, 1900));
+      }
+
+      let variantId = null;
+      let target = "";
+      if (sub === "random" || sub === "r") {
+        variantId = randomVariantId();
+        target = normalizedArgs.slice(1).join(" ");
+      } else {
+        const direct = getVariantById(sub);
+        const fuzzy = direct || findVariants(sub, 1)[0] || null;
+        if (!fuzzy) {
+          return reply(message, "Unknown fun variant. Use `fun list` to browse ids.");
+        }
+        variantId = fuzzy.id;
+        target = normalizedArgs.slice(1).join(" ");
+      }
+
+      const result = renderFunVariant({
+        variantId,
+        actorTag: message.author.username,
+        target: target || message.author.username,
+        intensity
+      });
+      if (!result.ok) return reply(message, "Unable to render variant.");
+      return reply(message, `${result.text}\n${result.metaLine}`);
     }
   }));
 
@@ -664,7 +746,9 @@ export async function getPrefixCommands() {
       if (sub === "set") {
         const p = args[1];
         if (!p) return reply(message, "Usage: prefix set <value>");
-        data.prefix.value = p.slice(0, 4);
+        const normalized = normalizePrefixValue(p);
+        if (!normalized.ok) return reply(message, normalized.error);
+        data.prefix.value = normalized.value;
         await saveGuildData(message.guildId, data);
         return reply(message, `Prefix set to ${data.prefix.value}`);
       }

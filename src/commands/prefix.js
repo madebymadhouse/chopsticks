@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 import { loadGuildData, saveGuildData } from "../utils/storage.js";
+import { normalizePrefixValue } from "../prefix/hardening.js";
 
 export const meta = {
   guildOnly: true,
@@ -24,7 +25,15 @@ export async function execute(interaction) {
     });
     return;
   }
-  data.prefix.value = value.slice(0, 4);
+  const normalized = normalizePrefixValue(value);
+  if (!normalized.ok) {
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: normalized.error
+    });
+    return;
+  }
+  data.prefix.value = normalized.value;
   await saveGuildData(interaction.guildId, data);
   await interaction.reply({
     flags: MessageFlags.Ephemeral,
