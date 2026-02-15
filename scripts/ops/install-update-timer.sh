@@ -8,6 +8,7 @@ RUN_USER="${RUN_USER:-$(id -un)}"
 RUN_GROUP="${RUN_GROUP:-$(id -gn)}"
 COMPOSE_PROFILES="${COMPOSE_PROFILES:-dashboard,monitoring,fun}"
 UPDATE_INTERVAL="${UPDATE_INTERVAL:-15min}"
+OPS_ENV_FILE="${OPS_ENV_FILE:-$ROOT_DIR/.env.ops}"
 
 SUDO=""
 if [ "${EUID:-$(id -u)}" -ne 0 ]; then
@@ -33,6 +34,8 @@ Environment=COMPOSE_PROFILES=$COMPOSE_PROFILES
 Environment=AUTO_UPDATE_REMOTE=private
 Environment=AUTO_UPDATE_BRANCH=main
 Environment=AUTO_UPDATE_RUN_GATES=true
+Environment=AUTO_UPDATE_NOTIFY_ON_SUCCESS=false
+EnvironmentFile=-$OPS_ENV_FILE
 ExecStart=/usr/bin/env bash -lc 'cd $ROOT_DIR && ./scripts/ops/chopsticks-auto-update.sh'
 UNIT
 
@@ -61,3 +64,4 @@ $SUDO systemctl enable --now "${SERVICE_NAME}.timer"
 echo "[install] complete"
 echo "[install] timer status: systemctl status ${SERVICE_NAME}.timer --no-pager"
 echo "[install] service logs: journalctl -u ${SERVICE_NAME}.service -n 100 --no-pager"
+echo "[install] optional webhook env file: $OPS_ENV_FILE"

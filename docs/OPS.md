@@ -62,6 +62,25 @@ systemctl status chopsticks-auto-update.timer --no-pager
 journalctl -u chopsticks-auto-update.service -n 100 --no-pager
 ```
 
+Webhook alerts for failed update runs:
+```bash
+cd /home/user9007/chopsticks
+cat > .env.ops << 'EOF'
+AUTO_UPDATE_WEBHOOK_URL=https://discord.com/api/webhooks/...
+AUTO_UPDATE_NOTIFY_ON_SUCCESS=false
+EOF
+
+# Apply env changes to timer service
+sudo systemctl daemon-reload
+sudo systemctl restart chopsticks-auto-update.timer
+```
+
+Test webhook-enabled run:
+```bash
+cd /home/user9007/chopsticks
+AUTO_UPDATE_DRY_RUN=true bash scripts/ops/chopsticks-auto-update.sh
+```
+
 Uninstall:
 ```bash
 cd /home/user9007/chopsticks
