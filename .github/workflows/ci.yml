@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: chopsticks-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci --no-optional
+
+      - name: Syntax gate
+        run: npm run ci:syntax
+
+      - name: Migration gate
+        run: npm run ci:migrations
+
+      - name: Unit tests
+        run: npm test
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs: unit-and-schema
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare CI env
+        run: |
+          cat > .env << 'EOF'
+          NODE_ENV=production
+          STORAGE_DRIVER=postgres
+          CI_SKIP_DISCORD_LOGIN=true
+          DISCORD_TOKEN=ci-skip-login
+          CLIENT_ID=000000000000000000
+          DISCORD_CLIENT_ID=000000000000000000
+          DISCORD_CLIENT_SECRET=ci-secret
+          DEV_GUILD_ID=000000000000000000
+          POSTGRES_USER=chopsticks
+          POSTGRES_PASSWORD=changeme
+          POSTGRES_DB=chopsticks
+          POSTGRES_URL=postgresql://chopsticks:changeme@postgres:5432/chopsticks
+          DATABASE_URL=postgresql://chopsticks:changeme@postgres:5432/chopsticks
+          REDIS_URL=redis://redis:6379
+          AGENT_TOKEN_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          DEV_API_USERNAME=ci
+          DEV_API_PASSWORD=ci
+          DASHBOARD_SESSION_SECRET=ci-session-secret
+          DASHBOARD_ADMIN_TOKEN=ci-admin-token
+          FUNHUB_REQUIRE_API_KEY=false
+          FUNHUB_INTERNAL_API_KEY=ci-fun-key
+          LAVALINK_PASSWORD=youshallnotpass
+          HEALTH_PORT=8080
+          METRICS_PORT=8080
+          EOF
+
+      - name: Docker smoke
+        run: bash scripts/ci/docker-smoke.sh
+
+      - name: Compose status
+        if: always()
+        run: docker compose -f docker-compose.production.yml --profile dashboard --profile monitoring --profile fun ps
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.production.yml --profile dashboard --profile monitoring --profile fun down -v
+
+  discord-staging-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: unit-and-schema
+    if: ${{ github.event_name == 'workflow_dispatch' && secrets.DISCORD_TOKEN != '' && secrets.CLIENT_ID != '' && secrets.DEV_GUILD_ID != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci --no-optional
+
+      - name: Deploy guild commands (staging)
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          DEV_GUILD_ID: ${{ secrets.DEV_GUILD_ID }}
+          DEPLOY_MODE: guild
+          DEPLOY_TARGET: dev
+        run: node scripts/deployCommands.js
+
+      - name: Discord smoke checks
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          STAGING_GUILD_ID: ${{ secrets.DEV_GUILD_ID }}
+        run: npm run smoke:discord
+

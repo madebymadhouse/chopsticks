@@ -20,6 +20,8 @@ import { createAgentLavalink } from "../lavalink/agentLavalink.js";
 import { fetchAgentBots, updateAgentBotStatus, upsertAgentRunner, deleteAgentRunner } from "../utils/storage.js";
 import { randomUUID } from "node:crypto";
 import { handleSafeError, handleCriticalError, handleVoiceError, ErrorCategory, ErrorSeverity } from "../utils/errorHandler.js";
+import { logger } from "../utils/logger.js";
+import { installProcessSafety } from "../utils/processSafety.js";
 
 // Unique ID for this runner instance
 const RUNNER_ID = process.env.RUNNER_ID || randomUUID();
@@ -35,6 +37,8 @@ const POLL_INTERVAL_MS = Number(process.env.AGENT_RUNNER_POLL_INTERVAL_MS) || 10
 
 // Map to keep track of active agent instances managed by this runner
 const activeAgents = new Map(); // agentId -> { client, stopFn, agentConfig }
+
+installProcessSafety("chopsticks-agent-runner", logger);
 
 function normalizeControlMode(value) {
   const v = String(value ?? "").toLowerCase();

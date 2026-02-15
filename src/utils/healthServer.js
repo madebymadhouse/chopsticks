@@ -1,6 +1,7 @@
 import http from "node:http";
 import { Registry, collectDefaultMetrics, Counter, Gauge, Histogram } from "prom-client";
 import { createDebugHandler, createDebugDashboard } from "./debugDashboard.js";
+import { register as appMetricsRegister } from "./metrics.js";
 
 let server = null;
 let registry = null;
@@ -75,6 +76,14 @@ export function startHealthServer(manager = null) {
 
       // Prometheus metrics
       if (url.startsWith("/metrics")) {
+        // App metrics from src/utils/metrics.js (includes agent lifecycle utilization gauges)
+        if (url.startsWith("/metrics-app")) {
+          res.writeHead(200, { "Content-Type": appMetricsRegister.contentType });
+          res.end(await appMetricsRegister.metrics());
+          return;
+        }
+
+        // Legacy health-server metrics
         res.writeHead(200, { "Content-Type": registry.contentType });
         res.end(await registry.metrics());
         return;

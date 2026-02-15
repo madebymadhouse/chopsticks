@@ -1,0 +1,58 @@
+groups:
+  - name: chopsticks-platform
+    rules:
+      - alert: ChopsticksBotMetricsDown
+        expr: up{job="chopsticks-bot-app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: bot
+        annotations:
+          summary: "Chopsticks bot app metrics are down"
+          description: "Prometheus cannot scrape chopsticks-bot-app for >2m."
+          runbook: "docs/OPS.md#alert-runbooks"
+
+      - alert: ChopsticksDashboardMetricsDown
+        expr: up{job="chopsticks-dashboard"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: dashboard
+        annotations:
+          summary: "Chopsticks dashboard metrics are down"
+          description: "Prometheus cannot scrape dashboard metrics for >5m."
+          runbook: "docs/OPS.md#alert-runbooks"
+
+      - alert: ChopsticksNoReadyAgents
+        expr: chopsticks_agent_ready < 1
+        for: 5m
+        labels:
+          severity: critical
+          service: agents
+        annotations:
+          summary: "No ready agents available"
+          description: "Agent pool has zero ready workers for >5m."
+          runbook: "docs/OPS.md#alert-runbooks"
+
+      - alert: ChopsticksPoolUtilizationHigh
+        expr: chopsticks_pool_utilization_ratio{kind="overall"} > 0.90
+        for: 10m
+        labels:
+          severity: warning
+          service: agents
+        annotations:
+          summary: "Pool utilization sustained above 90%"
+          description: "Overall utilization has remained >0.90 for 10m."
+          runbook: "docs/OPS.md#alert-runbooks"
+
+      - alert: ChopsticksDeployFailuresSpike
+        expr: sum(increase(chopsticks_agent_deployments_total{success="false"}[10m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: deploy
+        annotations:
+          summary: "Agent deploy failures spiking"
+          description: "More than 5 failed deployment attempts in a 10m window."
+          runbook: "docs/OPS.md#alert-runbooks"
+

@@ -8,6 +8,8 @@ import {
   trackAgentRestart,
   trackAgentDisconnect,
   updateAgentGauges,
+  updateAgentUptimeMetrics,
+  updatePoolUtilization,
   trackSessionAllocation,
   trackSessionRelease,
   updateSessionGauges
@@ -763,6 +765,8 @@ export class AgentManager {
   }
 
   async ensureAssistantAgent(guildId, voiceChannelId, { textChannelId, ownerUserId } = {}) {
+    const startTime = Date.now();
+
     // 1. Check for existing active assistant session agent
     const existing = this.getAssistantSessionAgent(guildId, voiceChannelId);
     if (existing.ok) return existing;
@@ -771,6 +775,8 @@ export class AgentManager {
     const preferred = this.getPreferredAssistant(guildId, voiceChannelId);
     if (preferred && !preferred.busyKey) {
       this.bindAgentToAssistant(preferred, { guildId, voiceChannelId, textChannelId, ownerUserId });
+      trackSessionAllocation('assistant', 'success', Date.now() - startTime);
+      this._updateMetrics();
       return { ok: true, agent: preferred };
     }
 
@@ -778,14 +784,20 @@ export class AgentManager {
     const idleAgentInGuild = this.findIdleAgentInGuildRoundRobin(guildId);
     if (idleAgentInGuild) {
       this.bindAgentToAssistant(idleAgentInGuild, { guildId, voiceChannelId, textChannelId, ownerUserId });
+      trackSessionAllocation('assistant', 'success', Date.now() - startTime);
+      this._updateMetrics();
       return { ok: true, agent: idleAgentInGuild };
     }
 
     // 4. No idle agents in guild - check if we have any agents at all
     const present = this.countPresentInGuild(guildId);
-    if (present === 0) return { ok: false, reason: "no-agents-in-guild" };
+    if (present === 0) {
+      trackSessionAllocation('assistant', 'no_agents');
+      return { ok: false, reason: "no-agents-in-guild" };
+    }
     
     // All agents are busy
+    trackSessionAllocation('assistant', 'no_free_agents');
     return { ok: false, reason: "no-free-agents" };
   }
 
@@ -1187,8 +1199,25 @@ export class AgentManager {
     
     const musicSessions = this.sessions.size;
     const assistantSessions = this.assistantSessions.size;
+
+    const nowTs = now();
+    const uptimes = agents
+      .map(a => Number(a.startedAt))
+      .filter(ts => Number.isFinite(ts) && ts > 0)
+      .map(ts => Math.max(0, (nowTs - ts) / 1000));
+
+    let uptimeMin = 0;
+    let uptimeMax = 0;
+    let uptimeAvg = 0;
+    if (uptimes.length > 0) {
+      uptimeMin = Math.min(...uptimes);
+      uptimeMax = Math.max(...uptimes);
+      uptimeAvg = uptimes.reduce((sum, cur) => sum + cur, 0) / uptimes.length;
+    }
     
     updateAgentGauges(connected, ready, { music: busyMusic, assistant: busyAssistant });
+    updateAgentUptimeMetrics({ min: uptimeMin, max: uptimeMax, avg: uptimeAvg });
+    updatePoolUtilization({ connected, busyMusic, busyAssistant });
     updateSessionGauges({ music: musicSessions, assistant: assistantSessions });
   }
 

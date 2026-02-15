@@ -11,51 +11,39 @@ alerting:
     - static_configs:
         - targets: []
 
+rule_files:
+  - /etc/prometheus/alerts/chopsticks-alerts.yml
+
 # Scrape configurations
 scrape_configs:
-  # Chopsticks Bot metrics
-  - job_name: 'chopsticks-bot'
+  # Bot legacy health-server metrics
+  - job_name: 'chopsticks-bot-health'
     static_configs:
-      - targets: ['bot:9229'] # Adjust port if needed
+      - targets: ['bot:8080']
         labels:
           service: 'bot'
           app: 'chopsticks'
+    metrics_path: /metrics
 
-  # Chopsticks Dashboard metrics
+  # Bot app metrics (includes pool utilization + agent uptime + deploy counters)
+  - job_name: 'chopsticks-bot-app'
+    static_configs:
+      - targets: ['bot:8080']
+        labels:
+          service: 'bot'
+          app: 'chopsticks'
+    metrics_path: /metrics-app
+
+  # Dashboard metrics
   - job_name: 'chopsticks-dashboard'
     static_configs:
-      - targets: ['chopsticks-bot:8788'] # Dashboard port
+      - targets: ['dashboard:8788']
         labels:
           service: 'dashboard'
           app: 'chopsticks'
+    metrics_path: /metrics
 
-  # PostgreSQL metrics (if using postgres_exporter)
-  - job_name: 'postgres'
-    static_configs:
-      - targets: ['postgres:5432']
-        labels:
-          service: 'database'
-          app: 'chopsticks'
-
-  # Redis metrics (if using redis_exporter)
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis:6379']
-        labels:
-          service: 'cache'
-          app: 'chopsticks'
-
-  # Node exporter for system metrics (optional)
-  - job_name: 'node'
-    static_configs:
-      - targets: ['node-exporter:9100']
-        labels:
-          service: 'system'
-
-  # Lavalink metrics
-  - job_name: 'lavalink'
-    static_configs:
-      - targets: ['lavalink:2333']
-        labels:
-          service: 'audio'
-          app: 'chopsticks'
+  # Optional exporters can be added here when those containers are deployed:
+  # - postgres_exporter
+  # - redis_exporter
+  # - node_exporter

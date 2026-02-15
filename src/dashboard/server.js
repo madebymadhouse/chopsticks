@@ -26,13 +26,36 @@ import { dashboardLogger } from "../utils/modernLogger.js";
 import { metricsHandler, healthHandler } from "../utils/metrics.js";
 import { getFunCatalog, randomFunFromRuntime, renderFunFromRuntime, resolveVariantId } from "../fun/runtime.js";
 import Joi from "joi";
+import { generateCorrelationId } from "../utils/logger.js";
+import { installProcessSafety } from "../utils/processSafety.js";
 
 const app = express();
+installProcessSafety("dashboard", dashboardLogger);
 
 // Apply modern security middleware FIRST
 applySecurityMiddleware(app);
 
 app.use(express.json({ limit: "200kb" }));
+app.use((req, res, next) => {
+  const requestId = String(req.headers["x-correlation-id"] || generateCorrelationId());
+  const startedAt = Date.now();
+  req.requestId = requestId;
+  res.setHeader("x-correlation-id", requestId);
+  dashboardLogger.info({ requestId, method: req.method, path: req.path }, "dashboard request");
+  res.on("finish", () => {
+    dashboardLogger.info(
+      {
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - startedAt
+      },
+      "dashboard response"
+    );
+  });
+  next();
+});
 
 // Expose metrics and health endpoints (no auth needed for Prometheus)
 app.get("/metrics", metricsHandler);

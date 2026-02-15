@@ -39,8 +39,11 @@ import { parsePrefixArgs, resolveAliasedCommand, suggestCommandNames } from "./p
 import { loadGuildData } from "./utils/storage.js";
 import { addCommandLog } from "./utils/commandlog.js";
 import { botLogger } from "./utils/modernLogger.js";
-import { trackCommand } from "./utils/metrics.js";
+import { trackCommand, trackRateLimit } from "./utils/metrics.js";
 import { buildErrorEmbed, replyInteraction, replyInteractionIfFresh } from "./utils/interactionReply.js";
+import { generateCorrelationId } from "./utils/logger.js";
+import { claimIdempotencyKey } from "./utils/idempotency.js";
+import { installProcessSafety } from "./utils/processSafety.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -57,6 +60,8 @@ const client = new Client({
     GatewayIntentBits.GuildIntegrations
   ]
 });
+
+installProcessSafety("chopsticks-bot", botLogger);
 
 global.client = client;
 client.commands = new Collection();
@@ -178,6 +183,26 @@ function authenticateDevApi(req, res, next) {
 }
 
 devApiApp.use(express.json());
+devApiApp.use((req, res, next) => {
+  const requestId = String(req.headers["x-correlation-id"] || generateCorrelationId());
+  const startedAt = Date.now();
+  req.requestId = requestId;
+  res.setHeader("x-correlation-id", requestId);
+  botLogger.info({ requestId, method: req.method, path: req.path }, "Dev API request");
+  res.on("finish", () => {
+    botLogger.info(
+      {
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - startedAt
+      },
+      "Dev API response"
+    );
+  });
+  next();
+});
 
 // Apply authentication only if credentials are set
 if (!DEV_API_USERNAME || !DEV_API_PASSWORD) {
@@ -472,6 +497,23 @@ client.once(Events.ClientReady, async () => {
 /* ===================== PREFIX COMMANDS ===================== */
 
 const prefixCommands = await getPrefixCommands();
+const SLASH_RATE_LIMIT_PER_USER = Math.max(1, Math.trunc(Number(process.env.RATE_LIMIT_PER_USER || 12)));
+const SLASH_RATE_LIMIT_WINDOW_SEC = Math.max(1, Math.trunc(Number(process.env.RATE_LIMIT_WINDOW_SEC || 10)));
+const MUTATION_COMMANDS = new Set([
+  "daily",
+  "work",
+  "pay",
+  "bank",
+  "gather",
+  "use",
+  "warn",
+  "timeout",
+  "ban",
+  "kick",
+  "purge",
+  "pools",
+  "agents"
+]);
 
 client.on(Events.MessageCreate, async message => {
   if (message.author?.bot) return;
@@ -649,13 +691,53 @@ client.on(Events.InteractionCreate, async interaction => {
 
   const commandName = interaction.commandName;
   const startTime = Date.now();
-  console.log(`[command:${commandName}] Received from user ${interaction.user.id} in guild ${interaction.guildId}`);
+  const requestId = interaction.id || generateCorrelationId();
+  const commandLog = botLogger.child({
+    requestId,
+    commandName,
+    userId: interaction.user.id,
+    guildId: interaction.guildId
+  });
+  commandLog.info("Command received");
 
   const command = client.commands.get(commandName);
 
   if (!command) {
-    console.error(`No command matching ${commandName} was found.`);
+    commandLog.warn("No matching command found");
     return;
+  }
+
+  try {
+    const rl = await checkRateLimit(
+      `slash:${interaction.user.id}:${commandName}`,
+      SLASH_RATE_LIMIT_PER_USER,
+      SLASH_RATE_LIMIT_WINDOW_SEC
+    );
+    if (!rl.ok) {
+      trackRateLimit("command");
+      await replyInteraction(interaction, {
+        content: `Rate limited. Try again in about ${rl.resetIn}s.`
+      });
+      commandLog.warn({ resetInSec: rl.resetIn }, "Slash command rate limited");
+      return;
+    }
+  } catch (error) {
+    commandLog.warn({ error: error?.message ?? String(error) }, "Rate limiter backend error; continuing");
+  }
+
+  if (MUTATION_COMMANDS.has(commandName)) {
+    try {
+      const first = await claimIdempotencyKey(`interaction:${interaction.id}`, 300);
+      if (!first) {
+        commandLog.warn("Duplicate mutation interaction ignored by idempotency guard");
+        await replyInteractionIfFresh(interaction, {
+          content: "Duplicate request ignored."
+        });
+        return;
+      }
+    } catch (error) {
+      commandLog.warn({ error: error?.message ?? String(error) }, "Idempotency backend error; continuing");
+    }
   }
 
   const gate = await canRunCommand(interaction, commandName, command.meta || {});
@@ -678,18 +760,15 @@ client.on(Events.InteractionCreate, async interaction => {
     // Track successful command execution
     const duration = Date.now() - startTime;
     trackCommand(commandName, duration, "success");
-    botLogger.info({ commandName, duration }, "Command executed successfully");
+    commandLog.info({ duration }, "Command executed successfully");
     
   } catch (error) {
     const duration = Date.now() - startTime;
     trackCommand(commandName, duration, "error");
     
-    botLogger.error({ 
-      commandName, 
+    commandLog.error({
       error: error.message, 
       stack: error.stack,
-      userId: interaction.user.id,
-      guildId: interaction.guildId
     }, "Command execution failed");
     
     const errorMsg = process.env.NODE_ENV === 'development' 
@@ -701,12 +780,17 @@ client.on(Events.InteractionCreate, async interaction => {
         embeds: [buildErrorEmbed(errorMsg)]
       });
     } catch (replyError) {
-      botLogger.error({ commandName, error: replyError.message }, "Failed to send error response");
+      commandLog.error({ error: replyError.message }, "Failed to send error response");
     }
   }
 });
 
 /* ===================== LOGIN ===================== */
 
-if (!process.env.DISCORD_TOKEN) throw new Error("DISCORD_TOKEN missing");
-await client.login(process.env.DISCORD_TOKEN);
+const skipDiscordLogin = String(process.env.CI_SKIP_DISCORD_LOGIN || "false").toLowerCase() === "true";
+if (skipDiscordLogin) {
+  botLogger.warn("CI_SKIP_DISCORD_LOGIN=true - starting control plane without Discord gateway login");
+} else {
+  if (!process.env.DISCORD_TOKEN) throw new Error("DISCORD_TOKEN missing");
+  await client.login(process.env.DISCORD_TOKEN);
+}

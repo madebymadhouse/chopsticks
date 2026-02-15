@@ -209,6 +209,7 @@ export function createDebugDashboard(agentManager) {
     <pre>
 GET  /healthz       - Health check
 GET  /metrics       - Prometheus metrics
+GET  /metrics-app   - App metrics (agent lifecycle/utilization)
 GET  /debug         - Debug info (JSON)
 GET  /debug/dashboard - This dashboard (HTML)
     </pre>
