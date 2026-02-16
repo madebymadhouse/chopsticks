@@ -694,7 +694,11 @@ client.on(Events.MessageCreate, async message => {
 client.on(Events.InteractionCreate, async interaction => {
   patchInteractionUiMethods(interaction);
 
-  if (interaction.isStringSelectMenu?.() || interaction.isRoleSelectMenu?.()) {
+  if (
+    interaction.isStringSelectMenu?.() ||
+    interaction.isRoleSelectMenu?.() ||
+    interaction.isUserSelectMenu?.()
+  ) {
     try {
       if (await handleAgentsSelect(interaction)) return;
       if (await handlePoolsSelect(interaction)) return;

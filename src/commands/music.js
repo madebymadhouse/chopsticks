@@ -12,7 +12,8 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   PermissionsBitField,
-  ChannelType
+  ChannelType,
+  UserSelectMenuBuilder
 } from "discord.js";
 import {
   ensureSessionAgent,
@@ -459,7 +460,54 @@ function normalizePlaylistsConfig(data) {
   cfg.maxPlaylists = Math.max(1, Math.min(100, Math.trunc(cfg.maxPlaylists)));
   cfg.playlists ??= {};
   cfg.channelBindings ??= {};
+
+  // Normalize playlist objects (additive/back-compat).
+  for (const [pid, plRaw] of Object.entries(cfg.playlists)) {
+    const pl = plRaw || {};
+    pl.id = pl.id || pid;
+    pl.name = String(pl.name || pl.id || "").trim().slice(0, 40) || pl.id;
+    pl.createdBy = String(pl.createdBy || "");
+    pl.createdAt = Number(pl.createdAt || 0) || 0;
+    pl.updatedAt = Number(pl.updatedAt || 0) || pl.createdAt || 0;
+    pl.channelId = pl.channelId ? String(pl.channelId) : null;
+    pl.visibility = String(pl.visibility || "guild"); // "guild" | "collaborators"
+    pl.collaborators = Array.isArray(pl.collaborators) ? pl.collaborators.map(String) : [];
+    pl.collaborators = Array.from(new Set(pl.collaborators.filter(Boolean))).slice(0, 50);
+    pl.perms ??= {};
+    pl.perms.read = String(pl.perms.read || pl.visibility || "guild"); // mirror visibility
+    pl.perms.write = String(pl.perms.write || "guild"); // "guild" | "collaborators" | "owner"
+    pl.panel ??= null; // { channelId, messageId, pinned }
+    pl.items = Array.isArray(pl.items) ? pl.items : [];
+    cfg.playlists[pid] = pl;
+  }
   return cfg;
+}
+
+function canManagePlaylist(interaction, playlist) {
+  if (!interaction || !playlist) return false;
+  const userId = interaction.user?.id;
+  if (!userId) return false;
+  const isAdmin = interaction.memberPermissions?.has?.(PermissionFlagsBits.ManageGuild);
+  if (isAdmin) return true;
+  if (String(playlist.createdBy || "") === userId) return true;
+  const collabs = new Set(Array.isArray(playlist.collaborators) ? playlist.collaborators.map(String) : []);
+  return collabs.has(userId);
+}
+
+function canReadPlaylist(interaction, playlist) {
+  if (!interaction || !playlist) return false;
+  const mode = String(playlist?.perms?.read || playlist.visibility || "guild");
+  if (mode === "guild") return true;
+  return canManagePlaylist(interaction, playlist);
+}
+
+function canWritePlaylist(interaction, playlist) {
+  if (!interaction || !playlist) return false;
+  const mode = String(playlist?.perms?.write || "guild");
+  if (mode === "guild") return true;
+  if (mode === "owner") return String(playlist.createdBy || "") === interaction.user?.id || interaction.memberPermissions?.has?.(PermissionFlagsBits.ManageGuild);
+  // collaborators
+  return canManagePlaylist(interaction, playlist);
 }
 
 function getPlaylistSummary(cfg) {
@@ -489,14 +537,91 @@ function buildPlaylistPanelEmbed(cfg) {
     {
       name: "How It Works",
       value:
-        "Bind a text channel to a playlist, then drop audio files or links in that channel.\n" +
-        "Users can browse and play from playlists with dropdowns (no typing).",
+        "1) Create a playlist.\n" +
+        "2) Bind a **drop channel** (text channel).\n" +
+        "3) Drop audio files or links in that channel.\n" +
+        "4) Users press **Playlists** in the Music Queue UI to browse and queue tracks.",
       inline: false
     },
     { name: "Recent Playlists", value: lines.join("\n"), inline: false }
   ];
 
   return makeEmbed("Music Playlists", "Admin panel for playlist channels + collaboration.", fields, null, null, QUEUE_COLOR);
+}
+
+function describePlaylistPerms(pl) {
+  const read = String(pl?.perms?.read || pl?.visibility || "guild");
+  const write = String(pl?.perms?.write || "guild");
+  const readLabel = read === "collaborators" ? "Collaborators" : "Server";
+  const writeLabel = write === "owner" ? "Owner/Admin" : (write === "collaborators" ? "Collaborators" : "Server");
+  return { read, write, readLabel, writeLabel };
+}
+
+function buildPlaylistDetailEmbed(pl) {
+  const { readLabel, writeLabel } = describePlaylistPerms(pl);
+  const collabs = Array.isArray(pl?.collaborators) ? pl.collaborators : [];
+  const fields = [
+    { name: "Drop Channel", value: pl?.channelId ? `<#${pl.channelId}>` : "(not bound)", inline: true },
+    { name: "Read", value: readLabel, inline: true },
+    { name: "Write", value: writeLabel, inline: true },
+    { name: "Collaborators", value: collabs.length ? collabs.map(id => `<@${id}>`).join(", ") : "(none)", inline: false },
+    { name: "Panel Message", value: pl?.panel?.messageId ? `Enabled in <#${pl.panel.channelId}>` : "(not set)", inline: false }
+  ];
+  return makeEmbed("Playlist Settings", `**${pl?.name || pl?.id}**`, fields, null, null, QUEUE_COLOR);
+}
+
+function buildPlaylistPanelMessageEmbed(pl) {
+  const items = Array.isArray(pl?.items) ? pl.items : [];
+  const recent = items
+    .slice()
+    .sort((a, b) => Number(b?.addedAt || 0) - Number(a?.addedAt || 0))
+    .slice(0, 6);
+  const lines = recent.length
+    ? recent.map((it, i) => {
+        const title = truncate(playlistItemLabel(it), 64);
+        const by = it?.addedBy ? `<@${it.addedBy}>` : "unknown";
+        return `${i + 1}. ${title} • ${by}`;
+      }).join("\n")
+    : "Drop audio files or links in the drop channel to add tracks.";
+  const { readLabel, writeLabel } = describePlaylistPerms(pl);
+  const fields = [
+    { name: "Drop Channel", value: pl?.channelId ? `<#${pl.channelId}>` : "(not bound)", inline: true },
+    { name: "Items", value: String(items.length), inline: true },
+    { name: "Access", value: `Read: ${readLabel}\nWrite: ${writeLabel}`, inline: true },
+    { name: "Recently Added", value: lines, inline: false }
+  ];
+  const footer = pl?.updatedAt
+    ? { text: `Updated <t:${Math.floor(Number(pl.updatedAt) / 1000)}:R>` }
+    : null;
+  return makeEmbed("Playlist", `**${pl?.name || pl?.id}**`, fields, null, null, QUEUE_COLOR, footer);
+}
+
+function buildPlaylistPanelMessageComponents(playlistId) {
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`mplpanel:open:${playlistId}`).setLabel("Browse").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`mplpanel:queue_random:${playlistId}`).setLabel("Queue Random").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`mplpanel:refresh:${playlistId}`).setLabel("Refresh").setStyle(ButtonStyle.Secondary)
+  );
+  return [row];
+}
+
+async function tryUpdatePlaylistPanelMessage(guild, guildData, playlistId) {
+  try {
+    if (!guild || !guildData?.music?.playlists) return;
+    const cfg = normalizePlaylistsConfig(guildData);
+    const pl = cfg.playlists?.[playlistId] ?? null;
+    if (!pl?.panel?.channelId || !pl?.panel?.messageId) return;
+    const ch = guild.channels.cache.get(pl.panel.channelId);
+    if (!ch?.isTextBased?.()) return;
+    const msg = await ch.messages.fetch(pl.panel.messageId).catch(() => null);
+    if (!msg) return;
+    await msg.edit({
+      embeds: [buildPlaylistPanelMessageEmbed(pl)],
+      components: buildPlaylistPanelMessageComponents(pl.id)
+    }).catch(() => {});
+  } catch (err) {
+    console.error("[music:playlists] update panel failed:", err?.message ?? err);
+  }
 }
 
 function buildPlaylistPanelComponents(cfg, userId) {
@@ -506,13 +631,16 @@ function buildPlaylistPanelComponents(cfg, userId) {
 
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:create`).setLabel("Create").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:bind`).setLabel("Bind Channel").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:rename`).setLabel("Rename").setStyle(ButtonStyle.Secondary).setDisabled(playlists.length === 0),
-    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:clear`).setLabel("Clear Items").setStyle(ButtonStyle.Secondary).setDisabled(playlists.length === 0),
-    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:delete`).setLabel("Delete").setStyle(ButtonStyle.Danger).setDisabled(playlists.length === 0)
+    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:bind`).setLabel("Bind Drop Channel").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:panelmsg`).setLabel("Panel Message").setStyle(ButtonStyle.Secondary).setDisabled(playlists.length === 0),
+    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:collabs`).setLabel("Collaborators").setStyle(ButtonStyle.Secondary).setDisabled(playlists.length === 0),
+    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:perms`).setLabel("Permissions").setStyle(ButtonStyle.Secondary).setDisabled(playlists.length === 0)
   );
 
   const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:rename`).setLabel("Rename").setStyle(ButtonStyle.Secondary).setDisabled(playlists.length === 0),
+    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:clear`).setLabel("Clear Items").setStyle(ButtonStyle.Secondary).setDisabled(playlists.length === 0),
+    new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:delete`).setLabel("Delete").setStyle(ButtonStyle.Danger).setDisabled(playlists.length === 0),
     new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:refresh`).setLabel("Refresh").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`musicpl:panel:${userId}:close`).setLabel("Close").setStyle(ButtonStyle.Secondary)
   );
@@ -536,22 +664,39 @@ function buildPlaylistPanelComponents(cfg, userId) {
 function buildPlaylistBrowserEmbed(cfg, state, playlist) {
   const plName = playlist?.name || playlist?.id || "Playlist";
   const chLine = playlist?.channelId ? `<#${playlist.channelId}>` : "(no drop channel)";
-  const items = Array.isArray(playlist?.items) ? playlist.items : [];
-  const top = items.slice(0, 10);
-  const lines = top.map((it, idx) => {
-    const title = truncate(it?.title || (it?.type === "url" ? "Link" : "Audio"), 64);
+  const sortKey = normalizeSortKey(state?.sortKey);
+  const query = normalizeQuery(state?.query);
+  const view = buildPlaylistViewItems(playlist, { query, sortKey });
+  const total = view.length;
+  const pageSize = 25;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.max(0, Math.min(Number(state?.page || 0) || 0, totalPages - 1));
+  const start = page * pageSize;
+  const end = Math.min(total, start + pageSize);
+  const slice = view.slice(start, Math.min(end, start + 8));
+  const lines = slice.map((it, idx) => {
+    const title = truncate(playlistItemLabel(it), 64);
     const by = it?.addedBy ? `<@${it.addedBy}>` : "unknown";
-    return `${idx + 1}. ${title} • ${by}`;
+    return `${start + idx + 1}. ${title} • ${by}`;
   });
   const fields = [
     { name: "Playlist", value: `**${plName}**`, inline: true },
     { name: "Drop Channel", value: chLine, inline: true },
-    { name: "Items", value: String(items.length), inline: true }
+    { name: "Items", value: String(total), inline: true }
   ];
   const note = state?.voiceChannelId ? `Voice: <#${state.voiceChannelId}>` : "Join a voice channel to play.";
+  const sortLabel = ({
+    newest: "Newest",
+    oldest: "Oldest",
+    title_az: "Title A-Z",
+    title_za: "Title Z-A",
+    addedby_az: "Added by",
+    type: "Type"
+  })[sortKey] || "Newest";
   const desc =
     `${note}\n` +
-    "Select a playlist and track with the dropdowns, then press **Queue**.";
+    `Sort: **${sortLabel}**${query ? ` • Search: \`${query}\`` : ""} • Page: **${page + 1}/${totalPages}**\n` +
+    "Pick a playlist and track with the dropdowns, then press **Queue**.";
   if (!lines.length) {
     fields.push({
       name: "Tracks",
@@ -559,29 +704,99 @@ function buildPlaylistBrowserEmbed(cfg, state, playlist) {
       inline: false
     });
   } else {
-    fields.push({ name: "Tracks (latest)", value: lines.join("\n"), inline: false });
+    fields.push({ name: `Tracks (${start + 1}-${end} of ${total})`, value: lines.join("\n"), inline: false });
   }
 
   return makeEmbed("Music Playlists", desc, fields, null, null, QUEUE_COLOR);
 }
 
-function buildPlaylistBrowserComponents(cfg, uiKey, playlistId, trackIdx, userId) {
+function normalizeSortKey(value) {
+  const v = String(value || "newest");
+  const allowed = new Set(["newest", "oldest", "title_az", "title_za", "addedby_az", "type"]);
+  return allowed.has(v) ? v : "newest";
+}
+
+function normalizeQuery(value) {
+  const q = String(value || "").trim();
+  if (!q) return "";
+  return q.slice(0, 60);
+}
+
+function playlistItemLabel(it) {
+  const base = String(it?.title || (it?.type === "url" ? "Link" : "Audio"));
+  return base.slice(0, 100) || "Item";
+}
+
+function buildPlaylistViewItems(playlist, { query, sortKey } = {}) {
+  const items = Array.isArray(playlist?.items) ? playlist.items.slice() : [];
+  const q = normalizeQuery(query).toLowerCase();
+  let filtered = items;
+  if (q) {
+    filtered = items.filter(it => {
+      const t = String(it?.title || "").toLowerCase();
+      const u = String(it?.url || "").toLowerCase();
+      return t.includes(q) || u.includes(q);
+    });
+  }
+
+  const sort = normalizeSortKey(sortKey);
+  const safeStr = (s) => String(s || "").toLowerCase();
+  filtered.sort((a, b) => {
+    const at = Number(a?.addedAt || 0);
+    const bt = Number(b?.addedAt || 0);
+    if (sort === "newest") return (bt - at) || String(a?.id || "").localeCompare(String(b?.id || ""));
+    if (sort === "oldest") return (at - bt) || String(a?.id || "").localeCompare(String(b?.id || ""));
+    if (sort === "title_az") return safeStr(a?.title).localeCompare(safeStr(b?.title)) || (bt - at);
+    if (sort === "title_za") return safeStr(b?.title).localeCompare(safeStr(a?.title)) || (bt - at);
+    if (sort === "addedby_az") return safeStr(a?.addedBy).localeCompare(safeStr(b?.addedBy)) || (bt - at);
+    if (sort === "type") return safeStr(a?.type).localeCompare(safeStr(b?.type)) || (bt - at);
+    return (bt - at) || String(a?.id || "").localeCompare(String(b?.id || ""));
+  });
+
+  return filtered;
+}
+
+function buildPlaylistBrowserComponentsV2(cfg, uiKey, state, interaction) {
+  const userId = interaction.user.id;
   const playlists = Object.values(cfg.playlists || {})
+    .filter(pl => canReadPlaylist(interaction, pl))
     .sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")))
     .slice(0, 25);
   const plOpts = playlists.map(pl => ({
     label: truncate(pl.name || pl.id, 100),
     value: pl.id,
-    description: truncate(pl.channelId ? `Drop: #${pl.channelId}` : "No drop channel", 100)
+    description: truncate(pl.channelId ? "Has drop channel" : "No drop channel", 100)
   }));
 
-  const selectedPl = cfg.playlists?.[playlistId] ?? playlists[0] ?? null;
-  const items = Array.isArray(selectedPl?.items) ? selectedPl.items : [];
-  const trackOpts = items.slice(0, 25).map((it, idx) => ({
-    label: truncate(it?.title || (it?.type === "url" ? "Link" : "Audio"), 100),
-    value: String(idx),
-    description: truncate(it?.addedBy ? `Added by ${it.addedBy}` : "", 100)
-  }));
+  const selectedPlaylistId = String(state?.selectedPlaylistId || playlists[0]?.id || "");
+  const selectedPl = cfg.playlists?.[selectedPlaylistId] ?? playlists[0] ?? null;
+  const canManage = selectedPl ? canManagePlaylist(interaction, selectedPl) : false;
+  const sortKey = normalizeSortKey(state?.sortKey);
+  const query = normalizeQuery(state?.query);
+  const view = buildPlaylistViewItems(selectedPl, { query, sortKey });
+  const total = view.length;
+  const pageSize = 25;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.max(0, Math.min(Number(state?.page || 0) || 0, totalPages - 1));
+  const start = page * pageSize;
+  const end = Math.min(total, start + pageSize);
+  const pageItems = view.slice(start, end);
+
+  let selectedItemId = String(state?.selectedItemId || "");
+  if (selectedItemId && !view.some(it => String(it?.id || "") === selectedItemId)) selectedItemId = "";
+  if (!selectedItemId && pageItems[0]?.id) selectedItemId = String(pageItems[0].id);
+
+  const sortMenu = new StringSelectMenuBuilder()
+    .setCustomId(`mplsel:sort:${uiKey}:${userId}`)
+    .setPlaceholder("Sort")
+    .addOptions(
+      { label: "Newest", value: "newest" },
+      { label: "Oldest", value: "oldest" },
+      { label: "Title A-Z", value: "title_az" },
+      { label: "Title Z-A", value: "title_za" },
+      { label: "Added by", value: "addedby_az" },
+      { label: "Type", value: "type" }
+    );
 
   const rows = [];
   rows.push(
@@ -589,16 +804,23 @@ function buildPlaylistBrowserComponents(cfg, uiKey, playlistId, trackIdx, userId
       new StringSelectMenuBuilder()
         .setCustomId(`mplsel:pl:${uiKey}:${userId}`)
         .setPlaceholder("Choose a playlist")
-        .addOptions(plOpts)
+        .addOptions(plOpts.length ? plOpts : [{ label: "No accessible playlists", value: "none" }])
     )
   );
-  if (trackOpts.length) {
+  rows.push(new ActionRowBuilder().addComponents(sortMenu));
+
+  if (pageItems.length) {
+    const opts = pageItems.map(it => ({
+      label: truncate(playlistItemLabel(it), 100),
+      value: String(it.id),
+      description: truncate(it?.addedBy ? `Added by ${it.addedBy}` : "", 100)
+    }));
     rows.push(
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId(`mplsel:tr:${uiKey}:${userId}`)
-          .setPlaceholder("Choose a track")
-          .addOptions(trackOpts)
+          .setCustomId(`mplsel:item:${uiKey}:${userId}`)
+          .setPlaceholder(`Choose a track (${start + 1}-${end} of ${total})`)
+          .addOptions(opts)
       )
     );
   }
@@ -606,16 +828,27 @@ function buildPlaylistBrowserComponents(cfg, uiKey, playlistId, trackIdx, userId
   const base = `mplbtn:${uiKey}:${userId}`;
   rows.push(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`${base}:queue`).setLabel("Queue").setStyle(ButtonStyle.Primary).setDisabled(items.length === 0),
-      new ButtonBuilder().setCustomId(`${base}:refresh`).setLabel("Refresh").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`${base}:open_queue`).setLabel("Open Queue").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`${base}:prev`).setLabel("Prev").setStyle(ButtonStyle.Secondary).setDisabled(page <= 0),
+      new ButtonBuilder().setCustomId(`${base}:next`).setLabel("Next").setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages - 1),
+      new ButtonBuilder().setCustomId(`${base}:search`).setLabel("Search").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`${base}:clear_search`).setLabel("Clear").setStyle(ButtonStyle.Secondary).setDisabled(!query)
+    )
+  );
+
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`${base}:queue`).setLabel("Queue").setStyle(ButtonStyle.Primary).setDisabled(total === 0),
+      new ButtonBuilder().setCustomId(`${base}:remove`).setLabel("Remove").setStyle(ButtonStyle.Secondary).setDisabled(!canManage || total === 0 || !selectedItemId),
+      new ButtonBuilder().setCustomId(`${base}:replace`).setLabel("Replace URL").setStyle(ButtonStyle.Secondary).setDisabled(!canManage || total === 0 || !selectedItemId),
+      new ButtonBuilder().setCustomId(`${base}:open_queue`).setLabel("Queue UI").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`${base}:close`).setLabel("Close").setStyle(ButtonStyle.Danger)
     )
   );
-  return rows;
+
+  return { rows, derived: { selectedPlaylistId: selectedPl?.id || selectedPlaylistId, selectedItemId, sortKey, query, page, total, totalPages } };
 }
 
-async function openPlaylistBrowser(interaction, { voiceChannelId = null } = {}) {
+async function openPlaylistBrowser(interaction, { voiceChannelId = null, presetPlaylistId = null } = {}) {
   const guildId = interaction.guildId;
   if (!guildId) {
     await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Server context required.", [], null, null, 0xFF0000)] }).catch(() => {});
@@ -633,17 +866,32 @@ async function openPlaylistBrowser(interaction, { voiceChannelId = null } = {}) 
     return;
   }
 
+  const preset = cfg.playlists?.[presetPlaylistId] ?? null;
+  const accessible = playlists.filter(pl => canReadPlaylist(interaction, pl));
+  if (!accessible.length) {
+    await interaction.reply({
+      ephemeral: true,
+      embeds: [makeEmbed("Music Playlists", "No accessible playlists.", [], null, null, 0xFF0000)]
+    }).catch(() => {});
+    return;
+  }
+  const first = (preset && canReadPlaylist(interaction, preset)) ? preset : accessible[0];
+
   const uiKey = await setPlaylistUiCache({
     guildId,
     userId: interaction.user.id,
     voiceChannelId,
-    selectedPlaylistId: playlists[0].id,
-    selectedTrackIdx: 0
+    selectedPlaylistId: first.id,
+    selectedItemId: first.items?.[0]?.id ?? "",
+    sortKey: "newest",
+    query: "",
+    page: 0
   });
 
-  const selectedPl = cfg.playlists?.[playlists[0].id] ?? playlists[0];
-  const embed = buildPlaylistBrowserEmbed(cfg, { voiceChannelId }, selectedPl);
-  const components = buildPlaylistBrowserComponents(cfg, uiKey, selectedPl.id, 0, interaction.user.id);
+  const selectedPl = cfg.playlists?.[first.id] ?? first;
+  const embed = buildPlaylistBrowserEmbed(cfg, { voiceChannelId, sortKey: "newest", query: "", page: 0 }, selectedPl);
+  const built = buildPlaylistBrowserComponentsV2(cfg, uiKey, { selectedPlaylistId: selectedPl.id, sortKey: "newest", query: "", page: 0 }, interaction);
+  const components = built.rows;
   const payload = { ephemeral: true, embeds: [embed], components };
   if (interaction.deferred || interaction.replied) return interaction.followUp(payload);
   return interaction.reply(payload);
@@ -671,6 +919,29 @@ async function ingestPlaylistMessage(message, guildData) {
 
   pl.items ??= [];
   const before = pl.items.length;
+
+  // Write permissions (avoid noisy spam; warn at most once/minute per user).
+  const writeMode = String(pl?.perms?.write || "guild");
+  if (writeMode !== "guild") {
+    const userId = message.author?.id;
+    const isAdmin = Boolean(message.member?.permissions?.has?.(PermissionFlagsBits.ManageGuild));
+    const isOwner = userId && String(pl.createdBy || "") === userId;
+    const collabs = new Set(Array.isArray(pl.collaborators) ? pl.collaborators.map(String) : []);
+    const isCollab = userId && collabs.has(userId);
+    const allowed =
+      writeMode === "owner" ? (isAdmin || isOwner) : (isAdmin || isOwner || isCollab);
+    if (!allowed) {
+      try {
+        const rl = await checkRateLimit(`musicpl:deny:${message.guildId}:${playlistId}:${userId}`, 1, 60);
+        if (rl.ok) {
+          await message.reply({
+            embeds: [makeEmbed("Playlist", "You don't have permission to add to this playlist.", [], null, null, 0xFF0000)]
+          }).catch(() => {});
+        }
+      } catch {}
+      return;
+    }
+  }
 
   const newItems = [];
   // Attachments (audio files)
@@ -730,6 +1001,8 @@ async function ingestPlaylistMessage(message, guildData) {
 
   if (pl.items.length !== before) {
     await saveGuildData(message.guildId, guildData).catch(() => {});
+    // If a pinned panel exists, update it.
+    void tryUpdatePlaylistPanelMessage(message.guild, guildData, playlistId).catch(() => {});
   }
 }
 
@@ -1774,6 +2047,88 @@ export async function handleButton(interaction) {
   if (!interaction.isButton?.()) return false;
   const id = String(interaction.customId || "");
 
+  if (id.startsWith("mplpanel:")) {
+    const parts = id.split(":");
+    const action = parts[1] || "";
+    const playlistId = parts[2] || "";
+    const guildId = interaction.guildId;
+    if (!guildId) return true;
+    const data = await loadGuildData(guildId);
+    const cfg = normalizePlaylistsConfig(data);
+    const pl = cfg.playlists?.[playlistId] ?? null;
+    if (!pl) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist", "Playlist not found.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    if (!canReadPlaylist(interaction, pl)) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist", "This playlist is private.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+
+    if (action === "open") {
+      const voiceChannelId = await resolveMemberVoiceId(interaction);
+      await openPlaylistBrowser(interaction, { voiceChannelId, presetPlaylistId: pl.id });
+      return true;
+    }
+
+    if (action === "refresh") {
+      await interaction.deferUpdate().catch(() => {});
+      await interaction.message?.edit?.({
+        embeds: [buildPlaylistPanelMessageEmbed(pl)],
+        components: buildPlaylistPanelMessageComponents(pl.id)
+      }).catch(() => {});
+      return true;
+    }
+
+    if (action === "queue_random") {
+      const items = buildPlaylistViewItems(pl, { query: "", sortKey: "newest" });
+      if (!items.length) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist", "This playlist is empty.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const pick = items[Math.floor(Math.random() * items.length)];
+      const url = String(pick?.url ?? "");
+      if (!/^https?:\/\//i.test(url)) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist", "Selected item URL invalid.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const vcId = await resolveMemberVoiceId(interaction);
+      if (!vcId) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music", "Join a voice channel, then press Queue Random again.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      let config = null;
+      try { config = await getMusicConfig(guildId); } catch {}
+      const alloc = await ensureSessionAgent(guildId, vcId, { textChannelId: interaction.channelId, ownerUserId: interaction.user.id });
+      if (!alloc.ok) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Error", formatMusicError(alloc.reason), [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      try {
+        const result = await sendAgentCommand(alloc.agent, "play", {
+          guildId,
+          voiceChannelId: vcId,
+          textChannelId: interaction.channelId,
+          ownerUserId: interaction.user.id,
+          actorUserId: interaction.user.id,
+          query: url,
+          defaultMode: config?.defaultMode,
+          defaultVolume: config?.defaultVolume,
+          limits: config?.limits,
+          controlMode: config?.controlMode,
+          searchProviders: config?.searchProviders,
+          fallbackProviders: config?.fallbackProviders,
+          requester: buildRequester(interaction.user)
+        });
+        const track = result?.track ?? { title: pick?.title || "Playlist item", uri: url };
+        await interaction.reply({ ephemeral: true, embeds: [buildTrackEmbed(String(result?.action ?? "queued"), track)] }).catch(() => {});
+      } catch (err) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Error", formatMusicError(err), [], null, null, 0xFF0000)] }).catch(() => {});
+      }
+      return true;
+    }
+  }
+
   if (id.startsWith("mplbtn:")) {
     const parts = id.split(":");
     const uiKey = parts[1];
@@ -1783,7 +2138,6 @@ export async function handleButton(interaction) {
       await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Not for you.", [], null, null, 0xFF0000)] }).catch(() => {});
       return true;
     }
-    await interaction.deferUpdate().catch(() => {});
     const state = await getPlaylistUiCache(uiKey);
     if (!state) {
       await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "This playlist panel expired. Re-open it.", [], null, null, 0xFF0000)] }).catch(() => {});
@@ -1799,6 +2153,71 @@ export async function handleButton(interaction) {
       return true;
     }
 
+    // Ensure state defaults
+    const sortKey = normalizeSortKey(state.sortKey);
+    const query = normalizeQuery(state.query);
+    const view = buildPlaylistViewItems(playlist, { query, sortKey });
+    const total = view.length;
+    const pageSize = 25;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    let page = Math.max(0, Math.min(Number(state.page || 0) || 0, totalPages - 1));
+    let selectedItemId = String(state.selectedItemId || "");
+    if (selectedItemId && !view.some(it => String(it?.id || "") === selectedItemId)) selectedItemId = "";
+    if (!selectedItemId && view[0]?.id) selectedItemId = String(view[0].id);
+
+    // Modal actions must not acknowledge the interaction first.
+    if (action === "search") {
+      const modalKey = await setPlaylistModalState({ action: "search", guildId: state.guildId, userId: interaction.user.id, uiKey });
+      const modal = new ModalBuilder().setCustomId(`musicplmodal:${modalKey}`).setTitle("Search Playlist");
+      const qInput = new TextInputBuilder()
+        .setCustomId("query")
+        .setLabel("Search (title or URL)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(60)
+        .setValue(String(query || ""));
+      modal.addComponents(new ActionRowBuilder().addComponents(qInput));
+      await interaction.showModal(modal).catch(() => {});
+      return true;
+    }
+
+    if (action === "replace") {
+      const canManage = canManagePlaylist(interaction, playlist);
+      if (!canManage) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "You don't have permission to edit this playlist.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      if (!selectedItemId) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Pick a track first.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const idx = playlist.items.findIndex(it => String(it?.id || "") === String(selectedItemId));
+      if (idx < 0) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "That track no longer exists.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const modalKey = await setPlaylistModalState({
+        action: "replace",
+        guildId: state.guildId,
+        userId: interaction.user.id,
+        playlistId: playlist.id,
+        itemId: selectedItemId,
+        uiKey
+      });
+      const modal = new ModalBuilder().setCustomId(`musicplmodal:${modalKey}`).setTitle("Replace Track URL");
+      const urlInput = new TextInputBuilder()
+        .setCustomId("url")
+        .setLabel("New URL (http/https)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+        .setMaxLength(200);
+      modal.addComponents(new ActionRowBuilder().addComponents(urlInput));
+      await interaction.showModal(modal).catch(() => {});
+      return true;
+    }
+
+    await interaction.deferUpdate().catch(() => {});
+
     if (action === "close") {
       await interaction.editReply({ embeds: [makeEmbed("Music Playlists", "Closed.", [], null, null, QUEUE_COLOR)], components: [] }).catch(() => {});
       return true;
@@ -1806,8 +2225,28 @@ export async function handleButton(interaction) {
 
     if (action === "refresh") {
       const embed = buildPlaylistBrowserEmbed(cfg, state, playlist);
-      const components = buildPlaylistBrowserComponents(cfg, uiKey, playlist.id, state.selectedTrackIdx, interaction.user.id);
-      await interaction.editReply({ embeds: [embed], components }).catch(() => {});
+      const built = buildPlaylistBrowserComponentsV2(cfg, uiKey, state, interaction);
+      await setCache(`mplui:${uiKey}`, { ...state, ...built.derived }, PLAYLIST_UI_TTL_SEC).catch(() => {});
+      await interaction.editReply({ embeds: [embed], components: built.rows }).catch(() => {});
+      return true;
+    }
+
+    if (action === "prev" || action === "next") {
+      page = action === "prev" ? Math.max(0, page - 1) : Math.min(totalPages - 1, page + 1);
+      const nextState = { ...state, page, sortKey, query, selectedItemId };
+      const embed = buildPlaylistBrowserEmbed(cfg, nextState, playlist);
+      const built = buildPlaylistBrowserComponentsV2(cfg, uiKey, nextState, interaction);
+      await setCache(`mplui:${uiKey}`, { ...nextState, ...built.derived }, PLAYLIST_UI_TTL_SEC).catch(() => {});
+      await interaction.editReply({ embeds: [embed], components: built.rows }).catch(() => {});
+      return true;
+    }
+
+    if (action === "clear_search") {
+      const nextState = { ...state, query: "", page: 0 };
+      const embed = buildPlaylistBrowserEmbed(cfg, nextState, playlist);
+      const built = buildPlaylistBrowserComponentsV2(cfg, uiKey, nextState, interaction);
+      await setCache(`mplui:${uiKey}`, { ...nextState, ...built.derived }, PLAYLIST_UI_TTL_SEC).catch(() => {});
+      await interaction.editReply({ embeds: [embed], components: built.rows }).catch(() => {});
       return true;
     }
 
@@ -1848,14 +2287,12 @@ export async function handleButton(interaction) {
     }
 
     if (action === "queue") {
-      const items = Array.isArray(playlist.items) ? playlist.items : [];
-      if (!items.length) {
+      if (!total) {
         await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "This playlist is empty.", [], null, null, 0xFF0000)] }).catch(() => {});
         return true;
       }
 
-      const idx = Math.max(0, Math.min(items.length - 1, Math.trunc(Number(state.selectedTrackIdx) || 0)));
-      const it = items[idx];
+      const it = view.find(v => String(v?.id || "") === String(selectedItemId || "")) ?? view[0];
       const url = String(it?.url ?? "");
       if (!/^https?:\/\//i.test(url)) {
         await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "That item URL is invalid.", [], null, null, 0xFF0000)] }).catch(() => {});
@@ -1907,6 +2344,38 @@ export async function handleButton(interaction) {
       } catch (err) {
         await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Error", formatMusicError(err), [], null, null, 0xFF0000)] }).catch(() => {});
       }
+      return true;
+    }
+
+    if (action === "remove") {
+      const canManage = canManagePlaylist(interaction, playlist);
+      if (!canManage) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "You don't have permission to edit this playlist.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      if (!selectedItemId) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Pick a track first.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const idx = playlist.items.findIndex(it => String(it?.id || "") === String(selectedItemId));
+      if (idx < 0) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "That track no longer exists.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+
+      const removed = playlist.items.splice(idx, 1)[0];
+      playlist.updatedAt = Date.now();
+      await saveGuildData(state.guildId, data).catch(() => {});
+      await auditLog({ guildId: state.guildId, userId: interaction.user.id, action: "music.playlists.item_remove", details: { playlistId: playlist.id, itemId: selectedItemId } });
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Playlist Updated", `Removed **${playlistItemLabel(removed)}**.`, [], null, null, QUEUE_COLOR)] }).catch(() => {});
+      void tryUpdatePlaylistPanelMessage(interaction.guild, data, playlist.id).catch(() => {});
+
+      // Refresh browser UI.
+      const nextState = { ...state, selectedItemId: "", page: 0 };
+      const embed = buildPlaylistBrowserEmbed(cfg, nextState, playlist);
+      const built = buildPlaylistBrowserComponentsV2(cfg, uiKey, nextState, interaction);
+      await setCache(`mplui:${uiKey}`, { ...nextState, ...built.derived }, PLAYLIST_UI_TTL_SEC).catch(() => {});
+      await interaction.editReply({ embeds: [embed], components: built.rows }).catch(() => {});
       return true;
     }
 
@@ -1986,6 +2455,66 @@ export async function handleButton(interaction) {
     const pl = cfg.playlists?.[selectedId] ?? null;
     if (!pl) {
       await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Selected playlist no longer exists.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+
+    if (action === "collabs") {
+      const collabs = Array.isArray(pl.collaborators) ? pl.collaborators : [];
+      const embed = buildPlaylistDetailEmbed(pl);
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`musicpl:collab:${interaction.user.id}:add:${pl.id}`).setLabel("Add").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`musicpl:collab:${interaction.user.id}:remove:${pl.id}`).setLabel("Remove").setStyle(ButtonStyle.Secondary).setDisabled(collabs.length === 0),
+        new ButtonBuilder().setCustomId(`musicpl:collab:${interaction.user.id}:close:${pl.id}`).setLabel("Close").setStyle(ButtonStyle.Secondary)
+      );
+      await interaction.reply({ ephemeral: true, embeds: [embed], components: [row] }).catch(() => {});
+      return true;
+    }
+
+    if (action === "perms") {
+      const { read, write } = describePlaylistPerms(pl);
+      const readMenu = new StringSelectMenuBuilder()
+        .setCustomId(`musicplsel:perm_read:${interaction.user.id}:${pl.id}`)
+        .setPlaceholder("Who can browse this playlist?")
+        .addOptions(
+          { label: "Server (default)", value: "guild", description: "Anyone in the server can browse" },
+          { label: "Collaborators only", value: "collaborators", description: "Only owner/collabs/admins can browse" }
+        );
+      const writeMenu = new StringSelectMenuBuilder()
+        .setCustomId(`musicplsel:perm_write:${interaction.user.id}:${pl.id}`)
+        .setPlaceholder("Who can add/remove items?")
+        .addOptions(
+          { label: "Server (default)", value: "guild", description: "Anyone can add by dropping in the channel" },
+          { label: "Collaborators", value: "collaborators", description: "Only owner/collabs/admins can add/remove" },
+          { label: "Owner/Admin only", value: "owner", description: "Locked down edits" }
+        );
+      const embed = buildPlaylistDetailEmbed(pl);
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(readMenu), new ActionRowBuilder().addComponents(writeMenu)]
+      }).catch(() => {});
+      return true;
+    }
+
+    if (action === "panelmsg") {
+      const channels = interaction.guild?.channels?.cache
+        ? Array.from(interaction.guild.channels.cache.values())
+            .filter(ch => ch && (ch.type === ChannelType.GuildText || ch.type === ChannelType.GuildAnnouncement))
+            .slice(0, 25)
+        : [];
+      if (!channels.length) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist Panel", "No text channels available.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const opts = channels.map(ch => ({ label: truncate(ch.name, 100), value: ch.id }));
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId(`musicplsel:panel_channel:${interaction.user.id}:${pl.id}`)
+        .setPlaceholder("Choose where to post the playlist panel message")
+        .addOptions(opts);
+      const embed = makeEmbed("Playlist Panel Message", `Post a pinned playlist panel for **${pl.name || pl.id}**.\nUsers will be able to browse and queue tracks from it.`, [
+        { name: "Tip", value: "Post it in your playlist drop channel for the best UX.", inline: false }
+      ], null, null, QUEUE_COLOR);
+      await interaction.reply({ ephemeral: true, embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] }).catch(() => {});
       return true;
     }
 
@@ -2101,6 +2630,65 @@ export async function handleButton(interaction) {
       return true;
     }
     return true;
+  }
+
+  if (id.startsWith("musicpl:collab:")) {
+    const parts = id.split(":");
+    const ownerId = parts[2];
+    const op = parts[3] || "";
+    const playlistId = parts[4] || "";
+    if (ownerId && interaction.user.id !== ownerId) return true;
+    const guildId = interaction.guildId;
+    if (!guildId) return true;
+    const data = await loadGuildData(guildId);
+    const cfg = normalizePlaylistsConfig(data);
+    const pl = cfg.playlists?.[playlistId] ?? null;
+    if (!pl) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Collaborators", "Playlist not found.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    if (!canManagePlaylist(interaction, pl)) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Collaborators", "You don't have permission to edit collaborators.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+
+    if (op === "close") {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Collaborators", "Closed.", [], null, null, QUEUE_COLOR)] }).catch(() => {});
+      return true;
+    }
+
+    if (op === "add") {
+      const menu = new UserSelectMenuBuilder()
+        .setCustomId(`musicpluser:add:${interaction.user.id}:${playlistId}`)
+        .setPlaceholder("Select users to add as collaborators")
+        .setMinValues(1)
+        .setMaxValues(5);
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [makeEmbed("Collaborators", `Add collaborators to **${pl.name || pl.id}**.`, [], null, null, QUEUE_COLOR)],
+        components: [new ActionRowBuilder().addComponents(menu)]
+      }).catch(() => {});
+      return true;
+    }
+
+    if (op === "remove") {
+      const collabs = Array.isArray(pl.collaborators) ? pl.collaborators : [];
+      if (!collabs.length) {
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Collaborators", "No collaborators to remove.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const opts = collabs.slice(0, 25).map(uid => ({ label: truncate(uid, 100), value: uid }));
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId(`musicplsel:collab_rm:${interaction.user.id}:${playlistId}`)
+        .setPlaceholder("Select a collaborator to remove")
+        .addOptions(opts);
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [makeEmbed("Collaborators", `Remove a collaborator from **${pl.name || pl.id}**.`, [], null, null, QUEUE_COLOR)],
+        components: [new ActionRowBuilder().addComponents(menu)]
+      }).catch(() => {});
+      return true;
+    }
   }
 
   if (id.startsWith("audiodrop:")) {
@@ -2379,8 +2967,44 @@ export async function handleButton(interaction) {
 }
 
 export async function handleSelect(interaction) {
-  if (!interaction.isStringSelectMenu?.()) return false;
+  if (!interaction.isStringSelectMenu?.() && !interaction.isUserSelectMenu?.()) return false;
   const id = String(interaction.customId || "");
+
+  if (interaction.isUserSelectMenu?.() && id.startsWith("musicpluser:")) {
+    await interaction.deferUpdate().catch(() => {});
+    const parts = id.split(":");
+    const op = parts[1]; // add
+    const ownerId = parts[2];
+    const playlistId = parts[3];
+    if (ownerId && interaction.user.id !== ownerId) return true;
+    const guildId = interaction.guildId;
+    if (!guildId) return true;
+
+    const data = await loadGuildData(guildId);
+    const cfg = normalizePlaylistsConfig(data);
+    const pl = cfg.playlists?.[playlistId] ?? null;
+    if (!pl) {
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Collaborators", "Playlist not found.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    if (!canManagePlaylist(interaction, pl)) {
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Collaborators", "You don't have permission to edit collaborators.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+
+    const selected = Array.isArray(interaction.values) ? interaction.values.map(String) : [];
+    const toAdd = selected.filter(Boolean).slice(0, 10);
+    if (!toAdd.length) return true;
+    pl.collaborators = Array.from(new Set([...(pl.collaborators || []).map(String), ...toAdd]));
+    pl.updatedAt = Date.now();
+    await saveGuildData(guildId, data).catch(() => {});
+    await auditLog({ guildId, userId: interaction.user.id, action: "music.playlists.collab_add", details: { playlistId, added: toAdd } });
+    await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Collaborators", "Added.", [
+      { name: "Added", value: toAdd.map(id2 => `<@${id2}>`).join(", "), inline: false }
+    ], null, null, QUEUE_COLOR)] }).catch(() => {});
+    void tryUpdatePlaylistPanelMessage(interaction.guild, data, playlistId).catch(() => {});
+    return true;
+  }
   if (id.startsWith("audiodroppl:")) {
     await interaction.deferUpdate().catch(() => {});
     const parts = id.split(":");
@@ -2410,6 +3034,10 @@ export async function handleSelect(interaction) {
     const pl = cfg.playlists?.[playlistId] ?? null;
     if (!pl) {
       await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Audio Drop", "Playlist not found.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    if (!canWritePlaylist(interaction, pl)) {
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Audio Drop", "You don't have permission to add to this playlist.", [], null, null, 0xFF0000)] }).catch(() => {});
       return true;
     }
 
@@ -2446,6 +3074,7 @@ export async function handleSelect(interaction) {
       pl.items = pl.items.slice(0, cfg2.maxItemsPerPlaylist);
       pl.updatedAt = Date.now();
       await saveGuildData(guildId, data).catch(() => {});
+      void tryUpdatePlaylistPanelMessage(interaction.guild, data, pl.id).catch(() => {});
     }
 
     await interaction.followUp({
@@ -2480,31 +3109,48 @@ export async function handleSelect(interaction) {
 
     const data = await loadGuildData(state.guildId);
     const cfg = normalizePlaylistsConfig(data);
-    let selectedPlaylistId = String(state.selectedPlaylistId || "");
-    let selectedTrackIdx = Math.max(0, Math.trunc(Number(state.selectedTrackIdx) || 0));
+    let next = {
+      ...state,
+      selectedPlaylistId: String(state.selectedPlaylistId || ""),
+      selectedItemId: String(state.selectedItemId || ""),
+      sortKey: normalizeSortKey(state.sortKey),
+      query: normalizeQuery(state.query),
+      page: Math.max(0, Math.trunc(Number(state.page) || 0))
+    };
 
     if (kind === "pl") {
-      selectedPlaylistId = String(interaction.values?.[0] ?? "");
-      selectedTrackIdx = 0;
+      next.selectedPlaylistId = String(interaction.values?.[0] ?? "");
+      next.selectedItemId = "";
+      next.page = 0;
+    } else if (kind === "sort") {
+      next.sortKey = normalizeSortKey(String(interaction.values?.[0] ?? "newest"));
+      next.page = 0;
+      next.selectedItemId = "";
+    } else if (kind === "item") {
+      next.selectedItemId = String(interaction.values?.[0] ?? "");
     } else if (kind === "tr") {
-      selectedTrackIdx = Math.max(0, Math.trunc(Number(interaction.values?.[0] ?? 0)));
+      // Back-compat: old menu used index values
+      const idx = Math.max(0, Math.trunc(Number(interaction.values?.[0] ?? 0)));
+      const playlistTmp = cfg.playlists?.[next.selectedPlaylistId] ?? Object.values(cfg.playlists || {})[0] ?? null;
+      const view = buildPlaylistViewItems(playlistTmp, { query: next.query, sortKey: next.sortKey });
+      if (view[idx]?.id) next.selectedItemId = String(view[idx].id);
     }
 
-    const playlist = cfg.playlists?.[selectedPlaylistId] ?? Object.values(cfg.playlists || {})[0] ?? null;
+    const playlist = cfg.playlists?.[next.selectedPlaylistId] ?? Object.values(cfg.playlists || {})[0] ?? null;
     if (!playlist) {
       await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Playlist not found.", [], null, null, 0xFF0000)] }).catch(() => {});
       return true;
     }
 
-    await setCache(`mplui:${uiKey}`, {
-      ...state,
-      selectedPlaylistId: playlist.id,
-      selectedTrackIdx
-    }, PLAYLIST_UI_TTL_SEC).catch(() => {});
+    if (!canReadPlaylist(interaction, playlist)) {
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "This playlist is private.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
 
-    const embed = buildPlaylistBrowserEmbed(cfg, state, playlist);
-    const components = buildPlaylistBrowserComponents(cfg, uiKey, playlist.id, selectedTrackIdx, interaction.user.id);
-    await interaction.editReply({ embeds: [embed], components }).catch(() => {});
+    const embed = buildPlaylistBrowserEmbed(cfg, next, playlist);
+    const built = buildPlaylistBrowserComponentsV2(cfg, uiKey, next, interaction);
+    await setCache(`mplui:${uiKey}`, { ...next, ...built.derived }, PLAYLIST_UI_TTL_SEC).catch(() => {});
+    await interaction.editReply({ embeds: [embed], components: built.rows }).catch(() => {});
     return true;
   }
 
@@ -2521,6 +3167,81 @@ export async function handleSelect(interaction) {
       const playlistId = String(interaction.values?.[0] ?? "");
       await setPlaylistPanelSelected(guildId, interaction.user.id, playlistId).catch(() => {});
       await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Selected playlist updated.", [], null, null, QUEUE_COLOR)] }).catch(() => {});
+      return true;
+    }
+
+    if (kind === "collab_rm") {
+      const playlistId = parts[3] || "";
+      const targetUserId = String(interaction.values?.[0] ?? "");
+      const data = await loadGuildData(guildId);
+      const cfg = normalizePlaylistsConfig(data);
+      const pl = cfg.playlists?.[playlistId] ?? null;
+      if (!pl) return true;
+      if (!canManagePlaylist(interaction, pl)) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Collaborators", "You don't have permission to edit collaborators.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      pl.collaborators = (pl.collaborators || []).filter(id2 => String(id2) !== targetUserId);
+      pl.updatedAt = Date.now();
+      await saveGuildData(guildId, data).catch(() => {});
+      await auditLog({ guildId, userId: interaction.user.id, action: "music.playlists.collab_remove", details: { playlistId, removed: targetUserId } });
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Collaborators", "Removed.", [], null, null, QUEUE_COLOR)] }).catch(() => {});
+      void tryUpdatePlaylistPanelMessage(interaction.guild, data, playlistId).catch(() => {});
+      return true;
+    }
+
+    if (kind === "perm_read" || kind === "perm_write") {
+      const playlistId = parts[3] || "";
+      const value = String(interaction.values?.[0] ?? "");
+      const data = await loadGuildData(guildId);
+      const cfg = normalizePlaylistsConfig(data);
+      const pl = cfg.playlists?.[playlistId] ?? null;
+      if (!pl) return true;
+      if (!canManagePlaylist(interaction, pl)) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Permissions", "You don't have permission to edit permissions.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      pl.perms ??= {};
+      if (kind === "perm_read") pl.perms.read = value === "collaborators" ? "collaborators" : "guild";
+      if (kind === "perm_write") pl.perms.write = value === "owner" ? "owner" : (value === "collaborators" ? "collaborators" : "guild");
+      pl.updatedAt = Date.now();
+      await saveGuildData(guildId, data).catch(() => {});
+      await auditLog({ guildId, userId: interaction.user.id, action: "music.playlists.perms_update", details: { playlistId, kind, value } });
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Permissions", "Updated.", [], null, null, QUEUE_COLOR)] }).catch(() => {});
+      void tryUpdatePlaylistPanelMessage(interaction.guild, data, playlistId).catch(() => {});
+      return true;
+    }
+
+    if (kind === "panel_channel") {
+      const playlistId = parts[3] || "";
+      const channelId = String(interaction.values?.[0] ?? "");
+      const data = await loadGuildData(guildId);
+      const cfg = normalizePlaylistsConfig(data);
+      const pl = cfg.playlists?.[playlistId] ?? null;
+      if (!pl) return true;
+      if (!canManagePlaylist(interaction, pl)) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Playlist Panel", "You don't have permission to set panel messages.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const guild = interaction.guild;
+      const ch = guild?.channels?.cache?.get(channelId) ?? null;
+      if (!ch?.isTextBased?.()) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Playlist Panel", "Invalid channel.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      const embed = buildPlaylistPanelMessageEmbed(pl);
+      const msg = await ch.send({ embeds: [embed], components: buildPlaylistPanelMessageComponents(pl.id) }).catch(() => null);
+      if (!msg) {
+        await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Playlist Panel", "Failed to post panel message. Check bot permissions.", [], null, null, 0xFF0000)] }).catch(() => {});
+        return true;
+      }
+      // Pin if possible
+      await msg.pin().catch(() => {});
+      pl.panel = { channelId, messageId: msg.id };
+      pl.updatedAt = Date.now();
+      await saveGuildData(guildId, data).catch(() => {});
+      await auditLog({ guildId, userId: interaction.user.id, action: "music.playlists.panel_set", details: { playlistId, channelId, messageId: msg.id } });
+      await interaction.followUp({ ephemeral: true, embeds: [makeEmbed("Playlist Panel", `Panel posted in <#${channelId}>.`, [], null, null, QUEUE_COLOR)] }).catch(() => {});
       return true;
     }
 
@@ -2747,20 +3468,19 @@ export async function handleModal(interaction) {
     return true;
   }
 
-  const name = String(interaction.fields?.getTextInputValue?.("name") ?? "").trim();
-  if (!name) {
-    await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Name is required.", [], null, null, 0xFF0000)] }).catch(() => {});
-    return true;
-  }
-  if (name.length > 40) {
-    await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Name is too long (max 40).", [], null, null, 0xFF0000)] }).catch(() => {});
-    return true;
-  }
-
   const data = await loadGuildData(guildId);
   const cfg = normalizePlaylistsConfig(data);
 
   if (state.action === "create") {
+    const name = String(interaction.fields?.getTextInputValue?.("name") ?? "").trim();
+    if (!name) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Name is required.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    if (name.length > 40) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Name is too long (max 40).", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
     const existing = Object.values(cfg.playlists || {});
     if (existing.length >= cfg.maxPlaylists) {
       await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", `Playlist limit reached (${cfg.maxPlaylists}).`, [], null, null, 0xFF0000)] }).catch(() => {});
@@ -2793,6 +3513,15 @@ export async function handleModal(interaction) {
   }
 
   if (state.action === "rename") {
+    const name = String(interaction.fields?.getTextInputValue?.("name") ?? "").trim();
+    if (!name) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Name is required.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    if (name.length > 40) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Name is too long (max 40).", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
     const playlistId = String(state.playlistId || "");
     const pl = cfg.playlists?.[playlistId] ?? null;
     if (!pl) {
@@ -2807,6 +3536,66 @@ export async function handleModal(interaction) {
     const embed = buildPlaylistPanelEmbed(cfg);
     const components = buildPlaylistPanelComponents(cfg, interaction.user.id);
     await interaction.reply({ ephemeral: true, embeds: [embed], components }).catch(() => {});
+    return true;
+  }
+
+  if (state.action === "search") {
+    const uiKey = String(state.uiKey || "");
+    const ui = await getPlaylistUiCache(uiKey);
+    if (!ui || String(ui.userId) !== interaction.user.id) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "This search expired. Re-open playlists.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    const query = normalizeQuery(String(interaction.fields?.getTextInputValue?.("query") ?? ""));
+    const next = { ...ui, query, page: 0, selectedItemId: "" };
+    await setCache(`mplui:${uiKey}`, next, PLAYLIST_UI_TTL_SEC).catch(() => {});
+    await interaction.reply({
+      ephemeral: true,
+      embeds: [makeEmbed("Music Playlists", "Search saved.\nGo back to your playlist panel and press **Refresh**.", [], null, null, QUEUE_COLOR)]
+    }).catch(() => {});
+    return true;
+  }
+
+  if (state.action === "replace") {
+    const playlistId = String(state.playlistId || "");
+    const itemId = String(state.itemId || "");
+    const uiKey = String(state.uiKey || "");
+    const url = String(interaction.fields?.getTextInputValue?.("url") ?? "").trim();
+    if (!/^https?:\/\//i.test(url)) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "URL must start with http:// or https://", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    const pl = cfg.playlists?.[playlistId] ?? null;
+    if (!pl) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Playlist not found.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    // Permission check
+    if (!(interaction.memberPermissions?.has?.(PermissionFlagsBits.ManageGuild) || String(pl.createdBy) === interaction.user.id || (pl.collaborators || []).includes(interaction.user.id))) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "You don't have permission to edit this playlist.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    const idx = (pl.items || []).findIndex(it => String(it?.id || "") === itemId);
+    if (idx < 0) {
+      await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Music Playlists", "Track not found.", [], null, null, 0xFF0000)] }).catch(() => {});
+      return true;
+    }
+    pl.items[idx].url = url;
+    pl.items[idx].type = "url";
+    pl.items[idx].updatedAt = Date.now();
+    pl.updatedAt = Date.now();
+    await saveGuildData(guildId, data).catch(() => {});
+    await auditLog({ guildId, userId: interaction.user.id, action: "music.playlists.item_replace", details: { playlistId, itemId } });
+    void tryUpdatePlaylistPanelMessage(interaction.guild, data, playlistId).catch(() => {});
+    // Update cached browser state (best-effort). Users can press Refresh in their open panel.
+    const ui = await getPlaylistUiCache(uiKey);
+    if (ui && String(ui.userId) === interaction.user.id) {
+      await setCache(`mplui:${uiKey}`, { ...ui, selectedPlaylistId: playlistId, selectedItemId: itemId }, PLAYLIST_UI_TTL_SEC).catch(() => {});
+    }
+    await interaction.reply({
+      ephemeral: true,
+      embeds: [makeEmbed("Playlist Updated", "Replaced URL.\nGo back to your playlist panel and press **Refresh**.", [], null, null, QUEUE_COLOR)]
+    }).catch(() => {});
     return true;
   }
 
