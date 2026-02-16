@@ -962,7 +962,29 @@ export async function ensureEconomySchema() {
     `CREATE INDEX IF NOT EXISTS idx_collections_user_rarity ON user_collections(user_id, rarity)`,
     `CREATE TABLE IF NOT EXISTS user_streaks (user_id TEXT PRIMARY KEY, daily_streak INT NOT NULL DEFAULT 0, weekly_streak INT NOT NULL DEFAULT 0, last_daily BIGINT, last_weekly BIGINT, longest_daily INT NOT NULL DEFAULT 0, longest_weekly INT NOT NULL DEFAULT 0, streak_multiplier DECIMAL(3,2) NOT NULL DEFAULT 1.00 CHECK (streak_multiplier >= 1.00 AND streak_multiplier <= 5.00))`,
     `CREATE TABLE IF NOT EXISTS transaction_log (id SERIAL PRIMARY KEY, from_user TEXT, to_user TEXT, amount BIGINT NOT NULL, reason TEXT NOT NULL, metadata JSONB DEFAULT '{}', timestamp BIGINT NOT NULL)`,
-    `CREATE INDEX IF NOT EXISTS idx_transactions_time ON transaction_log(timestamp DESC)`
+    `CREATE INDEX IF NOT EXISTS idx_transactions_time ON transaction_log(timestamp DESC)`,
+    `CREATE TABLE IF NOT EXISTS user_profile_privacy (
+      user_id TEXT PRIMARY KEY,
+      show_progress BOOLEAN NOT NULL DEFAULT TRUE,
+      show_economy BOOLEAN NOT NULL DEFAULT TRUE,
+      show_inventory BOOLEAN NOT NULL DEFAULT TRUE,
+      show_usage BOOLEAN NOT NULL DEFAULT TRUE,
+      show_activity BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at BIGINT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_command_stats (
+      user_id TEXT NOT NULL,
+      command TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'slash',
+      ok BIGINT NOT NULL DEFAULT 0,
+      err BIGINT NOT NULL DEFAULT 0,
+      total_ms BIGINT NOT NULL DEFAULT 0,
+      count BIGINT NOT NULL DEFAULT 0,
+      updated_at BIGINT NOT NULL,
+      PRIMARY KEY (user_id, command, source)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_user_command_stats_user ON user_command_stats(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_command_stats_runs ON user_command_stats(user_id, count DESC)`
   ];
   
   for (const query of queries) {

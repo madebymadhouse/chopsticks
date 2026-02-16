@@ -48,6 +48,7 @@ import { buildErrorEmbed, replyInteraction, replyInteractionIfFresh } from "./ut
 import { generateCorrelationId } from "./utils/logger.js";
 import { claimIdempotencyKey } from "./utils/idempotency.js";
 import { installProcessSafety } from "./utils/processSafety.js";
+import { recordUserCommandStat } from "./profile/usage.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -612,8 +613,17 @@ client.on(Events.MessageCreate, async message => {
   const gate = await canRunPrefixCommand(message, cmd.name, cmd);
   if (!gate.ok) return;
 
+  const prefixStartedAt = Date.now();
   try {
     await cmd.execute(message, parts, { prefix, commands: prefixCommands });
+    const duration = Date.now() - prefixStartedAt;
+    void recordUserCommandStat({
+      userId: message.author.id,
+      command: cmd.name,
+      ok: true,
+      durationMs: duration,
+      source: "prefix"
+    }).catch(() => {});
     if (message.guildId) {
       await addCommandLog(message.guildId, {
         name: cmd.name,
@@ -625,6 +635,14 @@ client.on(Events.MessageCreate, async message => {
     }
   } catch (err) {
     console.error(`[prefix:${cmd.name}]`, err);
+    const duration = Date.now() - prefixStartedAt;
+    void recordUserCommandStat({
+      userId: message.author.id,
+      command: cmd.name,
+      ok: false,
+      durationMs: duration,
+      source: "prefix"
+    }).catch(() => {});
     if (message.guildId) {
       await addCommandLog(message.guildId, {
         name: cmd.name,
@@ -771,11 +789,25 @@ client.on(Events.InteractionCreate, async interaction => {
     // Track successful command execution
     const duration = Date.now() - startTime;
     trackCommand(commandName, duration, "success");
+    void recordUserCommandStat({
+      userId: interaction.user.id,
+      command: commandName,
+      ok: true,
+      durationMs: duration,
+      source: "slash"
+    }).catch(() => {});
     commandLog.info({ duration }, "Command executed successfully");
     
   } catch (error) {
     const duration = Date.now() - startTime;
     trackCommand(commandName, duration, "error");
+    void recordUserCommandStat({
+      userId: interaction.user.id,
+      command: commandName,
+      ok: false,
+      durationMs: duration,
+      source: "slash"
+    }).catch(() => {});
     
     commandLog.error({
       error: error.message, 

@@ -133,6 +133,9 @@ Voice lobby system supports:
 - `/inventory`, `/collection`, `/vault` show your progress.
 - `/trivia start` runs a duel against a deployed agent with a lobby + countdown + dropdown answers.
 - `/agent chat` lets users chat with a deployed agent identity (optional local LLM).
+- `/profile` now includes progression, economy, inventory, command usage, and activity sections.
+  - Users can set visibility controls directly in `/profile` (privacy preset + per-section toggles).
+  - Default privacy is show-all.
 
 ## Moderation Hardening
 
