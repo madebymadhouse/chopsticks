@@ -2288,7 +2288,7 @@ export async function handleButton(interaction) {
     }
 
     if (deployParsed.action === "setdefault") {
-      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      if (!canManageGuild(interaction, ownerIds)) {
         await interaction.reply({
           embeds: [buildInfoEmbed("Permission Required", "You need `Manage Server` to set the guild default pool.", Colors.ERROR)],
           flags: MessageFlags.Ephemeral
@@ -2391,7 +2391,7 @@ export async function handleButton(interaction) {
     }
 
     if (advisorParsed.action === "setdefault") {
-      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      if (!canManageGuild(interaction, ownerIds)) {
         await interaction.reply({
           embeds: [buildInfoEmbed("Permission Required", "You need `Manage Server` to set the guild default pool.", Colors.ERROR)],
           flags: MessageFlags.Ephemeral

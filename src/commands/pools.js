@@ -938,13 +938,13 @@ async function handleSelectPool(interaction) {
     });
   }
 
-  // Check if user is guild admin or master
-  if (!isGuildAdmin(interaction.member) && !isMaster(userId)) {
+  // Check if user can manage server or is master.
+  if (!canManageGuild(interaction) && !isMaster(userId)) {
     return interaction.editReply({
       embeds: [
         buildPoolEmbed(
           'Permission Required',
-          'You need Administrator permissions to select a pool for this guild.',
+          'You need `Manage Server` to select a pool for this guild.',
           Colors.ERROR
         )
       ]
@@ -1624,9 +1624,9 @@ export async function handleButton(interaction) {
       });
       return true;
     }
-    if (!isGuildAdmin(interaction.member) && !isMaster(interaction.user.id)) {
+    if (!canManageGuild(interaction) && !isMaster(interaction.user.id)) {
       await interaction.reply({
-        embeds: [buildPoolEmbed('Permission Required', 'You need Administrator to set guild default pool.', Colors.ERROR)],
+        embeds: [buildPoolEmbed('Permission Required', 'You need `Manage Server` to set guild default pool.', Colors.ERROR)],
         flags: MessageFlags.Ephemeral
       });
       return true;

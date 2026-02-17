@@ -33,6 +33,11 @@ const TOPICS = [
     description: "What Chopsticks is and what to do first."
   },
   {
+    key: "v1",
+    label: "V1 Readiness",
+    description: "Deployment checklist + admin diagnostics (in development)."
+  },
+  {
     key: "pools",
     label: "Agent Pools",
     description: "Create pools, add agents, deploy, and scale."
@@ -185,6 +190,118 @@ async function buildQuickstartChecklist(interaction) {
   return lines.slice(0, 12).join("\n").slice(0, 1024);
 }
 
+async function buildV1Readiness(interaction) {
+  if (!interaction.inGuild?.()) return null;
+
+  const guildId = interaction.guildId;
+  const isAdmin = hasManageGuild(interaction);
+  const summary = [];
+  const diagnostics = [];
+
+  summary.push(checklistLine("ok", "Commands: permissions are enforced server-side (buttons, selects, modals)."));
+
+  const me = interaction.guild?.members?.me ?? (await interaction.guild?.members?.fetchMe?.().catch(() => null));
+  if (!me) {
+    summary.push(checklistLine("warn", "Bot membership context unavailable (try Refresh)."));
+  } else {
+    summary.push(checklistLine("ok", "Bot is present in this server."));
+  }
+
+  try {
+    const poolId = await getGuildSelectedPool(guildId);
+    const pool = await fetchPool(poolId).catch(() => null);
+    if (pool) summary.push(checklistLine("ok", `Pool: \`${poolId}\` selected.`));
+    else summary.push(checklistLine("warn", `Pool: \`${poolId}\` selected but not found.`));
+  } catch {
+    summary.push(checklistLine("warn", "Pool: unable to resolve guild default."));
+  }
+
+  try {
+    const mgr = global.agentManager;
+    if (!mgr?.liveAgents?.values) {
+      summary.push(checklistLine("warn", "Agents: controller not ready yet."));
+    } else {
+      let inGuild = 0;
+      let ready = 0;
+      for (const a of mgr.liveAgents.values()) {
+        if (!a?.guildIds?.has?.(guildId)) continue;
+        inGuild++;
+        if (a.ready) ready++;
+      }
+      if (inGuild === 0) summary.push(checklistLine("todo", "Agents: none deployed to this server."));
+      else if (ready === 0) summary.push(checklistLine("warn", `Agents: ${inGuild} present, none ready.`));
+      else summary.push(checklistLine("ok", `Agents: ${ready}/${inGuild} ready.`));
+      summary.push(checklistLine(ready > 0 ? "ok" : "todo", "Music: needs at least 1 ready agent in this server."));
+    }
+  } catch {
+    summary.push(checklistLine("warn", "Agents: unable to read live state."));
+  }
+
+  try {
+    const voice = await getVoiceState(guildId);
+    const lobbies = voice?.lobbies && typeof voice.lobbies === "object" ? Object.entries(voice.lobbies) : [];
+    const enabled = lobbies.filter(([, l]) => l?.enabled).length;
+
+    if (!lobbies.length) summary.push(checklistLine("todo", "VoiceMaster: no lobbies configured."));
+    else if (enabled === 0) summary.push(checklistLine("warn", "VoiceMaster: lobbies configured but none enabled."));
+    else summary.push(checklistLine("ok", `VoiceMaster: ${enabled}/${lobbies.length} lobbies enabled.`));
+
+    // Admin-only diagnostics: check bot perms per lobby category (best-effort).
+    if (isAdmin && me && lobbies.length) {
+      const missing = [];
+      for (const [channelId, lobby] of lobbies.slice(0, 12)) {
+        const catId = lobby?.categoryId;
+        if (!lobby?.enabled) continue;
+        const category =
+          interaction.guild.channels.cache.get(catId) ??
+          (await interaction.guild.channels.fetch(catId).catch(() => null));
+        if (!category) {
+          missing.push(`<#${channelId}>: category missing`);
+          continue;
+        }
+        const perms = category.permissionsFor(me);
+        const req = [
+          ["ViewChannel", PermissionFlagsBits.ViewChannel],
+          ["Connect", PermissionFlagsBits.Connect],
+          ["ManageChannels", PermissionFlagsBits.ManageChannels],
+          ["MoveMembers", PermissionFlagsBits.MoveMembers]
+        ];
+        const miss = req.filter(([, p]) => !perms?.has?.(p)).map(([n]) => n);
+        if (miss.length) missing.push(`<#${channelId}>: missing ${miss.join(", ")}`);
+      }
+      if (missing.length) diagnostics.push(checklistLine("warn", `VoiceMaster diagnostics:\n${missing.slice(0, 6).join("\n")}`));
+      else diagnostics.push(checklistLine("ok", "VoiceMaster diagnostics: bot permissions look good for enabled lobbies."));
+    }
+
+    if (voice) {
+      ensureCustomVcsState(voice);
+      const cfg = getCustomVcConfig(voice);
+      if (!cfg?.enabled) summary.push(checklistLine("todo", "Custom VCs: disabled."));
+      else if (!cfg.categoryId) summary.push(checklistLine("warn", "Custom VCs: enabled but category not set."));
+      else summary.push(checklistLine("ok", "Custom VCs: enabled."));
+
+      if (isAdmin && me && cfg?.enabled && cfg?.categoryId) {
+        const category =
+          interaction.guild.channels.cache.get(cfg.categoryId) ??
+          (await interaction.guild.channels.fetch(cfg.categoryId).catch(() => null));
+        if (!category) diagnostics.push(checklistLine("warn", "Custom VCs diagnostics: category missing."));
+        else {
+          const perms = category.permissionsFor(me);
+          const ok = perms?.has?.(PermissionFlagsBits.ManageChannels);
+          diagnostics.push(checklistLine(ok ? "ok" : "warn", `Custom VCs diagnostics: bot ManageChannels in category: ${ok ? "yes" : "no"}.`));
+        }
+      }
+    }
+  } catch {
+    summary.push(checklistLine("warn", "Voice: unable to read configuration."));
+  }
+
+  return {
+    summary: summary.slice(0, 14).join("\n").slice(0, 1024),
+    diagnostics: diagnostics.length ? diagnostics.join("\n").slice(0, 1024) : null
+  };
+}
+
 function topicContent(topicKey) {
   const inGuildNote = "Tip: run this inside a server for the full UI (deploy planning, invite links, guild defaults).";
 
@@ -237,6 +354,19 @@ function topicContent(topicKey) {
         "**Rules:**",
         "• Private rooms: only guestlist + Voice Mods can join.",
         "• Customs are deleted when the host leaves."
+      ].join("\n")
+    };
+  }
+
+  if (topicKey === "v1") {
+    return {
+      title: "V1 Readiness (In development)",
+      body: [
+        "This page is a **deployment checklist** for public servers.",
+        "",
+        "Use **Refresh** after you deploy agents, configure VoiceMaster, or change categories/permissions.",
+        "",
+        "Admin-only diagnostics will appear when you have `Manage Server`."
       ].join("\n")
     };
   }
@@ -322,6 +452,7 @@ async function buildTutorialEmbed(topicKey, interaction) {
       value: "Some controls require a server context (deploy planning, guild defaults, voice console).",
       inline: false
     });
+    embed.setFooter({ text: "In development" });
   } else if (topicKey === "start") {
     const checklist = await buildQuickstartChecklist(interaction);
     if (checklist) {
@@ -331,6 +462,16 @@ async function buildTutorialEmbed(topicKey, interaction) {
         inline: false
       });
     }
+    embed.setFooter({ text: "In development" });
+  } else if (topicKey === "v1") {
+    const v1 = await buildV1Readiness(interaction);
+    if (v1?.summary) {
+      embed.addFields({ name: "V1 Checklist", value: v1.summary, inline: false });
+    }
+    if (v1?.diagnostics && hasManageGuild(interaction)) {
+      embed.addFields({ name: "Admin Diagnostics", value: v1.diagnostics, inline: false });
+    }
+    embed.setFooter({ text: "In development" });
   }
   return embed;
 }
@@ -383,6 +524,11 @@ function buildTutorialComponents(interaction, userId, topicKey) {
     new ButtonBuilder()
       .setCustomId(uiId("open_customvcs", userId, topicKey))
       .setLabel("Custom VCs")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!inGuild),
+    new ButtonBuilder()
+      .setCustomId(`voiceui:spawn_diag:${userId}:${interaction.guildId || "0"}`)
+      .setLabel("Spawn Diagnostics")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!inGuild)
   );
