@@ -44,13 +44,13 @@ const TOPICS = [
   },
   {
     key: "voice",
-    label: "VoiceMaster",
-    description: "Custom VC creation, ownership, and dashboards."
+    label: "VoiceMaster (Auto Rooms)",
+    description: "Auto temp voice rooms from lobbies + owner dashboards."
   },
   {
     key: "customvcs",
-    label: "Custom VCs",
-    description: "Request custom rooms with guestlists and restrictions."
+    label: "Custom VCs (Panel)",
+    description: "Panel-based on-demand rooms with guestlists (in development)."
   },
   {
     key: "music",
@@ -163,24 +163,24 @@ async function buildQuickstartChecklist(interaction) {
     const lobbies = voice?.lobbies && typeof voice.lobbies === "object" ? Object.values(voice.lobbies) : [];
     const enabled = lobbies.filter(l => l?.enabled).length;
     if (!lobbies.length) {
-      lines.push(checklistLine("todo", "VoiceMaster: no lobbies configured (run `/voice setup`)."));
+      lines.push(checklistLine("todo", "VoiceMaster (auto rooms): no lobbies configured (run `/voice setup`)."));
     } else if (enabled === 0) {
-      lines.push(checklistLine("warn", `VoiceMaster: ${lobbies.length} lobby(s) configured but none enabled.`));
+      lines.push(checklistLine("warn", `VoiceMaster (auto rooms): ${lobbies.length} lobby(s) configured but none enabled.`));
     } else {
-      lines.push(checklistLine("ok", `VoiceMaster: ${enabled}/${lobbies.length} lobby(s) enabled.`));
+      lines.push(checklistLine("ok", `VoiceMaster (auto rooms): ${enabled}/${lobbies.length} lobby(s) enabled.`));
     }
 
     if (voice) {
       ensureCustomVcsState(voice);
       const cfg = getCustomVcConfig(voice);
       if (!cfg?.enabled) {
-        lines.push(checklistLine("todo", "Custom VCs: disabled (admins can enable with `/voice customs_setup enabled:true`)."));
+        lines.push(checklistLine("todo", "Custom VCs (panel rooms): disabled (admins can enable with `/voice customs_setup enabled:true`)."));
       } else if (!cfg.categoryId) {
-        lines.push(checklistLine("warn", "Custom VCs: enabled but category not set (`/voice customs_setup category:#...`)."));
+        lines.push(checklistLine("warn", "Custom VCs (panel rooms): enabled but category not set (`/voice customs_setup category:#...`)."));
       } else if (!cfg.panelMessageId) {
-        lines.push(checklistLine("todo", "Custom VCs: panel not posted yet (`/voice customs_panel`)."));
+        lines.push(checklistLine("todo", "Custom VCs (panel rooms): panel not posted yet (`/voice customs_panel`)."));
       } else {
-        lines.push(checklistLine("ok", "Custom VCs: enabled and panel is set."));
+        lines.push(checklistLine("ok", "Custom VCs (panel rooms): enabled and panel is set."));
       }
     }
   } catch {
@@ -324,7 +324,7 @@ function topicContent(topicKey) {
 
   if (topicKey === "voice") {
     return {
-      title: "Tutorial: VoiceMaster",
+      title: "Tutorial: VoiceMaster (Auto Rooms)",
       body: [
         "VoiceMaster creates **temporary voice rooms** from a lobby and gives owners controls via dashboards.",
         "",
@@ -344,6 +344,8 @@ function topicContent(topicKey) {
       title: "Tutorial: Custom VCs (In development)",
       body: [
         "Custom VCs let members request an on-demand voice channel with controls.",
+        "",
+        "Note: **Custom VCs are separate from VoiceMaster**. You can enable either, both, or neither.",
         "",
         "**Flow:**",
         "1) Use the **Custom VCs** panel (admins can post one with `/voice customs_panel`).",
@@ -434,9 +436,10 @@ function topicContent(topicKey) {
       "You can scale voice/music/game workloads without collapsing everything into one bot identity.",
       "",
       "**Start with this sequence:**",
-      "1) Open **Pools UI** and pick a pool.",
-      "2) Open **Deploy UI** and generate invite links.",
-      "3) Join a VoiceMaster lobby to spawn a room, then open Voice Console.",
+      "1) Admins: run `/setup wizard` for core server modules (welcome/starboard/modlogs/tickets).",
+      "2) Open **Pools UI** and pick a pool.",
+      "3) Admins: open **Deploy UI** and generate invite links for agents.",
+      "4) Voice: pick **VoiceMaster (auto rooms)** and/or **Custom VCs (panel rooms)**, then follow the topic guides.",
       "",
       "Use the dropdown below to drill into a topic."
     ].join("\n")
@@ -523,7 +526,7 @@ function buildTutorialComponents(interaction, userId, topicKey) {
   const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(uiId("open_customvcs", userId, topicKey))
-      .setLabel("Custom VCs")
+      .setLabel("Custom VCs Panel")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!inGuild),
     new ButtonBuilder()
