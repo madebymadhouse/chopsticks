@@ -174,7 +174,8 @@ function panelEmbed({ cfg }) {
     .addFields(
       { name: "Status", value: enabled, inline: true },
       { name: "Max Rooms Per User", value: String(cfg.maxRoomsPerUser || 1), inline: true }
-    );
+    )
+    .setFooter({ text: "In development" });
 }
 
 function panelComponents({ disabled = false } = {}) {
@@ -363,7 +364,7 @@ function roomSummaryEmbed({ channel, record, cfg }) {
       { name: "Denied Join", value: denyJoinLine, inline: true },
       { name: "Denied Speak", value: denySpeakLine, inline: true }
     )
-    .setFooter({ text: "Customs are deleted when the host leaves." });
+    .setFooter({ text: "In development | Customs are deleted when the host leaves." });
 }
 
 function manageComponents({ guildId, channelId, ownerId, record, page = "main" }) {

@@ -20,7 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { timingSafeEqual } from "node:crypto";
-import { Client, Collection, GatewayIntentBits, Events, Partials } from "discord.js";
+import { ActivityType, Client, Collection, GatewayIntentBits, Events, Partials } from "discord.js";
 import { AgentManager } from "./agents/agentManager.js";
 import { handleButton as handleAgentsButton, handleSelect as handleAgentsSelect } from "./commands/agents.js";
 import {
@@ -386,6 +386,18 @@ if (DEV_API_ENABLED) {
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Ready as ${client.user.tag}`);
   console.log(`📊 Serving ${client.guilds.cache.size} guilds`);
+
+  // Presence is a UX hint, not a control plane. Keep it best-effort and non-fatal.
+  try {
+    const enabled = String(process.env.BOT_PRESENCE_ENABLED ?? "true").toLowerCase() !== "false";
+    if (enabled && client.user) {
+      const text = String(process.env.BOT_PRESENCE_TEXT || "/tutorials").trim() || "/tutorials";
+      client.user.setPresence({
+        activities: [{ name: text.slice(0, 128), type: ActivityType.Watching }],
+        status: String(process.env.BOT_PRESENCE_STATUS || "online")
+      });
+    }
+  } catch {}
 
   const mgr = new AgentManager({
     host: process.env.AGENT_CONTROL_HOST,
