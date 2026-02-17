@@ -124,7 +124,13 @@ function makeRoomPanelCustomIdWithGuild(kind, guildId, roomChannelId) {
 
 export function buildVoiceRoomDashboardComponents(
   roomChannelId,
-  { disabled = false, controlsDisabled = false, includeDmButton = true, guildId = null } = {}
+  {
+    disabled = false,
+    controlsDisabled = false,
+    includeDmButton = true,
+    guildId = null,
+    disableQuickPlay = false
+  } = {}
 ) {
   const makeId = guildId
     ? (kind => makeRoomPanelCustomIdWithGuild(kind, guildId, roomChannelId))
@@ -190,7 +196,7 @@ export function buildVoiceRoomDashboardComponents(
         .setCustomId(makeId("music"))
         .setLabel("Quick Play")
         .setStyle(ButtonStyle.Primary)
-        .setDisabled(disabled),
+        .setDisabled(disabled || controlsDisabled || disableQuickPlay),
       new ButtonBuilder()
         .setCustomId(makeId("game"))
         .setLabel("Game")
@@ -255,7 +261,8 @@ export async function deliverVoiceRoomDashboard({
         dmPayload.components = buildVoiceRoomDashboardComponents(roomChannel.id, {
           guildId: guild?.id,
           includeDmButton: false,
-          controlsDisabled
+          controlsDisabled,
+          disableQuickPlay: true
         });
       }
       await member.send(dmPayload);

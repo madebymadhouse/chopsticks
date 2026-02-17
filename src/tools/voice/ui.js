@@ -923,7 +923,7 @@ async function handleLivePanelButton(interaction, parsed) {
   if (action === "music") {
     const ctx = await resolveContext(interaction, parsed.roomChannelId, {
       requireMembership: true,
-      requireControl: false
+      requireControl: true
     });
     if (!ctx.ok) {
       await interaction.reply({ embeds: [buildErrorEmbed(contextErrorMessage(ctx.error))], ephemeral: true });
@@ -1056,6 +1056,10 @@ function buildDmRoomErrorPayload(message) {
   };
 }
 
+function maybeEphemeralFlags(interaction) {
+  return interaction.inGuild?.() ? { flags: MessageFlags.Ephemeral } : {};
+}
+
 async function resolveRoomContextFromIds(client, guildId, roomChannelId, actingUserId) {
   const gid = String(guildId || "").trim();
   const rid = String(roomChannelId || "").trim();
@@ -1114,7 +1118,8 @@ function buildDmDashboardPayload(ctx, { notice = null, closed = false } = {}) {
       ? buildVoiceRoomDashboardComponents(ctx.roomChannel.id, {
           guildId: ctx.guild?.id,
           includeDmButton: false,
-          controlsDisabled
+          controlsDisabled,
+          disableQuickPlay: true
         })
       : [];
 
@@ -1131,7 +1136,7 @@ async function handleRoomPanelButtonInDm(interaction, parsed) {
   if (parsed.kind === "music") {
     await interaction.reply({
       embeds: [buildErrorEmbed("Quick Play is guild-only. Use the dashboard inside the server, or run `/music play <query>` in the server.")],
-      flags: MessageFlags.Ephemeral
+      ...maybeEphemeralFlags(interaction)
     }).catch(() => {});
     return true;
   }
@@ -1310,7 +1315,7 @@ export async function handleVoiceUIModal(interaction) {
     if (!ctx.isOwner && !ctx.isAdmin) {
       await interaction.reply({
         embeds: [buildErrorEmbed("Only the room owner (or admins) can do that.")],
-        flags: MessageFlags.Ephemeral
+        ...maybeEphemeralFlags(interaction)
       }).catch(() => {});
       return true;
     }
@@ -1320,7 +1325,7 @@ export async function handleVoiceUIModal(interaction) {
       await ctx.roomChannel.setName(nextName).catch(() => {});
       await refreshRegisteredRoomPanelsForRoom(ctx.guild, rid, "rename", { notice: "Renamed." }).catch(() => {});
       const payload = buildDmDashboardPayload(ctx, { notice: "Room renamed." });
-      await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => {});
+      await interaction.reply({ ...payload, ...maybeEphemeralFlags(interaction) }).catch(() => {});
       return true;
     }
 
@@ -1329,7 +1334,7 @@ export async function handleVoiceUIModal(interaction) {
     await ctx.roomChannel.setUserLimit(limit).catch(() => {});
     await refreshRegisteredRoomPanelsForRoom(ctx.guild, rid, "limit", { notice: "Member cap updated." }).catch(() => {});
     const payload = buildDmDashboardPayload(ctx, { notice: `Member cap updated: ${limit === 0 ? "unlimited" : String(limit)}.` });
-    await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => {});
+    await interaction.reply({ ...payload, ...maybeEphemeralFlags(interaction) }).catch(() => {});
     return true;
   }
 
@@ -1337,7 +1342,7 @@ export async function handleVoiceUIModal(interaction) {
     if (!interaction.inGuild?.() || interaction.guildId !== gid) {
       await interaction.reply({
         embeds: [buildErrorEmbed("Quick Play must be used from inside the server.")],
-        flags: MessageFlags.Ephemeral
+        ...maybeEphemeralFlags(interaction)
       }).catch(() => {});
       return true;
     }
@@ -1345,7 +1350,24 @@ export async function handleVoiceUIModal(interaction) {
     if (interaction.member?.voice?.channelId !== rid) {
       await interaction.reply({
         embeds: [buildErrorEmbed("Join this room voice channel to use Quick Play from its dashboard.")],
-        flags: MessageFlags.Ephemeral
+        ...maybeEphemeralFlags(interaction)
+      }).catch(() => {});
+      return true;
+    }
+
+    // Recommended hardening: only the room owner (or admins) can quick-play from the room dashboard.
+    const ctx = await resolveContext(interaction, rid, { requireMembership: false, requireControl: false });
+    if (!ctx.ok) {
+      await interaction.reply({
+        embeds: [buildErrorEmbed(contextErrorMessage(ctx.error))],
+        ...maybeEphemeralFlags(interaction)
+      }).catch(() => {});
+      return true;
+    }
+    if (!ctx.isOwner && !ctx.isAdmin) {
+      await interaction.reply({
+        embeds: [buildErrorEmbed("Only the room owner (or admins) can use Quick Play from this dashboard.")],
+        ...maybeEphemeralFlags(interaction)
       }).catch(() => {});
       return true;
     }
@@ -1354,7 +1376,7 @@ export async function handleVoiceUIModal(interaction) {
     if (!query) {
       await interaction.reply({
         embeds: [buildErrorEmbed("Query is empty.")],
-        flags: MessageFlags.Ephemeral
+        ...maybeEphemeralFlags(interaction)
       }).catch(() => {});
       return true;
     }
@@ -1365,8 +1387,8 @@ export async function handleVoiceUIModal(interaction) {
       getString: (name) => (name === "query" ? query : null)
     };
     wrapped.deferReply = (opts = {}) => interaction.deferReply({ ...opts, flags: MessageFlags.Ephemeral });
-    wrapped.reply = (payload) => interaction.reply({ ...(payload || {}), flags: MessageFlags.Ephemeral });
-    wrapped.followUp = (payload) => interaction.followUp({ ...(payload || {}), flags: MessageFlags.Ephemeral });
+    wrapped.reply = (payload) => interaction.reply({ ...(payload || {}), ...maybeEphemeralFlags(interaction) });
+    wrapped.followUp = (payload) => interaction.followUp({ ...(payload || {}), ...maybeEphemeralFlags(interaction) });
     await musicExecute(wrapped);
     return true;
   }
