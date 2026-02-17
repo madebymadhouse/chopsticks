@@ -4,6 +4,7 @@ import {
   ButtonStyle,
   EmbedBuilder,
   MessageFlags,
+  PermissionFlagsBits,
   SlashCommandBuilder,
   StringSelectMenuBuilder
 } from "discord.js";
@@ -12,6 +13,9 @@ import { Colors } from "../utils/discordOutput.js";
 import { openDeployUiHandoff, openAdvisorUiHandoff } from "./agents.js";
 import { execute as poolsExecute } from "./pools.js";
 import { showVoiceConsole } from "../tools/voice/ui.js";
+import { getVoiceState } from "../tools/voice/schema.js";
+import { ensureCustomVcsState, getCustomVcConfig } from "../tools/voice/customVcsState.js";
+import { buildCustomVcPanelMessage } from "../tools/voice/customVcsUi.js";
 
 export const meta = {
   guildOnly: false,
@@ -38,6 +42,11 @@ const TOPICS = [
     description: "Custom VC creation, ownership, and dashboards."
   },
   {
+    key: "customvcs",
+    label: "Custom VCs",
+    description: "Request custom rooms with guestlists and restrictions."
+  },
+  {
     key: "music",
     label: "Music",
     description: "Playback, agent capacity, and troubleshooting."
@@ -46,8 +55,21 @@ const TOPICS = [
     key: "moderation",
     label: "Moderation",
     description: "Purge, safety, and server controls."
+  },
+  {
+    key: "troubleshooting",
+    label: "Troubleshooting",
+    description: "Common issues: no DMs, missing perms, spawning failures."
   }
 ];
+
+function hasManageGuild(interaction) {
+  const perms = interaction.memberPermissions;
+  return Boolean(
+    perms?.has?.(PermissionFlagsBits.ManageGuild) ||
+    perms?.has?.(PermissionFlagsBits.Administrator)
+  );
+}
 
 function uiId(kind, userId, topicKey) {
   const k = String(topicKey || "start");
@@ -104,7 +126,27 @@ function topicContent(topicKey) {
         "2) Join the lobby VC to spawn a room.",
         "3) Use the **Voice Console** for control buttons and delivery preferences.",
         "",
+        "**No DM?** If DM delivery fails, Chopsticks will show an in-server fallback panel.",
         "If spawning fails, use `/voice status` then **Spawn Diagnostics**."
+      ].join("\n")
+    };
+  }
+
+  if (topicKey === "customvcs") {
+    return {
+      title: "Tutorial: Custom VCs (In development)",
+      body: [
+        "Custom VCs let members request an on-demand voice channel with controls.",
+        "",
+        "**Flow:**",
+        "1) Use the **Custom VCs** panel (admins can post one with `/voice customs_panel`).",
+        "2) Request a room: name, size, bitrate.",
+        "3) Choose **Public** or **Private** (DM prompt by default; fallback shown in-server if DMs are blocked).",
+        "4) Use **Open Controls** to manage guestlist and restrictions.",
+        "",
+        "**Rules:**",
+        "• Private rooms: only guestlist + Voice Mods can join.",
+        "• Customs are deleted when the host leaves."
       ].join("\n")
     };
   }
@@ -142,6 +184,25 @@ function topicContent(topicKey) {
         "1) Use `/purge` for cleanup (buttons where available).",
         "2) Use `/warn` and `/timeout` for escalation.",
         "3) Use `/modlogs` + `/logs` for visibility and auditability."
+      ].join("\n")
+    };
+  }
+
+  if (topicKey === "troubleshooting") {
+    return {
+      title: "Tutorial: Troubleshooting",
+      body: [
+        "**DM delivery fails**",
+        "• Discord blocks bots when a user disables DMs from server members.",
+        "• Chopsticks will fall back to an in-server panel when possible.",
+        "",
+        "**VoiceMaster room won't spawn**",
+        "• Run `/voice status` then press **Spawn Diagnostics**.",
+        "• Ensure bot has `Manage Channels` + `Move Members` in the lobby category.",
+        "",
+        "**Deploy UI / Invite Links not available**",
+        "• These are admin surfaces: require `Manage Server`.",
+        "• Use Pools UI for read-only navigation if you are not an admin."
       ].join("\n")
     };
   }
@@ -191,6 +252,7 @@ function buildTutorialComponents(interaction, userId, topicKey) {
   const row1 = new ActionRowBuilder().addComponents(select);
 
   const inGuild = interaction.inGuild();
+  const canManage = inGuild && hasManageGuild(interaction);
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(uiId("open_pools", userId, topicKey))
@@ -201,12 +263,12 @@ function buildTutorialComponents(interaction, userId, topicKey) {
       .setCustomId(uiId("open_deploy", userId, topicKey))
       .setLabel("Open Deploy UI")
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(!inGuild),
+      .setDisabled(!canManage),
     new ButtonBuilder()
       .setCustomId(uiId("open_advisor", userId, topicKey))
       .setLabel("Open Advisor UI")
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(!inGuild),
+      .setDisabled(!canManage),
     new ButtonBuilder()
       .setCustomId(uiId("open_voice_console", userId, topicKey))
       .setLabel("Voice Console")
@@ -214,7 +276,15 @@ function buildTutorialComponents(interaction, userId, topicKey) {
       .setDisabled(!inGuild)
   );
 
-  return [row1, row2];
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(uiId("open_customvcs", userId, topicKey))
+      .setLabel("Custom VCs")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!inGuild)
+  );
+
+  return [row1, row2, row3];
 }
 
 async function renderTutorial(interaction, { update = false, topicKey = "start" } = {}) {
@@ -284,17 +354,42 @@ export async function handleButton(interaction) {
   }
 
   if (parsed.kind === "open_deploy") {
+    if (!hasManageGuild(interaction)) {
+      await interaction.reply({
+        embeds: [buildBaseEmbed("Permission Required", "You need `Manage Server` to open Deploy UI.").setColor(Colors.ERROR)],
+        flags: MessageFlags.Ephemeral
+      });
+      return true;
+    }
     await openDeployUiHandoff(interaction, {});
     return true;
   }
 
   if (parsed.kind === "open_advisor") {
+    if (!hasManageGuild(interaction)) {
+      await interaction.reply({
+        embeds: [buildBaseEmbed("Permission Required", "You need `Manage Server` to open Advisor UI.").setColor(Colors.ERROR)],
+        flags: MessageFlags.Ephemeral
+      });
+      return true;
+    }
     await openAdvisorUiHandoff(interaction, {});
     return true;
   }
 
   if (parsed.kind === "open_voice_console") {
     await showVoiceConsole(interaction);
+    return true;
+  }
+
+  if (parsed.kind === "open_customvcs") {
+    const voice = await getVoiceState(interaction.guildId);
+    ensureCustomVcsState(voice);
+    const cfg = getCustomVcConfig(voice);
+    await interaction.reply({
+      ...buildCustomVcPanelMessage(cfg),
+      flags: MessageFlags.Ephemeral
+    });
     return true;
   }
 
