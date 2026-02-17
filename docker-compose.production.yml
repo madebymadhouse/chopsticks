@@ -191,9 +191,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-    # Ports exposed via Caddy, but kept for direct access if needed
+    # Ports exposed via Caddy; bind direct host ports to localhost only for safety.
     ports:
-      - "8788:8788"
+      - "127.0.0.1:8788:8788"
     networks:
       - chopsticks
     depends_on:
@@ -234,7 +234,7 @@ services:
       retries: 3
       start_period: 20s
     ports:
-      - "8790:8790"
+      - "127.0.0.1:8790:8790"
     networks:
       - chopsticks
     mem_limit: 192m
@@ -290,7 +290,7 @@ services:
     networks:
       - chopsticks
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     mem_limit: 256m
     cpus: '0.25'
     profiles: ["monitoring"]
@@ -314,7 +314,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     networks:
       - chopsticks
     depends_on:
@@ -337,7 +337,7 @@ services:
       - DOZZLE_NO_ANALYTICS=true
       - DOZZLE_LEVEL=info
     ports:
-      - "9999:8080"
+      - "127.0.0.1:9999:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -359,7 +359,7 @@ services:
     environment:
       - ADMINER_DEFAULT_SERVER=postgres
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     networks:
       - chopsticks
     depends_on:
@@ -380,7 +380,7 @@ services:
     container_name: chopsticks-redisinsight
     restart: unless-stopped
     ports:
-      - "5540:5540"
+      - "127.0.0.1:5540:5540"
     networks:
       - chopsticks
     depends_on:

@@ -20,11 +20,21 @@ import { getCommandStats, getCommandStatsForGuild } from "../utils/healthServer.
 import { getPersistedCommandStats, getPersistedCommandStatsDaily } from "../utils/audit.js";
 import { getDashboardPerms, setDashboardPerms } from "./permissions.js";
 import { setCommandEnabled, listCommandSettings } from "../utils/permissions.js";
-import { getUserPets, createPet, deletePet, listPools, fetchPoolsByOwner, createPool } from "../utils/storage.js";
+import {
+  getUserPets,
+  createPet,
+  deletePet,
+  listPools,
+  fetchPoolsByOwner,
+  createPool,
+  loadGuildData,
+  saveGuildData
+} from "../utils/storage.js";
 import { applySecurityMiddleware, requireAdmin as modernRequireAdmin, auditLog as modernAudit } from "./securityMiddleware.js";
 import { dashboardLogger } from "../utils/modernLogger.js";
 import { metricsHandler, healthHandler } from "../utils/metrics.js";
 import { getFunCatalog, randomFunFromRuntime, renderFunFromRuntime, resolveVariantId } from "../fun/runtime.js";
+import { embedToCardSvg, renderEmbedCardPng } from "../render/svgCard.js";
 import Joi from "joi";
 import { generateCorrelationId } from "../utils/logger.js";
 import { installProcessSafety } from "../utils/processSafety.js";
@@ -72,8 +82,22 @@ if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
   console.warn("[dashboard] DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET missing");
 }
 
-const sessionSecret = String(process.env.DASHBOARD_SESSION_SECRET || "dev-secret-change-me");
+let sessionSecret = String(process.env.DASHBOARD_SESSION_SECRET || "").trim();
+if (!sessionSecret) {
+  // Avoid a known default secret. In multi-instance deployments, set DASHBOARD_SESSION_SECRET explicitly.
+  sessionSecret = randomBytes(32).toString("hex");
+  console.warn(
+    "[dashboard] DASHBOARD_SESSION_SECRET missing; generated an ephemeral secret (sessions will reset on restart)."
+  );
+}
 const cookieSecure = String(process.env.DASHBOARD_COOKIE_SECURE || "false").toLowerCase() === "true";
+const trustProxyRaw = String(
+  process.env.DASHBOARD_TRUST_PROXY || (process.env.NODE_ENV === "production" ? "1" : "false")
+).toLowerCase();
+if (trustProxyRaw !== "false" && trustProxyRaw !== "0") {
+  const n = Number(trustProxyRaw);
+  app.set("trust proxy", Number.isFinite(n) ? n : 1);
+}
 
 let redisClient = null;
 let store = null;
@@ -361,6 +385,54 @@ async function botGet(url) {
   return res.body.json();
 }
 
+async function botJson(method, url, body) {
+  const token = String(process.env.DISCORD_TOKEN || "").trim();
+  if (!token) return { ok: false, statusCode: 0, body: null };
+  const res = await request(url, {
+    method,
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body || {})
+  });
+  let parsed = null;
+  try {
+    parsed = await res.body.json();
+  } catch {
+    parsed = null;
+  }
+  return { ok: res.statusCode < 400, statusCode: res.statusCode, body: parsed };
+}
+
+function playlistHubPayload() {
+  // Buttons use ids handled by src/commands/music.js (mplhub:*).
+  return {
+    embeds: [
+      {
+        title: "Music Playlist Hub",
+        description:
+          "A self-serve playlist station. Create a personal drop thread, then drop audio files, links, or `q: keywords`.",
+        color: 0x0ea5e9,
+        fields: [
+          { name: "What You Can Drop", value: "- audio uploads\n- http(s) links\n- `q: keywords` (search item)", inline: false },
+          { name: "Flow", value: "Create drop -> add tracks -> browse -> queue into VC", inline: false }
+        ]
+      }
+    ],
+    components: [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 1, custom_id: "mplhub:create", label: "Create Personal Drop" },
+          { type: 2, style: 2, custom_id: "mplhub:browse", label: "Browse Playlists" },
+          { type: 2, style: 2, custom_id: "mplhub:help", label: "How It Works" }
+        ]
+      }
+    ]
+  };
+}
+
 async function listGuildSessions(guildId) {
   const mgr = global.agentManager;
   if (!mgr) return [];
@@ -514,7 +586,7 @@ app.get("/", (req, res) => {
     <main>
       ${
         authed
-          ? `<a class="button" href="/logout">Logout</a> <a class="button" href="/fun">Fun Generator</a>`
+          ? `<a class="button" href="/logout">Logout</a> <a class="button" href="/fun">Fun Generator</a> <a class="button" href="/embed">Embed Builder</a>`
           : `<a class="button" href="${loginUrl}">Login with Discord</a>`
       }
       <div id="app"></div>
@@ -633,9 +705,12 @@ app.get("/", (req, res) => {
         const channels = data.channels || [];
         const roles = data.roles || [];
         const voiceChannels = channels.filter(c => c.type === 2);
+        const textChannels = channels.filter(c => c.type === 0 || c.type === 5);
         const categories = channels.filter(c => c.type === 4);
         const voicePresets = data.voicePresets || [];
         const channelVoices = assistant.channelVoices || {};
+        const playlists = data.musicPlaylists || {};
+        const hub = playlists.hub || null;
         window.__auditRows = data.audit || [];
         window.__auditBefore = (data.audit && data.audit.length) ? data.audit[data.audit.length - 1].id : null;
         window.__currentGuildId = id;
@@ -750,23 +825,45 @@ app.get("/", (req, res) => {
               <input id="queue-filter" placeholder="filter queue..." oninput="filterQueue()" />
               <div id="queue-box" class="muted" style="margin-top:6px;"></div>
             </div>
-            <div style="margin-top:8px;">
-              <label>preset</label>
-              <select id="music-preset">
-                <option value="flat">flat</option>
-                <option value="bassboost">bassboost</option>
-                <option value="nightcore">nightcore</option>
-                <option value="vaporwave">vaporwave</option>
-                <option value="8d">8d</option>
-              </select>
-              <button onclick="musicPreset('\${id}')">Apply Preset</button>
-            </div>
-          </div>
-          <div class="card">
-            <div>Assistant</div>
-            <div class="muted">Voice assistant config + controls</div>
-            <div>
-              <label>Enabled</label>
+	            <div style="margin-top:8px;">
+	              <label>preset</label>
+	              <select id="music-preset">
+	                <option value="flat">flat</option>
+	                <option value="bassboost">bassboost</option>
+	                <option value="nightcore">nightcore</option>
+	                <option value="vaporwave">vaporwave</option>
+	                <option value="8d">8d</option>
+	              </select>
+	              <button onclick="musicPreset('\${id}')">Apply Preset</button>
+	            </div>
+	          </div>
+	          <div class="card">
+	            <div>Music Playlists</div>
+	            <div class="muted">Post a single hub message so users can create personal drop threads with one click.</div>
+	            <div style="margin-top:8px;">
+	              <div class="muted">Hub Status</div>
+	              <div>\${hub ? ("<#"+hub.channelId+"> / " + hub.messageId) : "<span class='muted'>(not set)</span>"}</div>
+	            </div>
+	            <div style="margin-top:8px;">
+	              <label>hub_channel</label>
+	              <select id="mpl-hub-ch">
+	                \${textChannels.map(c => \`<option value="\${c.id}" \${hub?.channelId === c.id ? "selected" : ""}>\${c.name} (\${c.id})</option>\`).join("")}
+	              </select>
+	            </div>
+	            <div style="margin-top:8px;">
+	              <button onclick="postPlaylistHub('\${id}')" \${data.canManage ? "" : "disabled"}>Post/Update Hub Message</button>
+	              <div class="muted">\${data.canManage ? "" : "Manage Server required to post messages"}</div>
+	            </div>
+	            <div style="margin-top:10px;">
+	              <div class="muted">Playlists</div>
+	              <div>\${playlists.playlistsCount ?? 0} total, \${playlists.boundChannelsCount ?? 0} bound channels</div>
+	            </div>
+	          </div>
+	          <div class="card">
+	            <div>Assistant</div>
+	            <div class="muted">Voice assistant config + controls</div>
+	            <div>
+	              <label>Enabled</label>
               <select id="assistant-enabled">
                 <option value="true" \${assistant.enabled ? "selected" : ""}>true</option>
                 <option value="false" \${assistant.enabled ? "" : "selected"}>false</option>

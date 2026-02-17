@@ -19,6 +19,7 @@ console.log("✅ Configuration validated.");
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { timingSafeEqual } from "node:crypto";
 import { Client, Collection, GatewayIntentBits, Events, Partials } from "discord.js";
 import { AgentManager } from "./agents/agentManager.js";
 import { handleButton as handleAgentsButton, handleSelect as handleAgentsSelect } from "./commands/agents.js";
@@ -178,6 +179,10 @@ const devApiApp = express();
 const DEV_API_PORT = process.env.DEV_API_PORT || 3002;
 const DEV_API_USERNAME = process.env.DEV_API_USERNAME;
 const DEV_API_PASSWORD = process.env.DEV_API_PASSWORD;
+const DEV_API_ENABLED = String(process.env.DEV_API_ENABLED ?? "true").toLowerCase() !== "false";
+const DEV_API_ALLOW_INSECURE =
+  String(process.env.DEV_API_ALLOW_INSECURE ?? "false").toLowerCase() === "true";
+const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 
 // Basic Authentication Middleware for Dev API
 function authenticateDevApi(req, res, next) {
@@ -187,15 +192,34 @@ function authenticateDevApi(req, res, next) {
     return res.status(401).send('Authentication required for Dev API.');
   }
 
-  const [type, credentials] = authHeader.split(' ');
-  if (type !== 'Basic') {
+  const parts = authHeader.split(" ");
+  const type = parts[0];
+  const credentials = parts.slice(1).join(" ");
+  if (type !== 'Basic' || !credentials) {
     return res.status(401).send('Unsupported authentication type for Dev API.');
   }
 
-  const decoded = Buffer.from(credentials, 'base64').toString('utf8');
-  const [username, password] = decoded.split(':');
+  let decoded = "";
+  try {
+    decoded = Buffer.from(credentials, "base64").toString("utf8");
+  } catch {
+    return res.status(401).send("Invalid authentication header.");
+  }
+  const idx = decoded.indexOf(":");
+  const username = idx >= 0 ? decoded.slice(0, idx) : decoded;
+  const password = idx >= 0 ? decoded.slice(idx + 1) : "";
 
-  if (username === DEV_API_USERNAME && password === DEV_API_PASSWORD) {
+  // Timing-safe compare (best effort) to reduce oracle-style leaks.
+  const uOk =
+    typeof DEV_API_USERNAME === "string" &&
+    Buffer.byteLength(username) === Buffer.byteLength(DEV_API_USERNAME) &&
+    timingSafeEqual(Buffer.from(username), Buffer.from(DEV_API_USERNAME));
+  const pOk =
+    typeof DEV_API_PASSWORD === "string" &&
+    Buffer.byteLength(password) === Buffer.byteLength(DEV_API_PASSWORD) &&
+    timingSafeEqual(Buffer.from(password), Buffer.from(DEV_API_PASSWORD));
+
+  if (uOk && pOk) {
     next();
   } else {
     res.setHeader('WWW-Authenticate', 'Basic');
@@ -203,7 +227,8 @@ function authenticateDevApi(req, res, next) {
   }
 }
 
-devApiApp.use(express.json());
+devApiApp.disable("x-powered-by");
+devApiApp.use(express.json({ limit: "200kb" }));
 devApiApp.use((req, res, next) => {
   const requestId = String(req.headers["x-correlation-id"] || generateCorrelationId());
   const startedAt = Date.now();
@@ -225,11 +250,14 @@ devApiApp.use((req, res, next) => {
   next();
 });
 
-// Apply authentication only if credentials are set
-if (!DEV_API_USERNAME || !DEV_API_PASSWORD) {
-  console.warn('DEV_API_USERNAME or DEV_API_PASSWORD not set. Dev API will not start securely.');
-} else {
+const devApiHasCreds = Boolean(DEV_API_USERNAME && DEV_API_PASSWORD);
+if (devApiHasCreds) {
   devApiApp.use(authenticateDevApi);
+} else {
+  const msg =
+    "DEV_API_USERNAME / DEV_API_PASSWORD not set. Dev API is disabled unless DEV_API_ALLOW_INSECURE=true (non-production).";
+  if (isProd) botLogger.error(msg);
+  else botLogger.warn(msg);
 }
 
 // Dev API Endpoints
@@ -333,9 +361,20 @@ devApiApp.post('/dev-api/agents/start/:agentId', async (req, res) => {
   }
 });
 
-devApiApp.listen(DEV_API_PORT, () => {
-  console.log(`Development API running on http://localhost:${DEV_API_PORT}`);
-});
+if (DEV_API_ENABLED) {
+  if (devApiHasCreds || (!isProd && DEV_API_ALLOW_INSECURE)) {
+    const bindHost =
+      !devApiHasCreds && !isProd && DEV_API_ALLOW_INSECURE ? "127.0.0.1" : undefined;
+    devApiApp.listen(DEV_API_PORT, bindHost, () => {
+      const hostLabel = bindHost ? `${bindHost}:${DEV_API_PORT}` : `:${DEV_API_PORT}`;
+      console.log(`[dev-api] listening on ${hostLabel} (auth=${devApiHasCreds ? "basic" : "open-local"})`);
+    });
+  } else {
+    botLogger.warn({ port: DEV_API_PORT }, "Dev API not started (missing credentials).");
+  }
+} else {
+  botLogger.info("DEV_API_ENABLED=false - Dev API disabled.");
+}
 /* ===================== END DEV API SERVER ===================== */
 
 /* ===================== INTERACTIONS ===================== */

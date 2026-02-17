@@ -3,7 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import fetch from 'node-fetch'; // For making requests to the Dev API
+// Node 20+ provides global fetch.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,7 +19,10 @@ const DEV_API_USERNAME = process.env.DEV_API_USERNAME; // Re-use for Dev API Aut
 const DEV_API_PASSWORD = process.env.DEV_API_PASSWORD; // Re-use for Dev API Auth
 
 // Base64 encoded credentials for Dev API
-const DEV_API_AUTH_HEADER = `Basic ${Buffer.from(`${DEV_API_USERNAME}:${DEV_API_PASSWORD}`).toString('base64')}`;
+const DEV_API_AUTH_HEADER =
+  DEV_API_USERNAME && DEV_API_PASSWORD
+    ? `Basic ${Buffer.from(`${DEV_API_USERNAME}:${DEV_API_PASSWORD}`).toString('base64')}`
+    : "";
 
 
 // Middleware
@@ -31,6 +34,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Basic Authentication Middleware
 function authenticate(req, res, next) {
+    if (!USERNAME || !PASSWORD) {
+        return res.status(503).send("Dev dashboard credentials not configured.");
+    }
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         res.setHeader('WWW-Authenticate', 'Basic');
@@ -53,9 +59,14 @@ function authenticate(req, res, next) {
     }
 }
 
+app.use(authenticate);
+
 // Routes
 app.get('/', async (req, res) => {
     try {
+        if (!DEV_API_AUTH_HEADER) {
+            throw new Error("Dev API credentials not configured.");
+        }
         const response = await fetch(`${DEV_API_BASE_URL}/status`, {
             headers: {
                 'Authorization': DEV_API_AUTH_HEADER

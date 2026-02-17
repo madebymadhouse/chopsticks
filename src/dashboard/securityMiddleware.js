@@ -5,8 +5,18 @@ import hpp from "hpp";
 import { createApiRateLimiter } from "../utils/modernRateLimiter.js";
 import { dashboardLogger } from "../utils/modernLogger.js";
 
+function parseOrigins(raw) {
+  const list = String(raw || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  return list;
+}
+
 // Corporate-grade Express security middleware stack
 export function applySecurityMiddleware(app) {
+  app.disable("x-powered-by");
+
   // 1. Helmet - Secure HTTP headers
   app.use(helmet({
     contentSecurityPolicy: {
@@ -37,8 +47,17 @@ export function applySecurityMiddleware(app) {
   }));
 
   // 2. CORS - Controlled cross-origin requests
+  const envOrigins = parseOrigins(process.env.ALLOWED_ORIGINS);
+  let defaultOrigins = ["http://localhost:3000"];
+  const base = String(process.env.DASHBOARD_BASE_URL || "").trim();
+  if (base) {
+    try {
+      defaultOrigins = [new URL(base).origin];
+    } catch {}
+  }
+
   const corsOptions = {
-    origin: process.env.ALLOWED_ORIGINS?.split(",") || ["http://localhost:3000"],
+    origin: envOrigins.length ? envOrigins : defaultOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -99,7 +118,8 @@ export function applySecurityMiddleware(app) {
 
   // 8. JSON body size limit
   app.use((req, res, next) => {
-    if (req.is("json") && req.get("content-length") > 1048576) { // 1MB limit
+    const cl = Number(req.get("content-length") || 0);
+    if (req.is("json") && Number.isFinite(cl) && cl > 1048576) { // 1MB limit
       return res.status(413).json({ error: "Payload too large" });
     }
     next();

@@ -1,4 +1,5 @@
 import http from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { Registry, collectDefaultMetrics, Counter, Gauge, Histogram } from "prom-client";
 import { createDebugHandler, createDebugDashboard } from "./debugDashboard.js";
 import { register as appMetricsRegister } from "./metrics.js";
@@ -16,17 +17,49 @@ const commandStatsByGuild = new Map(); // guildId -> Map(command -> stats)
 const commandDelta = new Map(); // command -> { ok, err, totalMs, count }
 const commandDeltaByGuild = new Map(); // guildId -> Map(command -> stats)
 
+function safeEq(a, b) {
+  const aa = String(a ?? "");
+  const bb = String(b ?? "");
+  if (Buffer.byteLength(aa) !== Buffer.byteLength(bb)) return false;
+  try {
+    return timingSafeEqual(Buffer.from(aa), Buffer.from(bb));
+  } catch {
+    return false;
+  }
+}
+
+export function readHealthSecurityConfig(env = process.env) {
+  const nodeEnv = String(env.NODE_ENV || "").toLowerCase();
+  const debugEnabledRaw = String(env.HEALTH_DEBUG_ENABLED ?? (nodeEnv === "production" ? "false" : "true")).toLowerCase();
+  const debugEnabled = debugEnabledRaw === "true" || debugEnabledRaw === "1" || debugEnabledRaw === "yes";
+  const debugToken = String(env.HEALTH_DEBUG_TOKEN || "").trim();
+  const metricsToken = String(env.HEALTH_METRICS_TOKEN || "").trim();
+  return { debugEnabled, debugToken, metricsToken };
+}
+
+export function isHealthAuthorized(req, token) {
+  const t = String(token || "").trim();
+  if (!t) return true;
+
+  const header = String(req?.headers?.authorization || "");
+  const m = header.match(/^Bearer\s+(.+)\s*$/i);
+  const presented = m ? m[1] : "";
+  if (safeEq(presented, t)) return true;
+
+  const alt = String(req?.headers?.["x-metrics-token"] || req?.headers?.["x-health-token"] || "");
+  return safeEq(alt, t);
+}
+
 export function startHealthServer(manager = null) {
   // Store agent manager reference for debug dashboard
-  if (manager) {
-    agentManager = manager;
-    console.log("✅ Debug dashboard enabled at /debug/dashboard");
-  }
+  const sec = readHealthSecurityConfig(process.env);
+  if (manager) agentManager = manager;
+  if (manager && sec.debugEnabled) console.log("✅ Debug dashboard enabled at /debug/dashboard");
   
   if (server) return server;
 
   const port = Number(process.env.HEALTH_PORT || process.env.METRICS_PORT || 9100);
-  if (!Number.isFinite(port) || port <= 0) return null;
+  if (!Number.isFinite(port) || port < 0) return null;
   const allowFallback =
     String(process.env.METRICS_PORT_FALLBACK ?? "true").toLowerCase() !== "false";
   const maxBump = Math.max(0, Math.trunc(Number(process.env.METRICS_PORT_BUMP || 10)));
@@ -66,6 +99,7 @@ export function startHealthServer(manager = null) {
   function createServer() {
     return http.createServer(async (req, res) => {
       const url = req.url || "/";
+      const security = readHealthSecurityConfig(process.env);
       
       // Health check compatibility (`/healthz` primary, `/health` alias).
       if (url.startsWith("/healthz") || url.startsWith("/health")) {
@@ -76,6 +110,11 @@ export function startHealthServer(manager = null) {
 
       // Prometheus metrics
       if (url.startsWith("/metrics")) {
+        if (!isHealthAuthorized(req, security.metricsToken)) {
+          res.writeHead(401, { "Content-Type": "text/plain" });
+          res.end("unauthorized");
+          return;
+        }
         // App metrics from src/utils/metrics.js (includes agent lifecycle utilization gauges)
         if (url.startsWith("/metrics-app")) {
           res.writeHead(200, { "Content-Type": appMetricsRegister.contentType });
@@ -91,6 +130,16 @@ export function startHealthServer(manager = null) {
 
       // Debug dashboard (HTML)
       if (url.startsWith("/debug/dashboard")) {
+        if (!security.debugEnabled) {
+          res.writeHead(404, { "Content-Type": "text/plain" });
+          res.end("Not found");
+          return;
+        }
+        if (!isHealthAuthorized(req, security.debugToken)) {
+          res.writeHead(401, { "Content-Type": "text/plain" });
+          res.end("unauthorized");
+          return;
+        }
         if (agentManager) {
           const dashboard = createDebugDashboard(agentManager);
           await dashboard(req, res);
@@ -103,6 +152,16 @@ export function startHealthServer(manager = null) {
 
       // Debug info (JSON)
       if (url.startsWith("/debug")) {
+        if (!security.debugEnabled) {
+          res.writeHead(404, { "Content-Type": "text/plain" });
+          res.end("Not found");
+          return;
+        }
+        if (!isHealthAuthorized(req, security.debugToken)) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "unauthorized" }));
+          return;
+        }
         if (agentManager) {
           const handler = createDebugHandler(agentManager);
           await handler(req, res);

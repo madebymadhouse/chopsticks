@@ -60,6 +60,7 @@ export class AgentManager {
   constructor({ host, port } = {}) {
     this.host = host || "127.0.0.1";
     this.port = Number(port) || 8787;
+    this.runnerSecret = String(process.env.AGENT_RUNNER_SECRET || "").trim();
 
     this.started = false;
     this.wss = null;
@@ -117,8 +118,14 @@ export class AgentManager {
     if (this.started) return;
     this.started = true;
 
-    this.wss = new WebSocketServer({ host: this.host, port: this.port });
-    this.wss.on("connection", ws => this.handleConnection(ws));
+    this.wss = new WebSocketServer({
+      host: this.host,
+      port: this.port,
+      // Avoid memory bombs from large frames; our protocol payloads are small.
+      maxPayload: Math.max(16 * 1024, Math.trunc(Number(process.env.AGENT_CONTROL_MAX_PAYLOAD || 262_144))),
+      perMessageDeflate: false
+    });
+    this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
     this.wss.on("error", err => {
       logger.error("[agent:control:server:error]", { error: err?.message ?? err });
     });
@@ -157,10 +164,24 @@ export class AgentManager {
     } catch {}
   }
 
-  handleConnection(ws) {
+  handleConnection(ws, req) {
+    // Enforce a fast handshake to avoid idle connection buildup.
+    const handshakeMs = Math.max(1000, Math.trunc(Number(process.env.AGENT_CONTROL_HANDSHAKE_MS || 8000)));
+    ws.__remoteAddress = req?.socket?.remoteAddress || null;
+    ws.__helloTimer = setTimeout(() => {
+      if (!ws.__agentId) {
+        try { ws.close(1008, "hello-required"); } catch {}
+      }
+    }, handshakeMs);
+    ws.__helloTimer.unref?.();
+
     // When an agent connects, it will send a "hello" message containing its agentId
     ws.on("message", data => this.handleMessage(ws, data));
     ws.on("close", () => {
+      if (ws.__helloTimer) {
+        try { clearTimeout(ws.__helloTimer); } catch {}
+        ws.__helloTimer = null;
+      }
       // Make async cleanup non-blocking
       this.handleClose(ws).catch(err => {
         logger.error(`[AgentManager] Error in handleClose: ${err?.message}`);
@@ -235,8 +256,29 @@ export class AgentManager {
       return;
     }
 
+    // Optional control-plane authentication between controller and runners.
+    // If AGENT_RUNNER_SECRET is set on the controller, the agent MUST present it in hello.
+    if (this.runnerSecret) {
+      const presented = String(msg?.runnerSecret || "").trim();
+      if (!presented || presented !== this.runnerSecret) {
+        agentLogger.warn("Agent presented invalid runner secret, rejecting", {
+          remoteAddress: ws.__remoteAddress || undefined
+        });
+        trackAgentRegistration("rejected");
+        try {
+          ws.send(JSON.stringify({ type: "error", error: "Unauthorized runner secret." }));
+        } catch {}
+        ws.close(1008, "Unauthorized");
+        return;
+      }
+    }
+
     // Attach agentId to WebSocket for future messages
     ws.__agentId = agentId;
+    if (ws.__helloTimer) {
+      try { clearTimeout(ws.__helloTimer); } catch {}
+      ws.__helloTimer = null;
+    }
 
     let agent = this.liveAgents.get(agentId);
     const isReconnect = !!agent;
@@ -281,6 +323,8 @@ export class AgentManager {
     agent.guildIds = new Set(Array.isArray(msg?.guildIds) ? msg.guildIds : []);
     agent.botUserId = msg?.botUserId ?? agent.botUserId;
     agent.tag = msg?.tag ?? agent.tag;
+    agent.runnerId = String(msg?.runnerId || agent.runnerId || "").trim() || null;
+    agent.poolId = String(msg?.poolId || agent.poolId || "").trim() || null;
     agent.startedAt = agent.startedAt ?? now();
     agent.lastSeen = now();
     

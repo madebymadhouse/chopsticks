@@ -6,11 +6,11 @@
   encode zstd gzip
 
   handle_path /metrics* {
-    reverse_proxy bot:9100
+    reverse_proxy bot:8080
   }
 
   handle_path /healthz* {
-    reverse_proxy bot:9100
+    reverse_proxy bot:8080
   }
 
   reverse_proxy dashboard:8788

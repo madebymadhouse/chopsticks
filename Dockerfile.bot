@@ -37,7 +37,7 @@ COPY . .
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=512"
 
-EXPOSE 8080 9229
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD node -e "const p=process.env.HEALTH_PORT||process.env.METRICS_PORT||9100;require('http').get('http://localhost:'+p+'/healthz', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" || exit 1

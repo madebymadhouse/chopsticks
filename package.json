@@ -4,7 +4,9 @@
   "type": "module",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
-    "bot": "STORAGE_DRIVER=postgres node --inspect=0.0.0.0:9229 src/index.js",
+    "bot": "STORAGE_DRIVER=postgres node src/index.js",
+    "bot:inspect": "STORAGE_DRIVER=postgres node --inspect=0.0.0.0:9229 src/index.js",
+    "bot:inspect:local": "STORAGE_DRIVER=postgres node --inspect=127.0.0.1:9229 src/index.js",
     "agents": "node src/agents/agentRunner.js",
     "docker:lavalink": "docker compose -f docker-compose.lavalink.yml up -d",
     "start": "npm run docker:lavalink && npm run bot",
