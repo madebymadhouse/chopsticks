@@ -33,6 +33,14 @@ RUN npm ci --no-optional \
 # Copy application
 COPY . .
 
+# Create non-root runtime user
+RUN set -eux; \
+    addgroup --system app || true; \
+    adduser --system --ingroup app --uid 1000 app || true; \
+    chown -R app:app /app
+
+USER app
+
 # Set environment
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=512"

@@ -110,7 +110,7 @@ case "$cmd" in
 
     run_migrations
 
-    if [ "${CHOPSTICKS_AUTO_DEPLOY_COMMANDS:-true}" = "true" ]; then
+    if [ "${CHOPSTICKS_AUTO_DEPLOY_COMMANDS:-false}" = "true" ]; then
       if grep -Eq '^(DEV_GUILD_ID|GUILD_ID|STAGING_GUILD_ID|PROD_GUILD_ID)=' .env; then
         deploy_commands guild
       else
