@@ -144,7 +144,7 @@ describe('Agent Limit Enforcement', function() {
   describe('Documentation', function() {
     it('should document the 49-agent limit', function() {
       const files = [
-        path.join(__dirname, '../../MATURITY.md'),
+        path.join(__dirname, '../../docs/status/MATURITY.md'),
         path.join(__dirname, '../../src/agents/agentManager.js')
       ];
       

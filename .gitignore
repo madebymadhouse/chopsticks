@@ -4,6 +4,11 @@ _runtime.log
 _TREE.txt
 _chopsticks_dump.txt
 
+# repo artifacts (never commit)
+bot_output.log
+chopsticks_snapshot.tgz
+chopsticks_text_snapshot.tgz
+
 # backups
 data.backup.*/
 data.backup.*

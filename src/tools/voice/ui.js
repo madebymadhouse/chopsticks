@@ -983,28 +983,10 @@ async function handleLivePanelButton(interaction, parsed) {
   }
 
   if (action === "claim") {
-    const ctx = await resolveContext(interaction, parsed.roomChannelId, {
-      requireMembership: true,
-      requireControl: false
-    });
-    if (!ctx.ok) {
-      await interaction.reply({ embeds: [buildErrorEmbed(contextErrorMessage(ctx.error))], ephemeral: true });
-      return true;
-    }
-
-    const result = await handleClaim(interaction, ctx);
-    if (!result.ok) {
-      await interaction.reply({ embeds: [buildErrorEmbed(result.error)], ephemeral: true });
-      return true;
-    }
-
-    await updateLivePanelInteraction(interaction, parsed.roomChannelId, {
-      reason: "claim",
-      notice: result.notice
-    });
-    await refreshRegisteredRoomPanelsForRoom(interaction.guild, parsed.roomChannelId, "claim", {
-      excludeMessageId: interaction.message.id,
-      notice: result.notice
+    // Hardening: claim via buttons is disabled to avoid ownership takeovers via stale panels.
+    await interaction.reply({
+      embeds: [buildErrorEmbed("Room claim via buttons is disabled. Use `/voice room_claim` (Manage Server).")],
+      ephemeral: true
     }).catch(() => {});
     return true;
   }
@@ -1494,12 +1476,13 @@ export async function handleVoiceUIButton(interaction) {
     }
 
   if (parsed.kind === "claim") {
-    const result = await handleClaim(interaction, ctx);
-    if (!result.ok) {
-      await interaction.reply({ embeds: [buildErrorEmbed(result.error)], ephemeral: true });
-      return true;
-    }
-    return updateConsole(interaction, parsed.userId, parsed.channelId, result.notice);
+    // Hardening: claim via buttons is disabled to avoid ownership takeovers via stale panels.
+    return updateConsole(
+      interaction,
+      parsed.userId,
+      parsed.channelId,
+      "Room claim via buttons is disabled. Use `/voice room_claim` (Manage Server)."
+    );
   }
 
   if (parsed.kind === "release") {

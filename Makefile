@@ -26,7 +26,7 @@ help:
 	@echo "  make rebuild            - Rebuild bot container"
 	@echo "  make deploy-commands    - Deploy slash commands"
 	@echo ""
-	@echo "Current Maturity Level: 1 (see MATURITY.md)"
+	@echo "Current Maturity Level: 1 (see docs/status/MATURITY.md)"
 
 # Start the platform
 start:
@@ -93,5 +93,5 @@ deploy-commands:
 # Check current maturity level
 maturity:
 	@echo "Current Maturity Level: 1"
-	@echo "See MATURITY.md for details"
-	@grep "^- \[" MATURITY.md | head -20
+	@echo "See docs/status/MATURITY.md for details"
+	@grep "^- \\[" docs/status/MATURITY.md | head -20

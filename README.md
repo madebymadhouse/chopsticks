@@ -19,7 +19,7 @@ This repository is designed to be safe to publish: configuration is externalized
 - Primary runtime target: Docker Compose production stack
 - Moderation suite: hardened embed outputs + guardrails + interactive purge
 
-See `SYSTEM_STATUS.md`, `MATURITY.md`, `LEVEL_1_COMPLETION_REPORT.md`, and `LEVEL_2_COMPLETION_REPORT.md` for detailed status.
+See `docs/status/SYSTEM_STATUS.md`, `docs/status/MATURITY.md`, `docs/reports/LEVEL_1_COMPLETION_REPORT.md`, and `docs/reports/LEVEL_2_COMPLETION_REPORT.md` for detailed status.
 
 ## Making This Repo Public (Checklist)
 
@@ -234,9 +234,9 @@ make test-protocol
 
 ## Key Docs
 
-- `SYSTEM_STATUS.md`
-- `MATURITY.md`
-- `TESTING_GUIDE.md`
+- `docs/status/SYSTEM_STATUS.md`
+- `docs/status/MATURITY.md`
+- `docs/deploy/TESTING_GUIDE.md`
 - `docs/AGENT_PROTOCOL.md`
 - `docs/schema/DATABASE_SCHEMA.md`
 - `docs/runbooks.md`

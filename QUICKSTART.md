@@ -54,7 +54,7 @@ docker compose logs -f bot
 # Done! Bot runs 24/7 🎉
 ```
 
-Full guide: **[DEPLOY.md](./DEPLOY.md)**
+Full guide: **[DEPLOY.md](./docs/deploy/DEPLOY.md)**
 
 ---
 
@@ -175,7 +175,7 @@ npm run start:all
 - `src/utils/resourceMonitor.js` - CPU/RAM monitoring
 
 ### Documentation
-- `DEPLOY.md` - Complete deployment guide
+- `docs/deploy/DEPLOY.md` - Complete deployment guide
 - `HARDENING_SUMMARY.md` - This work summary
 - `QUICKSTART.md` - This file
 
@@ -206,7 +206,7 @@ npm run start:all
 ## 🛟 Need Help?
 
 ### Documentation
-1. **DEPLOY.md** - Step-by-step deployment
+1. **docs/deploy/DEPLOY.md** - Step-by-step deployment
 2. **HARDENING_SUMMARY.md** - What was fixed and why
 3. **Session folder** - Detailed architecture plans
 
@@ -287,7 +287,7 @@ You wanted:
 ---
 
 **Ready to deploy?**
-→ Read [DEPLOY.md](./DEPLOY.md) for detailed instructions
+→ Read [DEPLOY.md](./docs/deploy/DEPLOY.md) for detailed instructions
 
 **Want to understand more?**
 → Read [HARDENING_SUMMARY.md](./HARDENING_SUMMARY.md) for technical details

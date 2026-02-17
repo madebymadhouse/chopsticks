@@ -495,4 +495,4 @@ Operation-specific errors returned in `resp` message with `ok: false`.
 
 - `src/agents/agentManager.js` - Controller implementation
 - `src/agents/agentRunner.js` - Agent implementation
-- `MATURITY.md` - Platform maturity model (Level 1)
+- `status/MATURITY.md` - Platform maturity model (Level 1)
