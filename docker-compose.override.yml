@@ -1,10 +1,10 @@
 services:
-  main-bot:
+  bot:
     build:
       context: .
       dockerfile: Dockerfile.bot
     image: chopsticks-main-bot:latest
-    container_name: chopsticks-main-bot
+    container_name: "${COMPOSE_PROJECT_NAME:-chopsticks}-main-bot"
     environment:
       # Discord Bot Token (REQUIRED)
       - DISCORD_TOKEN=${DISCORD_TOKEN:?DISCORD_TOKEN is required}
@@ -52,10 +52,10 @@ services:
       context: .
       dockerfile: Dockerfile.agentrunner
     image: chopsticks-agent-runner:latest
-    container_name: chopsticks-agent-runner
+    container_name: "${COMPOSE_PROJECT_NAME:-chopsticks}-agent-runner"
     environment:
       # Agent Manager URL for the runner to connect to the main bot
-      - AGENT_CONTROL_URL=ws://main-bot:8787
+      - AGENT_CONTROL_URL=ws://bot:8787
       # Storage driver
       - STORAGE_DRIVER=postgres
       # Database connection details
@@ -87,7 +87,7 @@ services:
       - VOICE_OLLAMA_MODEL=${VOICE_OLLAMA_MODEL:-llama3.1:8b} # from docker-compose.voice.yml
       - VOICE_OLLAMA_OPTIONS=${VOICE_OLLAMA_OPTIONS:-} # from docker-compose.voice.yml
     depends_on:
-      - main-bot # Must connect to the main bot's AgentManager
+      - bot # Must connect to the main bot's AgentManager
       - postgres
       - redis
       - lavalink
