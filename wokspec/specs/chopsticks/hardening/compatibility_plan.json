@@ -1,0 +1,239 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2025-07-15T00:00:00.000Z",
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Permission Gate Hardening",
+      "status": "done",
+      "commit": "0becf42",
+      "description": "Added setDefaultMemberPermissions to all 31 slash commands with userPerms; added category metadata to every command export.",
+      "completed_at": "2025-07-15T00:00:00.000Z"
+    },
+    {
+      "id": "phase-2",
+      "name": "Prefix Parity Bridge",
+      "status": "planned",
+      "branch": "feature/chopsticks/prefix-parity-bridge",
+      "description": "Replace inline permission checks in prefix registry with auto-derived checks from meta.userPerms to eliminate permission divergence.",
+      "completed_at": null
+    },
+    {
+      "id": "phase-3",
+      "name": "Prefix Registry Sync Guard",
+      "status": "planned",
+      "branch": "feature/chopsticks/prefix-registry-sync-guard",
+      "description": "Add CI script that fails builds when a slash command exists without a corresponding prefix registry entry and no explicit prefixDisabled opt-out.",
+      "completed_at": null
+    },
+    {
+      "id": "phase-4",
+      "name": "Component-Safe Prefix Fallbacks",
+      "status": "backlog",
+      "branch": null,
+      "description": "For commands that rely on modals/buttons/select-menus, add graceful prefix-context error responses rather than silent failures or unhandled exceptions.",
+      "completed_at": null
+    }
+  ],
+  "parity_gaps": [
+    {
+      "id": "gap-registry-drift",
+      "severity": "blocking",
+      "description": "src/prefix/registry.js is a hand-maintained list independent of src/commands/. New slash commands are not automatically reflected in the prefix surface, causing silent drift over time.",
+      "proposed_fix": "Add scripts/checkPrefixSync.js CI check; require meta.prefixDisabled = true as an explicit opt-out for commands intentionally absent from prefix registry.",
+      "effort": "med"
+    },
+    {
+      "id": "gap-permission-divergence",
+      "severity": "blocking",
+      "description": "Prefix registry contains bespoke inline permission checks that are not derived from meta.userPerms. A permission change to a slash command does not propagate to the prefix handler, allowing privilege escalation on the prefix path.",
+      "proposed_fix": "Create src/prefix/applyMetaPerms.js utility; replace all inline permission blocks in registry.js with a single applyMetaPerms(meta, message) call.",
+      "effort": "med"
+    },
+    {
+      "id": "gap-component-commands",
+      "severity": "blocking",
+      "description": "Commands /tickets, /starboard, /reactionroles, and /setup rely on Discord.js interaction-only APIs (showModal, createMessageComponentCollector on interactions). When invoked via prefix these throw runtime errors or fail silently.",
+      "proposed_fix": "Detect execution context in each handler; return a user-facing embed explaining that the command must be used as a slash command when called from prefix context.",
+      "effort": "med"
+    },
+    {
+      "id": "gap-subcommand-parsing",
+      "severity": "warning",
+      "description": "Slash subcommand trees (addSubcommand / addSubcommandGroup) have no first-class equivalent in the prefix handler. Each prefix invocation with subcommands requires bespoke text-parsing logic, which diverges from the slash schema as options change.",
+      "proposed_fix": "Document a standard prefix subcommand parsing convention (e.g., first token after command name = subcommand name); enforce via a shared parseSubcommand() helper in src/prefix/.",
+      "effort": "high"
+    },
+    {
+      "id": "gap-autocomplete-absent",
+      "severity": "warning",
+      "description": "Options with setAutocomplete(true) provide live suggestions in slash context. The prefix path offers no hints, increasing user error rates on commands with constrained option value sets (e.g., /case, /warn, /config).",
+      "proposed_fix": "For high-traffic commands with autocomplete options, add a !help <command> sub-path that lists valid option values inline.",
+      "effort": "low"
+    },
+    {
+      "id": "gap-rate-limit-key",
+      "severity": "info",
+      "description": "Prefix invocations pass source: 'prefix' to getRateLimitForCommand in src/index.js. Confirmed to use the same per-command limit thresholds as slash. No action required currently, but must be re-verified if rate-limit logic is refactored.",
+      "proposed_fix": "Add a unit test that asserts getRateLimitForCommand returns equal values for source: 'prefix' and source: 'slash' for the same command name.",
+      "effort": "low"
+    }
+  ],
+  "permission_gate_status": {
+    "slash_api_layer": {
+      "mechanism": "setDefaultMemberPermissions()",
+      "status": "complete",
+      "commands_covered": 31,
+      "commands_total_with_perms": 31
+    },
+    "bot_interaction_layer": {
+      "mechanism": "meta.userPerms check in interaction handler",
+      "status": "complete"
+    },
+    "prefix_layer": {
+      "mechanism": "inline per-command permission checks in src/prefix/registry.js",
+      "status": "divergence-risk",
+      "remediation_phase": "phase-2",
+      "notes": "Permission checks are manually coded and not derived from meta.userPerms. Phase 2 will unify these."
+    }
+  },
+  "deploy_strategy": {
+    "branch": "feature/chopsticks/command-registry-audit",
+    "deploy_windows": [
+      { "day": "Tuesday", "utc_start": "02:00", "utc_end": "04:00" },
+      { "day": "Thursday", "utc_start": "02:00", "utc_end": "04:00" }
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "action": "Merge PR to main, pull on host",
+        "command": "git pull origin main && npm install"
+      },
+      {
+        "order": 2,
+        "action": "Push updated command schemas to Discord",
+        "command": "node scripts/deployCommands.js"
+      },
+      {
+        "order": 3,
+        "action": "Wait for Discord global command propagation",
+        "duration_minutes": 5
+      },
+      {
+        "order": 4,
+        "action": "Monitor discord-errors Prometheus metric for 30 minutes",
+        "thresholds": {
+          "ok_pct": 0.5,
+          "warning_pct": 2.0,
+          "rollback_pct": 5.0
+        }
+      },
+      {
+        "order": 5,
+        "action": "Check #bot-logs for MISSING_PERMISSIONS or UNKNOWN_COMMAND strings"
+      }
+    ],
+    "rollback": {
+      "standard": "git revert HEAD~1 && npm install && node scripts/deployCommands.js",
+      "emergency": "node scripts/clearCommands.js && git checkout <last-known-good-sha> && npm install && node scripts/deployCommands.js",
+      "emergency_downtime_minutes": 60,
+      "emergency_notes": "clearCommands.js wipes all registered slash commands. Use only as last resort."
+    }
+  },
+  "acceptance_checklist": [
+    {
+      "id": "check-registry-audit-test",
+      "check": "test/unit/command-registry-audit.test.js passes — every command with non-empty meta.userPerms has setDefaultMemberPermissions set in its data builder",
+      "automated": true,
+      "test_path": "test/unit/command-registry-audit.test.js"
+    },
+    {
+      "id": "check-deploy-dry-run",
+      "check": "node scripts/deployCommands.js --dry-run succeeds in CI against staging guild without errors",
+      "automated": true,
+      "test_path": null
+    },
+    {
+      "id": "check-prefix-parity",
+      "check": "If a new slash command is added, a corresponding prefix registry entry exists OR meta.prefixDisabled = true is set with a justification comment",
+      "automated": true,
+      "test_path": "test/unit/prefix-sync.test.js"
+    },
+    {
+      "id": "check-meta-completeness",
+      "check": "No new export const data block exists without a matching export const meta including at minimum { category, description }",
+      "automated": true,
+      "test_path": "test/unit/command-registry-audit.test.js"
+    },
+    {
+      "id": "check-prefix-perms-match",
+      "check": "test/unit/prefix-parity.test.js passes — for every command in prefix registry its enforced permissions match meta.userPerms from the slash command file",
+      "automated": true,
+      "test_path": "test/unit/prefix-parity.test.js"
+    },
+    {
+      "id": "check-no-regression",
+      "check": "npm test green on main before and after the PR branch; no pre-existing test suite failures introduced by the change",
+      "automated": true,
+      "test_path": null
+    }
+  ],
+  "implementation_prompts": [
+    {
+      "pr_title": "feat: prefix parity bridge — auto-derive prefix perms from meta.userPerms",
+      "branch": "feature/chopsticks/prefix-parity-bridge",
+      "objective": "Eliminate Gap gap-permission-divergence by replacing all inline permission checks in src/prefix/registry.js with a shared utility that reads meta.userPerms from each command's export.",
+      "files_to_create": [
+        {
+          "path": "src/prefix/applyMetaPerms.js",
+          "description": "Utility function accepting a meta object and a Discord.js GuildMember. Iterates meta.userPerms and returns { allowed: boolean, missing: string | null }."
+        },
+        {
+          "path": "test/unit/prefix-parity.test.js",
+          "description": "For each entry in the prefix registry: (1) assert a corresponding command file exists under src/commands/, (2) assert the file exports meta.userPerms, (3) assert the prefix handler enforces exactly those permissions — no more, no fewer."
+        }
+      ],
+      "files_to_modify": [
+        {
+          "path": "src/prefix/registry.js",
+          "change": "Import applyMetaPerms; for each command block that has a manual member.permissions.has(...) check, replace with const { allowed, missing } = applyMetaPerms(meta, message); if (!allowed) return reply(...);"
+        }
+      ],
+      "tests_to_add": ["test/unit/prefix-parity.test.js"],
+      "acceptance": [
+        "npm test passes including new prefix-parity test",
+        "No prefix command can be invoked by a user who would be blocked by the slash version",
+        "CI pipeline green",
+        "PR description includes a table mapping each changed command to its userPerms value"
+      ]
+    },
+    {
+      "pr_title": "ci: add prefix-registry sync check to prevent drift",
+      "branch": "feature/chopsticks/prefix-registry-sync-guard",
+      "objective": "Prevent Gap gap-registry-drift by adding a CI check that fails if a slash command exists without a corresponding prefix registry entry and no meta.prefixDisabled opt-out.",
+      "files_to_create": [
+        {
+          "path": "scripts/checkPrefixSync.js",
+          "description": "Reads all files from src/commands/**/*.js, extracts exported command names, cross-references against src/prefix/registry.js entries. Exits non-zero if any slash command name is absent from prefix registry and not marked prefixDisabled."
+        },
+        {
+          "path": "test/unit/prefix-sync.test.js",
+          "description": "Unit test wrapper around the checkPrefixSync logic. Verifies that a mocked new command without a prefix entry causes a failure, and that meta.prefixDisabled = true suppresses the failure."
+        }
+      ],
+      "files_to_modify": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "change": "Add a CI step — name: Check prefix registry sync, run: node scripts/checkPrefixSync.js — on every PR targeting main."
+        }
+      ],
+      "tests_to_add": ["test/unit/prefix-sync.test.js"],
+      "acceptance": [
+        "CI fails on a branch where a new slash command is added without a prefix registry entry",
+        "CI passes when meta.prefixDisabled = true is set on the new command",
+        "npm test passes",
+        "Existing commands all pass the sync check on main"
+      ]
+    }
+  ]
+}

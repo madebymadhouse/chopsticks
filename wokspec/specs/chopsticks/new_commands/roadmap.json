@@ -1,0 +1,1387 @@
+{
+  "schema_version": "1.0.0",
+  "total_commands": 30,
+  "generated": "2025",
+  "groups": [
+    { "id": "moderation", "label": "Moderation Enhancement", "command_count": 5 },
+    { "id": "ai", "label": "AI-Powered", "command_count": 5 },
+    { "id": "economy", "label": "Economy Enhancement", "command_count": 5 },
+    { "id": "community", "label": "Community & Engagement", "command_count": 5 },
+    { "id": "music", "label": "Music Enhancement", "command_count": 5 },
+    { "id": "utility", "label": "Utility & Tools", "command_count": 5 }
+  ],
+  "commands": [
+    {
+      "id": "massban",
+      "slash_name": "massban",
+      "prefix_alias": "massban",
+      "group": "moderation",
+      "category": "mod",
+      "description": "Ban multiple users simultaneously by providing a space- or comma-separated list of user IDs with an optional reason.",
+      "target_users": ["admin"],
+      "permissions": ["BanMembers"],
+      "rate_category": "mod",
+      "effort": "M",
+      "priority": 5,
+      "example_invocations": [
+        "/massban users:123456789 987654321 reason:raid cleanup",
+        "/massban users:111,222,333 reason:coordinated spam",
+        "/massban users:444555666 dry_run:true"
+      ],
+      "test_vectors": [
+        "Each ID receives a guild.bans.create call",
+        "Ephemeral success embed lists banned count and skipped IDs",
+        "dry_run:true emits no bans and returns preview list",
+        "Missing BanMembers permission returns MISSING_PERMISSIONS error embed",
+        "Rate-limit bucket is mod; 11th call within 10s is rejected with 429"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(mod): add /massban command",
+        "branch": "feat/cmd-massban",
+        "files_to_create": [
+          "src/commands/moderation/massban.js",
+          "test/commands/moderation/massban.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/constants/rate-limits.js"
+        ],
+        "tests_to_add": [
+          "test/commands/moderation/massban.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Command appears in /help moderation",
+          "Audit log entry created for each ban",
+          "dry_run mode verified by mod team"
+        ]
+      }
+    },
+    {
+      "id": "lockdown",
+      "slash_name": "lockdown",
+      "prefix_alias": "lockdown",
+      "group": "moderation",
+      "category": "mod",
+      "description": "Lock all text channels in a specified category, preventing @everyone from sending messages.",
+      "target_users": ["admin"],
+      "permissions": ["ManageChannels"],
+      "rate_category": "mod",
+      "effort": "M",
+      "priority": 5,
+      "example_invocations": [
+        "/lockdown category:General reason:Emergency maintenance",
+        "/lockdown category:Support duration:30m",
+        "/lockdown category:General unlock:true"
+      ],
+      "test_vectors": [
+        "channel.permissionOverwrites.edit is called for every text channel in target category",
+        "Unlock mode restores original overwrites from stored snapshot",
+        "Timed lockdown schedules an auto-unlock job",
+        "Missing ManageChannels yields MISSING_PERMISSIONS embed",
+        "No-op when category has zero text channels"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(mod): add /lockdown command",
+        "branch": "feat/cmd-lockdown",
+        "files_to_create": [
+          "src/commands/moderation/lockdown.js",
+          "test/commands/moderation/lockdown.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/jobs/scheduler.js"
+        ],
+        "tests_to_add": [
+          "test/commands/moderation/lockdown.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Unlock restores original permissions accurately",
+          "Timed unlock fires within ±5 seconds of scheduled time"
+        ]
+      }
+    },
+    {
+      "id": "antispam-set",
+      "slash_name": "antispam set",
+      "prefix_alias": "antispam set",
+      "group": "moderation",
+      "category": "mod",
+      "description": "Configure per-guild anti-spam thresholds (message burst limit, duplicate detection window, mention flood cap).",
+      "target_users": ["admin"],
+      "permissions": ["ManageGuild"],
+      "rate_category": "admin",
+      "effort": "M",
+      "priority": 4,
+      "example_invocations": [
+        "/antispam set burst_limit:5 window_ms:3000",
+        "/antispam set mention_limit:10 action:mute",
+        "/antispam set duplicate_threshold:3 action:delete"
+      ],
+      "test_vectors": [
+        "Settings are persisted to guild_settings table with correct guild ID",
+        "Validation rejects burst_limit < 1 or > 100",
+        "Returned embed echoes back the applied settings",
+        "ManageGuild check; unpermissioned caller yields error",
+        "Defaults are applied for omitted fields"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(mod): add /antispam set command",
+        "branch": "feat/cmd-antispam-set",
+        "files_to_create": [
+          "src/commands/moderation/antispam.js",
+          "test/commands/moderation/antispam.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/antispam.js",
+          "migrations/add_antispam_config.sql"
+        ],
+        "tests_to_add": [
+          "test/commands/moderation/antispam.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Antispam service reads new config on next message event",
+          "Migration runs cleanly on production schema"
+        ]
+      }
+    },
+    {
+      "id": "note",
+      "slash_name": "note",
+      "prefix_alias": "note",
+      "group": "moderation",
+      "category": "mod",
+      "description": "Attach a private moderator note to a user's moderation record without taking a public action.",
+      "target_users": ["mod"],
+      "permissions": ["ModerateMembers"],
+      "rate_category": "mod",
+      "effort": "S",
+      "priority": 4,
+      "example_invocations": [
+        "/note user:@JohnDoe text:Warned verbally in #general about spoilers",
+        "/note user:987654321 text:Watch for coordinated behavior with 111222333",
+        "/note user:@JaneDoe text:Returning after previous ban—monitor closely"
+      ],
+      "test_vectors": [
+        "Note written to mod_notes table with author_id, target_id, guild_id, timestamp, text",
+        "Note is ephemeral to issuing mod, not visible to target user",
+        "/history surfaces notes for same target user",
+        "ModerateMembers guard enforced",
+        "Note text truncated to 1000 chars with warning"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(mod): add /note command",
+        "branch": "feat/cmd-note",
+        "files_to_create": [
+          "src/commands/moderation/note.js",
+          "test/commands/moderation/note.test.js",
+          "migrations/create_mod_notes.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js"
+        ],
+        "tests_to_add": [
+          "test/commands/moderation/note.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Note appears in /history output",
+          "Note not visible to non-mod callers"
+        ]
+      }
+    },
+    {
+      "id": "history",
+      "slash_name": "history",
+      "prefix_alias": "history",
+      "group": "moderation",
+      "category": "mod",
+      "description": "Display a paginated moderation history for a user, including warns, bans, kicks, mutes, and notes.",
+      "target_users": ["mod"],
+      "permissions": ["ModerateMembers"],
+      "rate_category": "mod",
+      "effort": "M",
+      "priority": 5,
+      "example_invocations": [
+        "/history user:@JohnDoe",
+        "/history user:987654321 page:2",
+        "/history user:@JohnDoe type:ban"
+      ],
+      "test_vectors": [
+        "Paginated embed shows correct entries in reverse-chronological order",
+        "type filter returns only specified action type",
+        "Empty history returns a friendly no-records embed",
+        "ModerateMembers guard enforced",
+        "page out of range returns last valid page with a notice"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(mod): add /history command",
+        "branch": "feat/cmd-history",
+        "files_to_create": [
+          "src/commands/moderation/history.js",
+          "test/commands/moderation/history.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/modlog.js"
+        ],
+        "tests_to_add": [
+          "test/commands/moderation/history.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "History aggregates data from warn, ban, kick, mute, and note tables",
+          "Pagination component renders correctly in Discord"
+        ]
+      }
+    },
+    {
+      "id": "ai-summarize",
+      "slash_name": "ai summarize",
+      "prefix_alias": "ai summarize",
+      "group": "ai",
+      "category": "mod",
+      "description": "Fetch the last N messages from the current channel and return an AI-generated summary as an ephemeral embed.",
+      "target_users": ["mod", "admin"],
+      "permissions": ["ManageMessages"],
+      "rate_category": "ai",
+      "effort": "M",
+      "priority": 4,
+      "example_invocations": [
+        "/ai summarize count:50",
+        "/ai summarize count:100 format:bullet",
+        "/ai summarize count:25 channel:#announcements"
+      ],
+      "test_vectors": [
+        "Bot fetches exactly count messages via Discord API",
+        "AI provider is called with correct prompt template",
+        "Output capped at 2000 chars; truncation note appended when exceeded",
+        "ManageMessages guard enforced",
+        "AI provider timeout > 10s returns graceful error embed"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(ai): add /ai summarize command",
+        "branch": "feat/cmd-ai-summarize",
+        "files_to_create": [
+          "src/commands/ai/summarize.js",
+          "test/commands/ai/summarize.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/ai-provider.js"
+        ],
+        "tests_to_add": [
+          "test/commands/ai/summarize.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "AI provider mock used in CI",
+          "Graceful fallback tested with simulated timeout"
+        ]
+      }
+    },
+    {
+      "id": "ai-translate",
+      "slash_name": "ai translate",
+      "prefix_alias": "ai translate",
+      "group": "ai",
+      "category": "user",
+      "description": "Translate a provided text or a replied-to message into any target language using the configured AI provider.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "S",
+      "priority": 3,
+      "example_invocations": [
+        "/ai translate text:\"Hola mundo\" target_language:English",
+        "/ai translate text:\"Bonjour\" target_language:Japanese",
+        "/ai translate message_id:123456789 target_language:Spanish"
+      ],
+      "test_vectors": [
+        "message_id resolves to message content before sending to AI",
+        "Result embed includes detected source language",
+        "Empty/whitespace text yields validation error",
+        "target_language not in supported list yields friendly error with suggestions",
+        "User rate-limit bucket enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(ai): add /ai translate command",
+        "branch": "feat/cmd-ai-translate",
+        "files_to_create": [
+          "src/commands/ai/translate.js",
+          "test/commands/ai/translate.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/ai-provider.js"
+        ],
+        "tests_to_add": [
+          "test/commands/ai/translate.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Detected language shown in embed",
+          "Supported languages list documented in help text"
+        ]
+      }
+    },
+    {
+      "id": "ai-moderate",
+      "slash_name": "ai moderate",
+      "prefix_alias": "ai moderate",
+      "group": "ai",
+      "category": "admin",
+      "description": "Run an AI-assisted content moderation scan on the last N messages, flagging potentially policy-violating content.",
+      "target_users": ["admin"],
+      "permissions": ["ManageGuild"],
+      "rate_category": "admin",
+      "effort": "L",
+      "priority": 3,
+      "example_invocations": [
+        "/ai moderate count:200 channel:#general",
+        "/ai moderate count:50 threshold:0.8",
+        "/ai moderate count:100 auto_delete:true"
+      ],
+      "test_vectors": [
+        "AI moderation API called once per message batch, not per message",
+        "Flagged messages above threshold listed in response embed",
+        "auto_delete:true calls message.delete() for each flagged message",
+        "Results logged to ai_moderation_log table",
+        "ManageGuild guard enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(ai): add /ai moderate command",
+        "branch": "feat/cmd-ai-moderate",
+        "files_to_create": [
+          "src/commands/ai/moderate.js",
+          "test/commands/ai/moderate.test.js",
+          "migrations/create_ai_moderation_log.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/ai-provider.js"
+        ],
+        "tests_to_add": [
+          "test/commands/ai/moderate.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Batch API call verified; no per-message calls in test output",
+          "auto_delete tested with mocked message.delete()"
+        ]
+      }
+    },
+    {
+      "id": "ai-persona-set",
+      "slash_name": "ai persona set",
+      "prefix_alias": "ai persona set",
+      "group": "ai",
+      "category": "admin",
+      "description": "Configure a custom AI persona name and style (tone, greeting, restrictions) for all AI responses in this guild.",
+      "target_users": ["admin"],
+      "permissions": ["ManageGuild"],
+      "rate_category": "admin",
+      "effort": "S",
+      "priority": 2,
+      "example_invocations": [
+        "/ai persona set name:Aria tone:friendly",
+        "/ai persona set name:Sentinel tone:formal restrictions:\"no profanity\"",
+        "/ai persona set reset:true"
+      ],
+      "test_vectors": [
+        "Persona config saved to guild_settings.ai_persona JSON column",
+        "reset:true clears custom persona and applies defaults",
+        "Saved persona used in subsequent /ai summarize system prompt",
+        "name length <= 32 chars; validation error otherwise",
+        "ManageGuild guard enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(ai): add /ai persona set command",
+        "branch": "feat/cmd-ai-persona",
+        "files_to_create": [
+          "src/commands/ai/persona.js",
+          "test/commands/ai/persona.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/ai-provider.js"
+        ],
+        "tests_to_add": [
+          "test/commands/ai/persona.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Persona reflected in /ai summarize output in integration test",
+          "reset:true verified to clear persona"
+        ]
+      }
+    },
+    {
+      "id": "ai-stats",
+      "slash_name": "ai stats",
+      "prefix_alias": "ai stats",
+      "group": "ai",
+      "category": "admin",
+      "description": "Display AI usage statistics for the guild: total calls, tokens used, provider costs, and top commands by AI usage.",
+      "target_users": ["admin"],
+      "permissions": ["ManageGuild"],
+      "rate_category": "admin",
+      "effort": "S",
+      "priority": 2,
+      "example_invocations": [
+        "/ai stats",
+        "/ai stats period:7d",
+        "/ai stats period:30d breakdown:command"
+      ],
+      "test_vectors": [
+        "Embed includes total calls, total tokens, estimated cost",
+        "period filter correctly scopes the query window",
+        "breakdown:command shows per-command AI usage table",
+        "Zero-usage guilds return a No AI usage yet embed",
+        "ManageGuild guard enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(ai): add /ai stats command",
+        "branch": "feat/cmd-ai-stats",
+        "files_to_create": [
+          "src/commands/ai/stats.js",
+          "test/commands/ai/stats.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/ai-provider.js",
+          "migrations/add_ai_usage_log.sql"
+        ],
+        "tests_to_add": [
+          "test/commands/ai/stats.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Cost estimation formula documented",
+          "breakdown:command view renders correctly in Discord"
+        ]
+      }
+    },
+    {
+      "id": "auction-create",
+      "slash_name": "auction create",
+      "prefix_alias": "auction create",
+      "group": "economy",
+      "category": "admin",
+      "description": "Create a timed auction for an in-bot item or currency amount, with configurable starting bid and duration.",
+      "target_users": ["admin"],
+      "permissions": ["ManageGuild"],
+      "rate_category": "economy",
+      "effort": "L",
+      "priority": 3,
+      "example_invocations": [
+        "/auction create item:\"Golden Badge\" start_bid:500 duration:1h",
+        "/auction create item:\"VIP Role\" start_bid:1000 duration:24h",
+        "/auction create item:\"500 coins\" start_bid:100 duration:30m buyout:2000"
+      ],
+      "test_vectors": [
+        "Auction persisted to auctions table with correct end timestamp",
+        "Bid message posted to configured auction channel",
+        "buyout price triggers immediate close when met",
+        "Expired auction triggers winner announcement and item transfer",
+        "ManageGuild guard enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(economy): add /auction create command",
+        "branch": "feat/cmd-auction-create",
+        "files_to_create": [
+          "src/commands/economy/auction.js",
+          "test/commands/economy/auction.test.js",
+          "migrations/create_auctions.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/jobs/scheduler.js"
+        ],
+        "tests_to_add": [
+          "test/commands/economy/auction.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Buyout path tested with simulated bid",
+          "Expiry job fires and transfers item correctly"
+        ]
+      }
+    },
+    {
+      "id": "trade",
+      "slash_name": "trade",
+      "prefix_alias": "trade",
+      "group": "economy",
+      "category": "user",
+      "description": "Propose a currency or item trade to another user; both parties must confirm before items transfer.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "economy",
+      "effort": "M",
+      "priority": 3,
+      "example_invocations": [
+        "/trade user:@Alice offer:200coins request:50coins",
+        "/trade user:@Bob offer:\"Rare Badge\" request:300coins",
+        "/trade user:@Carol offer:100coins request:\"Lucky Charm\""
+      ],
+      "test_vectors": [
+        "Trade proposal creates a pending record and DMs target user",
+        "Both accept and decline buttons rendered on the trade embed",
+        "Accepting transfers items atomically (no partial writes)",
+        "Trade auto-cancels after 5 minutes with a timeout notice",
+        "Self-trade yields validation error"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(economy): add /trade command",
+        "branch": "feat/cmd-trade",
+        "files_to_create": [
+          "src/commands/economy/trade.js",
+          "test/commands/economy/trade.test.js",
+          "migrations/create_trades.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/economy.js"
+        ],
+        "tests_to_add": [
+          "test/commands/economy/trade.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Atomic transfer verified with concurrent accept simulation",
+          "5-minute timeout verified with mocked clock"
+        ]
+      }
+    },
+    {
+      "id": "heist",
+      "slash_name": "heist",
+      "prefix_alias": "heist",
+      "group": "economy",
+      "category": "user",
+      "description": "Launch a group heist event where participating members attempt to steal from the guild bank for a split payout.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "economy",
+      "effort": "L",
+      "priority": 3,
+      "example_invocations": [
+        "/heist start stake:100",
+        "/heist join",
+        "/heist status"
+      ],
+      "test_vectors": [
+        "Only one active heist per guild at a time",
+        "Minimum participant count (default 3) required before heist begins",
+        "Success/fail probability uses configured odds and participant count",
+        "Winners split payout, losers lose stake",
+        "Cooldown of 1 hour after heist concludes"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(economy): add /heist command",
+        "branch": "feat/cmd-heist",
+        "files_to_create": [
+          "src/commands/economy/heist.js",
+          "test/commands/economy/heist.test.js",
+          "migrations/create_heist_events.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/economy.js"
+        ],
+        "tests_to_add": [
+          "test/commands/economy/heist.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Cooldown enforced between heist runs",
+          "Payout split math verified for 3, 5, and 10 participants"
+        ]
+      }
+    },
+    {
+      "id": "casino-slots",
+      "slash_name": "casino slots",
+      "prefix_alias": "slots",
+      "group": "economy",
+      "category": "user",
+      "description": "Play a slot machine mini-game for a wagered amount of in-bot currency with animated result display.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "economy",
+      "effort": "M",
+      "priority": 2,
+      "example_invocations": [
+        "/casino slots bet:50",
+        "/casino slots bet:200",
+        "/casino slots bet:max"
+      ],
+      "test_vectors": [
+        "bet:max resolves to the user's full balance",
+        "Wager deducted before spin; winnings added on match",
+        "Animated emoji reel rendered in embed before final result",
+        "Balance < bet yields insufficient funds error",
+        "RNG seed logged for auditability"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(economy): add /casino slots command",
+        "branch": "feat/cmd-casino-slots",
+        "files_to_create": [
+          "src/commands/economy/casino.js",
+          "test/commands/economy/casino.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/economy.js"
+        ],
+        "tests_to_add": [
+          "test/commands/economy/casino.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "RNG seed logged to economy_audit_log",
+          "Animated reel uses message.edit() correctly"
+        ]
+      }
+    },
+    {
+      "id": "streak",
+      "slash_name": "streak",
+      "prefix_alias": "streak",
+      "group": "economy",
+      "category": "user",
+      "description": "View your current daily login streak and the bonus multiplier applied to economy rewards for maintaining the streak.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "S",
+      "priority": 3,
+      "example_invocations": [
+        "/streak",
+        "/streak user:@Alice",
+        "/streak leaderboard"
+      ],
+      "test_vectors": [
+        "Streak counter increments exactly once per calendar day",
+        "Streak resets to 0 when a day is missed",
+        "Multiplier table applied correctly at milestones (7, 14, 30, 100 days)",
+        "leaderboard shows top 10 streaks in the guild",
+        "Viewing another user's streak is read-only"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(economy): add /streak command",
+        "branch": "feat/cmd-streak",
+        "files_to_create": [
+          "src/commands/economy/streak.js",
+          "test/commands/economy/streak.test.js",
+          "migrations/create_streaks.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/economy.js"
+        ],
+        "tests_to_add": [
+          "test/commands/economy/streak.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Streak reset tested with mocked date jump",
+          "Leaderboard query indexed on guild_id + streak_count"
+        ]
+      }
+    },
+    {
+      "id": "birthday-set",
+      "slash_name": "birthday set",
+      "prefix_alias": "birthday set",
+      "group": "community",
+      "category": "user",
+      "description": "Store your birthday (month and day) so the bot can announce it in the configured channel on your special day.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "S",
+      "priority": 3,
+      "example_invocations": [
+        "/birthday set month:7 day:4",
+        "/birthday set month:12 day:25",
+        "/birthday set month:3 day:14 timezone:America/New_York"
+      ],
+      "test_vectors": [
+        "Birthday stored to user_birthdays with guild_id, user_id, month, day, timezone",
+        "Invalid date (e.g., Feb 30) yields validation error",
+        "Daily cron job fires announcements on matching date in correct timezone",
+        "Re-setting overwrites previous entry",
+        "Announcement channel must be configured by admin; error if not set"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(community): add /birthday set command",
+        "branch": "feat/cmd-birthday-set",
+        "files_to_create": [
+          "src/commands/community/birthday.js",
+          "test/commands/community/birthday.test.js",
+          "migrations/create_user_birthdays.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/jobs/birthday-cron.js"
+        ],
+        "tests_to_add": [
+          "test/commands/community/birthday.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Cron job fires announcement in test guild",
+          "Timezone handling tested across UTC-12 to UTC+14"
+        ]
+      }
+    },
+    {
+      "id": "birthday-list",
+      "slash_name": "birthday list",
+      "prefix_alias": "birthday list",
+      "group": "community",
+      "category": "user",
+      "description": "Show a list of server members whose birthdays fall within the current calendar month.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "S",
+      "priority": 2,
+      "example_invocations": [
+        "/birthday list",
+        "/birthday list month:12",
+        "/birthday list upcoming:7"
+      ],
+      "test_vectors": [
+        "List is scoped to the current guild",
+        "month parameter overrides current-month default",
+        "upcoming:7 returns birthdays within the next 7 days",
+        "Entries sorted by ascending day-of-month",
+        "Empty month returns No birthdays this month embed"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(community): add /birthday list command",
+        "branch": "feat/cmd-birthday-list",
+        "files_to_create": [
+          "test/commands/community/birthday-list.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/community/birthday.js"
+        ],
+        "tests_to_add": [
+          "test/commands/community/birthday-list.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "upcoming filter verified with synthetic date data",
+          "Empty month embed renders correctly"
+        ]
+      }
+    },
+    {
+      "id": "events-create",
+      "slash_name": "events create",
+      "prefix_alias": "events create",
+      "group": "community",
+      "category": "admin",
+      "description": "Create a Discord scheduled event with title, description, start time, and optional voice channel.",
+      "target_users": ["admin"],
+      "permissions": ["ManageEvents"],
+      "rate_category": "admin",
+      "effort": "M",
+      "priority": 3,
+      "example_invocations": [
+        "/events create name:\"Movie Night\" start:\"2025-08-15 20:00\" channel:#movie-voice",
+        "/events create name:\"Game Tournament\" start:\"2025-09-01 18:00\" description:\"Bring your best\"",
+        "/events create name:\"Q&A Session\" start:\"2025-07-20 19:00\" external_url:https://twitch.tv/example"
+      ],
+      "test_vectors": [
+        "Discord scheduled event created via guild.scheduledEvents.create",
+        "ISO 8601 and natural-language start-time parsing both work",
+        "external_url sets event entity type to EXTERNAL",
+        "ManageEvents guard enforced",
+        "Past start time yields validation error"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(community): add /events create command",
+        "branch": "feat/cmd-events-create",
+        "files_to_create": [
+          "src/commands/community/events.js",
+          "test/commands/community/events.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js"
+        ],
+        "tests_to_add": [
+          "test/commands/community/events.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Scheduled event visible in Discord server after creation",
+          "external_url entity type verified in Discord API mock"
+        ]
+      }
+    },
+    {
+      "id": "suggest",
+      "slash_name": "suggest",
+      "prefix_alias": "suggest",
+      "group": "community",
+      "category": "user",
+      "description": "Submit a suggestion that is posted to the configured suggestions channel with up/down vote reactions.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "S",
+      "priority": 4,
+      "example_invocations": [
+        "/suggest text:\"Add a music trivia game\"",
+        "/suggest text:\"Create a weekly art contest\" category:Events",
+        "/suggest text:\"Allow custom role colors for boosters\""
+      ],
+      "test_vectors": [
+        "Suggestion posted to configured suggestions channel embed",
+        "Thumbs-up and thumbs-down reactions auto-added",
+        "category prepends a label to embed title when provided",
+        "Suggestions channel not configured yields admin-friendly setup prompt",
+        "Suggestion text length 10-2000 chars enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(community): add /suggest command",
+        "branch": "feat/cmd-suggest",
+        "files_to_create": [
+          "src/commands/community/suggest.js",
+          "test/commands/community/suggest.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js"
+        ],
+        "tests_to_add": [
+          "test/commands/community/suggest.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Both reactions verified added to suggestion message",
+          "category label visible in embed title"
+        ]
+      }
+    },
+    {
+      "id": "reputation-give",
+      "slash_name": "reputation give",
+      "prefix_alias": "rep give",
+      "group": "community",
+      "category": "user",
+      "description": "Give one reputation point to another server member, limited to once per 24 hours per giver.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "S",
+      "priority": 3,
+      "example_invocations": [
+        "/reputation give user:@Alice reason:\"Helped me with the setup guide\"",
+        "/reputation give user:@Bob",
+        "/reputation give user:@Carol reason:\"Amazing art post\""
+      ],
+      "test_vectors": [
+        "user_reputation row incremented for target",
+        "Giver cannot exceed 1 rep-give per 24h per guild",
+        "Self-rep yields validation error",
+        "Bot target yields validation error",
+        "reason is optional; stored if provided"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(community): add /reputation give command",
+        "branch": "feat/cmd-reputation-give",
+        "files_to_create": [
+          "src/commands/community/reputation.js",
+          "test/commands/community/reputation.test.js",
+          "migrations/create_reputation.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js"
+        ],
+        "tests_to_add": [
+          "test/commands/community/reputation.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "24h cooldown verified with mocked timestamp",
+          "Self-rep and bot-rep errors verified"
+        ]
+      }
+    },
+    {
+      "id": "music-shuffle",
+      "slash_name": "music shuffle",
+      "prefix_alias": "shuffle",
+      "group": "music",
+      "category": "user",
+      "description": "Randomly shuffle all tracks in the current playback queue, excluding the currently playing track.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "music",
+      "effort": "S",
+      "priority": 4,
+      "example_invocations": [
+        "/music shuffle",
+        "/music shuffle seed:42",
+        "/music shuffle undo:true"
+      ],
+      "test_vectors": [
+        "Queue order changes after shuffle (Fisher-Yates algorithm)",
+        "Now-playing track remains at index 0",
+        "undo:true restores previous queue order from snapshot",
+        "Caller must be in the same voice channel as the bot",
+        "Empty queue (0 or 1 tracks) returns Nothing to shuffle notice"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(music): add /music shuffle command",
+        "branch": "feat/cmd-music-shuffle",
+        "files_to_create": [
+          "src/commands/music/shuffle.js",
+          "test/commands/music/shuffle.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/queue-manager.js"
+        ],
+        "tests_to_add": [
+          "test/commands/music/shuffle.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Fisher-Yates implementation verified with seeded RNG in tests",
+          "Undo snapshot stored in Redis with 30-min TTL"
+        ]
+      }
+    },
+    {
+      "id": "music-save",
+      "slash_name": "music save",
+      "prefix_alias": "music save",
+      "group": "music",
+      "category": "user",
+      "description": "Save the current playback queue as a named playlist under the caller's account for future reuse.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "music",
+      "effort": "M",
+      "priority": 4,
+      "example_invocations": [
+        "/music save name:\"Chill Vibes\"",
+        "/music save name:\"Workout Mix\" public:true",
+        "/music save name:\"Night Drive\" overwrite:true"
+      ],
+      "test_vectors": [
+        "Playlist saved to playlists table with tracks JSON array",
+        "public:true makes playlist discoverable by other guild members",
+        "overwrite:true updates existing playlist; without flag on duplicate name yields error",
+        "Maximum 50 tracks per playlist; excess truncated with warning",
+        "Empty queue yields cannot save error"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(music): add /music save command",
+        "branch": "feat/cmd-music-save",
+        "files_to_create": [
+          "src/commands/music/save.js",
+          "test/commands/music/save.test.js",
+          "migrations/create_playlists.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/queue-manager.js"
+        ],
+        "tests_to_add": [
+          "test/commands/music/save.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "50-track limit enforced and truncation warning shown",
+          "public playlist visible to other guild members via /music playlist load"
+        ]
+      }
+    },
+    {
+      "id": "music-playlist-load",
+      "slash_name": "music playlist load",
+      "prefix_alias": "playlist load",
+      "group": "music",
+      "category": "user",
+      "description": "Load a previously saved playlist into the current queue, appending or replacing based on the mode.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "music",
+      "effort": "M",
+      "priority": 4,
+      "example_invocations": [
+        "/music playlist load name:\"Chill Vibes\"",
+        "/music playlist load name:\"Workout Mix\" mode:replace",
+        "/music playlist load user:@Alice name:\"Night Drive\""
+      ],
+      "test_vectors": [
+        "Tracks enqueued in Lavalink in correct order",
+        "mode:replace clears current queue before loading",
+        "user:@Alice resolves only public playlists from that user",
+        "Non-existent playlist yields friendly not-found error with suggestions",
+        "Bot must be in voice channel before loading"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(music): add /music playlist load command",
+        "branch": "feat/cmd-music-playlist-load",
+        "files_to_create": [
+          "src/commands/music/playlist.js",
+          "test/commands/music/playlist.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/queue-manager.js"
+        ],
+        "tests_to_add": [
+          "test/commands/music/playlist.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Track order in Lavalink queue matches saved playlist order",
+          "mode:replace verified to clear existing queue tracks"
+        ]
+      }
+    },
+    {
+      "id": "music-eq",
+      "slash_name": "music eq",
+      "prefix_alias": "eq",
+      "group": "music",
+      "category": "user",
+      "description": "Apply an equalizer preset to the current playback session: bass-boost, flat, treble, or pop.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "music",
+      "effort": "M",
+      "priority": 3,
+      "example_invocations": [
+        "/music eq preset:bass-boost",
+        "/music eq preset:flat",
+        "/music eq preset:pop"
+      ],
+      "test_vectors": [
+        "Lavalink equalizer filter payload matches preset band config",
+        "flat preset resets all bands to 0 gain",
+        "EQ setting persists for duration of session (survives track skip)",
+        "Caller must be in same voice channel",
+        "Unsupported preset name yields validation error with list of valid presets"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(music): add /music eq command",
+        "branch": "feat/cmd-music-eq",
+        "files_to_create": [
+          "src/commands/music/eq.js",
+          "test/commands/music/eq.test.js",
+          "src/constants/eq-presets.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/lavalink-client.js"
+        ],
+        "tests_to_add": [
+          "test/commands/music/eq.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Band gain values match documented Lavalink presets",
+          "EQ state persists across track changes in integration test"
+        ]
+      }
+    },
+    {
+      "id": "music-lyrics",
+      "slash_name": "music lyrics",
+      "prefix_alias": "lyrics",
+      "group": "music",
+      "category": "user",
+      "description": "Fetch and display lyrics for the currently playing track using the configured lyrics provider.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "M",
+      "priority": 3,
+      "example_invocations": [
+        "/music lyrics",
+        "/music lyrics query:\"Bohemian Rhapsody Queen\"",
+        "/music lyrics page:2"
+      ],
+      "test_vectors": [
+        "Current track title/artist used when no query provided",
+        "Lyrics longer than 4096 chars are paginated",
+        "page:N loads the correct chunk",
+        "No track playing and no query yields error",
+        "Lyrics provider 404 yields not-found embed with search-link fallback"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(music): add /music lyrics command",
+        "branch": "feat/cmd-music-lyrics",
+        "files_to_create": [
+          "src/commands/music/lyrics.js",
+          "test/commands/music/lyrics.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/lyrics-provider.js"
+        ],
+        "tests_to_add": [
+          "test/commands/music/lyrics.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Pagination renders correctly with Discord button components",
+          "404 fallback provides working search link"
+        ]
+      }
+    },
+    {
+      "id": "embed-create",
+      "slash_name": "embed create",
+      "prefix_alias": "embed create",
+      "group": "utility",
+      "category": "admin",
+      "description": "Interactively build and post a custom Discord embed message to a specified channel.",
+      "target_users": ["admin"],
+      "permissions": ["ManageMessages"],
+      "rate_category": "admin",
+      "effort": "M",
+      "priority": 3,
+      "example_invocations": [
+        "/embed create title:\"Welcome!\" description:\"Read the rules.\" color:#5865F2 channel:#welcome",
+        "/embed create title:\"Announcement\" description:\"Server is back.\" thumbnail:https://example.com/img.png",
+        "/embed create title:\"Rules\" fields:\"Rule 1|Be nice|Rule 2|No spam\" channel:#rules"
+      ],
+      "test_vectors": [
+        "color accepts hex and named colors; invalid value yields validation error",
+        "fields string parsed into correct embed field objects",
+        "Embed posted to target channel, not invoking channel",
+        "ManageMessages guard checked in target channel",
+        "Embed title <= 256 chars, description <= 4096 chars enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(utility): add /embed create command",
+        "branch": "feat/cmd-embed-create",
+        "files_to_create": [
+          "src/commands/utility/embed.js",
+          "test/commands/utility/embed.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js"
+        ],
+        "tests_to_add": [
+          "test/commands/utility/embed.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "fields pipe-delimited parser handles multi-value correctly",
+          "Color validation covers all named Discord colors"
+        ]
+      }
+    },
+    {
+      "id": "schedule",
+      "slash_name": "schedule",
+      "prefix_alias": "schedule",
+      "group": "utility",
+      "category": "admin",
+      "description": "Schedule a plain-text or embed message to be sent to a channel at a specified future time.",
+      "target_users": ["admin"],
+      "permissions": ["ManageMessages"],
+      "rate_category": "admin",
+      "effort": "M",
+      "priority": 4,
+      "example_invocations": [
+        "/schedule channel:#announcements message:\"Server maintenance in 1 hour\" at:\"2025-08-01 09:00 UTC\"",
+        "/schedule channel:#general message:\"Good morning!\" at:\"2025-08-02 08:00\" recur:daily",
+        "/schedule list"
+      ],
+      "test_vectors": [
+        "Scheduled job persisted to scheduled_messages table",
+        "recur:daily creates a repeating job (cron expression stored)",
+        "list sub-command returns all pending scheduled messages for the guild",
+        "Past at time yields validation error",
+        "/schedule cancel id:X deletes the scheduled job"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(utility): add /schedule command",
+        "branch": "feat/cmd-schedule",
+        "files_to_create": [
+          "src/commands/utility/schedule.js",
+          "test/commands/utility/schedule.test.js",
+          "migrations/create_scheduled_messages.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/jobs/scheduler.js"
+        ],
+        "tests_to_add": [
+          "test/commands/utility/schedule.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "recur:daily cron expression fires at correct UTC time",
+          "cancel sub-command verified to remove job from scheduler"
+        ]
+      }
+    },
+    {
+      "id": "tag",
+      "slash_name": "tag",
+      "prefix_alias": "tag",
+      "group": "utility",
+      "category": "user",
+      "description": "Create server-specific quick-reply tags that any member can invoke to post pre-written content.",
+      "target_users": ["all"],
+      "permissions": ["ManageMessages"],
+      "rate_category": "user",
+      "effort": "S",
+      "priority": 4,
+      "example_invocations": [
+        "/tag create name:rules content:\"Please read #rules before posting.\"",
+        "/tag use name:rules",
+        "/tag list"
+      ],
+      "test_vectors": [
+        "Tag content stored in guild_tags table with guild_id, name, content, author_id",
+        "use posts tag content to channel (not ephemeral)",
+        "list returns paginated tag names for the guild",
+        "Duplicate tag name yields error with suggestion to use overwrite flag",
+        "ManageMessages guard for create/delete; none required for use"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(utility): add /tag command",
+        "branch": "feat/cmd-tag",
+        "files_to_create": [
+          "src/commands/utility/tag.js",
+          "test/commands/utility/tag.test.js",
+          "migrations/create_guild_tags.sql"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js"
+        ],
+        "tests_to_add": [
+          "test/commands/utility/tag.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "use sub-command verified to post publicly (non-ephemeral)",
+          "Duplicate tag error verified with overwrite flag path"
+        ]
+      }
+    },
+    {
+      "id": "pin",
+      "slash_name": "pin",
+      "prefix_alias": "pin",
+      "group": "utility",
+      "category": "mod",
+      "description": "Pin a specific message by ID or by replying to it, with an optional reason logged to the audit entry.",
+      "target_users": ["mod"],
+      "permissions": ["ManageMessages"],
+      "rate_category": "mod",
+      "effort": "S",
+      "priority": 3,
+      "example_invocations": [
+        "/pin message_id:1234567890123456789",
+        "/pin message_id:1234567890123456789 reason:\"Community highlight\"",
+        "/pin unpin message_id:1234567890123456789"
+      ],
+      "test_vectors": [
+        "message.pin() called on resolved message",
+        "unpin calls message.unpin()",
+        "Message not found yields Message not found error embed",
+        "Channel pin limit (50) reached yields error with list of oldest pins",
+        "ManageMessages guard enforced"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(utility): add /pin command",
+        "branch": "feat/cmd-pin",
+        "files_to_create": [
+          "src/commands/utility/pin.js",
+          "test/commands/utility/pin.test.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js"
+        ],
+        "tests_to_add": [
+          "test/commands/utility/pin.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Pin limit error verified with mocked 50-pin channel",
+          "unpin path verified to call message.unpin()"
+        ]
+      }
+    },
+    {
+      "id": "convert",
+      "slash_name": "convert",
+      "prefix_alias": "convert",
+      "group": "utility",
+      "category": "user",
+      "description": "Convert values between units (length, weight, temperature, volume) or between currencies using live exchange rates.",
+      "target_users": ["all"],
+      "permissions": [],
+      "rate_category": "user",
+      "effort": "M",
+      "priority": 3,
+      "example_invocations": [
+        "/convert value:100 from:USD to:EUR",
+        "/convert value:5 from:km to:miles",
+        "/convert value:212 from:fahrenheit to:celsius"
+      ],
+      "test_vectors": [
+        "Unit conversions use exact formulas (not external API)",
+        "Currency conversions fetch live rates from configured exchange API",
+        "Unknown unit yields error embed listing valid units for detected category",
+        "Negative temperature values convert correctly",
+        "Currency API timeout/failure falls back to cached rates with staleness notice"
+      ],
+      "implementation_pr_prompt": {
+        "pr_title": "feat(utility): add /convert command",
+        "branch": "feat/cmd-convert",
+        "files_to_create": [
+          "src/commands/utility/convert.js",
+          "test/commands/utility/convert.test.js",
+          "src/constants/unit-conversions.js"
+        ],
+        "files_to_modify": [
+          "src/commands/index.js",
+          "src/services/currency-api.js"
+        ],
+        "tests_to_add": [
+          "test/commands/utility/convert.test.js"
+        ],
+        "acceptance": [
+          "All test vectors pass",
+          "Negative Celsius/Fahrenheit conversions verified",
+          "Currency API fallback tested with simulated timeout"
+        ]
+      }
+    }
+  ],
+  "sprint_plan": {
+    "sprint_1_top_10": [
+      "massban",
+      "lockdown",
+      "history",
+      "note",
+      "suggest",
+      "tag",
+      "schedule",
+      "music-shuffle",
+      "music-save",
+      "music-playlist-load"
+    ],
+    "rationale": "Sprint 1 prioritizes the five highest-priority moderation commands (massban, lockdown, history, note) that unblock server safety workflows, then fills remaining slots with high-priority community and utility commands (suggest, tag, schedule) that have short estimated effort and deliver visible user value quickly, plus the three music enhancement commands that build on the existing queue system with minimal new infrastructure."
+  }
+}
