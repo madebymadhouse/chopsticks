@@ -29,6 +29,10 @@ services:
     mem_limit: 512m
     mem_reservation: 256m
     cpus: '1.0'
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: "json-file"
       options:
@@ -64,6 +68,10 @@ services:
     mem_limit: 1g
     mem_reservation: 512m
     cpus: '1.5'
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: "json-file"
       options:

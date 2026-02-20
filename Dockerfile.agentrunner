@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:20-slim
 
 LABEL maintainer="Chopsticks Team"
 LABEL description="Production agent runner with Canvas graphics"
@@ -36,6 +36,15 @@ RUN npm ci --no-optional \
 
 # Copy application
 COPY . .
+
+# Create non-root runtime user
+RUN set -eux; \
+    addgroup --system app || true; \
+    adduser --system --ingroup app app || true; \
+    id -u app >/dev/null 2>&1 && chown -R app:app /app || true
+
+USER app
+ENV HOME=/app
 
 # Set environment
 ENV NODE_ENV=production

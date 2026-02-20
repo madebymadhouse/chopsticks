@@ -33,6 +33,9 @@ jobs:
       - name: Migration gate
         run: npm run ci:migrations
 
+      - name: Security audit
+        run: npm audit --audit-level=critical --omit=dev
+
       - name: Unit tests
         run: npm test
 
@@ -64,7 +67,7 @@ jobs:
           AGENT_TOKEN_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
           DEV_API_USERNAME=ci
           DEV_API_PASSWORD=ci
-          DASHBOARD_SESSION_SECRET=ci-session-secret
+          DASHBOARD_SESSION_SECRET=ci-session-secret-for-testing-not-production-xyzabc123
           DASHBOARD_ADMIN_TOKEN=ci-admin-token
           FUNHUB_REQUIRE_API_KEY=false
           FUNHUB_INTERNAL_API_KEY=ci-fun-key
