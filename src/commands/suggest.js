@@ -51,7 +51,7 @@ export async function execute(interaction) {
   const embed = new EmbedBuilder()
     .setTitle("💡 New Suggestion")
     .setDescription(text)
-    .setColor(0x5865F2)
+    .setColor(Colors.Info)
     .setFooter({ text: `Submitted by ${interaction.user.tag}` })
     .setTimestamp();
 

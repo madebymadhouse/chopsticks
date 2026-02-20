@@ -7,6 +7,7 @@ import {
   PermissionFlagsBits
 } from "discord.js";
 import { loadGuildData } from "../utils/storage.js";
+import { Colors } from "../utils/discordOutput.js";
 import { searchCommands, getAutocompleteSuggestions } from "../utils/helpSearch.js";
 import { getCommand, getCommands } from "../utils/helpRegistry.js";
 
@@ -285,7 +286,7 @@ function buildMainEmbed({ prefix, commandCount, categories, byCategory }) {
   const categoryOverview = formatCategoryCards(categories, byCategory);
   return new EmbedBuilder()
     .setTitle("Chopsticks Help Center")
-    .setColor(0x0284C7)
+    .setColor(Colors.Info)
     .setDescription(
       "Use the dropdown below to open focused help for each area. The panel updates in place with command guidance and variants."
     )
@@ -331,7 +332,7 @@ function buildCategoryEmbed({ categoryKey, list, prefix }) {
 
   return new EmbedBuilder()
     .setTitle(`Help • ${meta.label}`)
-    .setColor(0x2563EB)
+    .setColor(Colors.Info)
     .setDescription(meta.description || "Category details.")
     .addFields(
       {
@@ -436,7 +437,7 @@ export async function execute(interaction) {
     
     const embed = new EmbedBuilder()
       .setTitle(`Search Results: "${query}"`)
-      .setColor(0x0284C7)
+      .setColor(Colors.Info)
       .setDescription(
         results
           .map((r, idx) => `${idx + 1}. **/${r.name}** — ${r.metadata.description}`)
@@ -466,7 +467,7 @@ export async function execute(interaction) {
     
     const embed = new EmbedBuilder()
       .setTitle(`/${metadata.name}`)
-      .setColor(0x2563EB)
+      .setColor(Colors.Info)
       .setDescription(metadata.description)
       .addFields(
         { name: 'Category', value: metadata.category, inline: true },

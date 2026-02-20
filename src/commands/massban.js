@@ -126,7 +126,7 @@ export async function execute(interaction) {
 
   const embed = new EmbedBuilder()
     .setTitle(`Mass Ban — ${successes.length}/${ids.length} users banned`)
-    .setColor(successes.length === ids.length ? Colors.SUCCESS : failures.length === ids.length ? Colors.ERROR : Colors.WARNING)
+    .setColor(successes.length === ids.length ? Colors.Success : failures.length === ids.length ? Colors.Error : Colors.Warning)
     .setTimestamp();
 
   if (successes.length) {

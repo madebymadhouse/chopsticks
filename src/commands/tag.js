@@ -117,7 +117,7 @@ export async function execute(interaction) {
     }
     const embed = new EmbedBuilder()
       .setTitle("🏷️ Server Tags")
-      .setColor(Colors.INFO)
+      .setColor(Colors.Info)
       .setDescription(names.sort().map(n => `\`${n}\``).join(", ").slice(0, 4000))
       .setFooter({ text: `${names.length} tag(s) total` });
     await interaction.reply({ embeds: [embed], flags: 64 });

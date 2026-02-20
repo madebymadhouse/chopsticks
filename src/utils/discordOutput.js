@@ -1,13 +1,22 @@
 import { AttachmentBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 import { renderEmbedCardPng } from "../render/svgCard.js";
 
-// Unified UI colors (professional, lower-saturation palette)
+// Canonical UI color palette (from color_palette.json)
 export const Colors = {
-  PRIMARY: 0x2563EB, // Blue 600
-  SUCCESS: 0x16A34A, // Green 600
-  ERROR: 0xDC2626,   // Red 600
-  WARNING: 0xD97706, // Amber 600
-  INFO: 0x0284C7     // Sky 600
+  Success: 0x57F287,
+  Error:   0xED4245,
+  Warning: 0xFEE75C,
+  Info:    0x5865F2,
+  Neutral: 0x99AAB5,
+  Premium: 0xFF73FA,
+  Music:   0x1DB954,
+  Danger:  0xFF0000,
+  // Legacy keys kept for backward compatibility
+  PRIMARY: 0x2563EB,
+  SUCCESS: 0x16A34A,
+  ERROR:   0xDC2626,
+  WARNING: 0xD97706,
+  INFO:    0x0284C7,
 };
 
 export function buildEmbed(title, description, color = Colors.PRIMARY) {
@@ -91,9 +100,9 @@ export function makeEmbed(title, description, fields = [], url = null, thumbnail
   return e;
 }
 
-export function replyEmbed(interaction, title, description, ephemeral = true) {
+export function replyEmbed(interaction, title, description, ephemeral = true, color = Colors.PRIMARY) {
   return sendInteractionResponse(interaction, {
-    embeds: [buildEmbed(title, description)]
+    embeds: [buildEmbed(title, description, color)]
   }, ephemeral);
 }
 
@@ -109,7 +118,7 @@ export function replySuccess(interaction, titleOrDescription, descriptionOrEphem
   }
 
   return sendInteractionResponse(interaction, {
-    embeds: [buildEmbed(title, description, Colors.SUCCESS)]
+    embeds: [buildEmbed(title, description, Colors.Success)]
   }, Boolean(ephemeral));
 }
 
@@ -125,7 +134,7 @@ export function replyError(interaction, titleOrDescription, descriptionOrEphemer
   }
 
   return sendInteractionResponse(interaction, {
-    embeds: [buildEmbed(title, description, Colors.ERROR)]
+    embeds: [buildEmbed(title, description, Colors.Error)]
   }, Boolean(ephemeral));
 }
 
@@ -136,4 +145,17 @@ export function replyEmbedWithJson(interaction, title, description, data, filena
     embeds: [buildEmbed(title, description)],
     files: [file]
   }, true);
+}
+
+export function makeTypedEmbed(type, title, description, fields = []) {
+  const colorMap = {
+    success: Colors.Success,
+    error:   Colors.Error,
+    warning: Colors.Warning,
+    info:    Colors.Info,
+    neutral: Colors.Neutral,
+    music:   Colors.Music,
+  };
+  const color = colorMap[type] ?? Colors.Info;
+  return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description || null).addFields(fields);
 }

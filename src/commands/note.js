@@ -67,7 +67,7 @@ export async function execute(interaction) {
     const page = userNotes.slice(0, PAGE_SIZE);
     const embed = new EmbedBuilder()
       .setTitle(`📝 Notes for ${user.tag}`)
-      .setColor(Colors.INFO)
+      .setColor(Colors.Info)
       .setDescription(
         page.map(n =>
           `**#${n.id}** — <@${n.addedBy}> • <t:${Math.floor(new Date(n.addedAt).getTime() / 1000)}:R>\n${n.text}`

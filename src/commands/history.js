@@ -85,7 +85,7 @@ export async function execute(interaction) {
 
   const embed = new EmbedBuilder()
     .setTitle(`Moderation History — ${user.tag}`)
-    .setColor(Colors.INFO)
+    .setColor(Colors.Info)
     .setDescription(
       page.map(e => {
         const icon = TYPE_ICONS[e.type] ?? "📋";
