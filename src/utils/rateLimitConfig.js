@@ -33,6 +33,7 @@ function loadEnvOverride(category) {
 // Per-command overrides (highest priority).
 // Key: commandName, value: [limit, windowSec]
 const COMMAND_OVERRIDES = {
+  massban:      [1, 60],
   ban:          [2, 30],
   kick:         [2, 30],
   timeout:      [3, 30],
