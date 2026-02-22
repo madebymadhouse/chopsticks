@@ -729,6 +729,10 @@ async function tryUpdatePlaylistPanelMessage(guild, guildData, playlistId) {
     if (!pl?.panel?.channelId || !pl?.panel?.messageId) return;
     const ch = guild.channels.cache.get(pl.panel.channelId);
     if (!ch?.isTextBased?.()) return;
+    // If the panel channel is an archived thread, temporarily unarchive to edit the panel
+    if (ch.isThread?.() && ch.archived) {
+      await ch.setArchived(false).catch(() => {});
+    }
     const msg = await ch.messages.fetch(pl.panel.messageId).catch(() => null);
     if (!msg) return;
     await msg.edit({
@@ -1098,29 +1102,39 @@ async function tryCreateDropThread(interaction, name) {
   if (!interaction.guild || !parent) return null;
   if (parent.type !== ChannelType.GuildText && parent.type !== ChannelType.GuildAnnouncement) return null;
 
-  try {
-    const thread = await parent.threads.create({
-      name: String(name || "playlist-drop").slice(0, 60),
-      type: ChannelType.PrivateThread,
-      invitable: false,
-      reason: "Chopsticks playlist drop thread"
-    });
-    await thread.members.add(interaction.user.id).catch(() => {});
-    return thread;
-  } catch (err) {
-    console.warn("[music:playlists] Private thread creation failed, trying public fallback:", err?.message ?? err);
+  // Check bot permissions in this channel before attempting
+  const botMember = interaction.guild.members.me;
+  const botPerms = parent.permissionsFor(botMember);
+  const hasPrivate = botPerms?.has?.(PermissionFlagsBits.CreatePrivateThreads) && botPerms?.has?.(PermissionFlagsBits.SendMessagesInThreads);
+  const hasPublic = botPerms?.has?.(PermissionFlagsBits.CreatePublicThreads) && botPerms?.has?.(PermissionFlagsBits.SendMessagesInThreads);
+
+  if (hasPrivate) {
+    try {
+      const thread = await parent.threads.create({
+        name: String(name || "playlist-drop").slice(0, 60),
+        type: ChannelType.PrivateThread,
+        invitable: false,
+        reason: "Chopsticks playlist drop thread"
+      });
+      await thread.members.add(interaction.user.id).catch(() => {});
+      return thread;
+    } catch (err) {
+      console.warn("[music:playlists] Private thread creation failed, trying public fallback:", err?.message ?? err);
+    }
   }
 
-  try {
-    const thread = await parent.threads.create({
-      name: String(name || "playlist-drop").slice(0, 60),
-      type: ChannelType.PublicThread,
-      reason: "Chopsticks playlist drop thread (fallback)"
-    });
-    await thread.members.add(interaction.user.id).catch(() => {});
-    return thread;
-  } catch (err) {
-    console.warn("[music:playlists] Public thread fallback also failed:", err?.message ?? err);
+  if (hasPublic) {
+    try {
+      const thread = await parent.threads.create({
+        name: String(name || "playlist-drop").slice(0, 60),
+        type: ChannelType.PublicThread,
+        reason: "Chopsticks playlist drop thread (fallback: no private thread perms)"
+      });
+      await thread.members.add(interaction.user.id).catch(() => {});
+      return thread;
+    } catch (err) {
+      console.warn("[music:playlists] Public thread fallback also failed:", err?.message ?? err);
+    }
   }
 
   return null;
@@ -1276,7 +1290,17 @@ async function ingestPlaylistMessage(message, guildData) {
     }
   }
 
-  if (!newItems.length) return;
+  if (!newItems.length) {
+    // Something was dropped but nothing parseable — show ❓ hint (rate-limited to avoid spam)
+    const hintKey = `musicpl:hint:${message.guildId}:${message.author.id}`;
+    const rl = await checkRateLimit(hintKey, 1, 300).catch(() => ({ ok: true }));
+    if (rl.ok) {
+      await message.reply({
+        content: `❓ Nothing recognisable was added. Drop **audio files**, paste a **YouTube/SoundCloud link**, or type \`q: search terms\` to add a search query.`
+      }).catch(() => {});
+    }
+    return;
+  }
 
   // Dedupe by URL (within playlist), keep newest first.
   const seen = new Set(pl.items.map(it => String(it?.url ?? "")));
@@ -1288,7 +1312,11 @@ async function ingestPlaylistMessage(message, guildData) {
     seen.add(url);
     toAdd.push(it);
   }
-  if (!toAdd.length) return;
+  if (!toAdd.length) {
+    // Everything was a duplicate — signal with a reaction so user knows
+    await message.react("🔁").catch(() => {});
+    return;
+  }
 
   pl.items = [...toAdd, ...pl.items];
   pl.items = pl.items.slice(0, cfg.maxItemsPerPlaylist);
@@ -1298,6 +1326,26 @@ async function ingestPlaylistMessage(message, guildData) {
     await saveGuildData(message.guildId, guildData).catch(() => {});
     // If a pinned panel exists, update it.
     void tryUpdatePlaylistPanelMessage(message.guild, guildData, playlistId).catch(() => {});
+
+    // ✅ Feedback reaction + optional tip message
+    await message.react("✅").catch(() => {});
+
+    // Attachment URL expiry warning (Discord CDN URLs expire in ~24h)
+    const hasAttachment = toAdd.some(it => it.type === "attachment");
+    if (hasAttachment) {
+      const warningKey = `musicpl:att_warn:${message.guildId}:${message.author.id}`;
+      const rl = await checkRateLimit(warningKey, 1, 3600).catch(() => ({ ok: true }));
+      if (rl.ok) {
+        await message.reply({
+          content: `✅ Added **${toAdd.length}** track${toAdd.length !== 1 ? "s" : ""} to **${pl.name ?? "your playlist"}**.\n⚠️ **Note:** Audio files are stored by Discord CDN URL, which expires in ~24 hours. Use the **Browse** button and queue your tracks soon, or re-upload later if the URL expires.`
+        }).catch(() => {});
+      }
+    } else if (toAdd.length === 1 && toAdd[0].type === "query") {
+      // Confirm query capture
+      await message.reply({
+        content: `✅ Search query **"${toAdd[0].title}"** added to **${pl.name ?? "your playlist"}**.\nUse **Browse** to queue it.`
+      }).catch(() => {});
+    }
   }
 }
 
@@ -2916,6 +2964,7 @@ export async function handleButton(interaction) {
         if (thread?.isThread?.()) {
           await thread.members.add(userId).catch(() => {});
           if (thread.archived) await thread.setArchived(false).catch(() => {});
+          const itemCount = Array.isArray(existingPl.items) ? existingPl.items.length : 0;
           const components = [new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("mplhub:browse").setLabel("Browse Playlists").setStyle(ButtonStyle.Primary)
           )];
@@ -2923,7 +2972,10 @@ export async function handleButton(interaction) {
             embeds: [makeEmbed(
               "Playlist Drop Reopened",
               `Your drop thread is open: <#${thread.id}>\nDrop audio files or links there to add tracks.`,
-              [{ name: "Tip", value: "Press **Done / Close** in the thread when you're done editing.", inline: false }],
+              [
+                { name: "Tracks Saved", value: String(itemCount), inline: true },
+                { name: "Tip", value: "Press **Done / Close** in the thread when you're done editing.", inline: false }
+              ],
               null, null, QUEUE_COLOR
             )],
             components
@@ -3019,7 +3071,7 @@ export async function handleButton(interaction) {
           "Playlist Drop Created",
           res.threadId
             ? `Your drop thread is ready: <#${res.threadId}>\nDrop audio files or links there to build your playlist.`
-            : "Playlist created. Ask an admin to enable threads or bind a drop channel via `/music playlist panel`.",
+            : "✅ Playlist created! However, a drop thread couldn't be created automatically.\n\nThis usually means the bot is missing **Create Private Threads** permission in this channel, or you're not in a text channel.\n\nAsk an admin to:\n1. Give the bot `Create Private Threads` permission, or\n2. Bind a drop channel via `/music playlist panel`.",
           [
             { name: "Tip", value: "Type `q: keywords` in the drop thread to add a search query.\nPress **Done / Close** in the thread when you're done editing.", inline: false }
           ],
@@ -3470,16 +3522,29 @@ export async function handleButton(interaction) {
         await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist", "Slow down — try again in a moment.", [], null, null, 0xFF0000)] }).catch(() => {});
         return true;
       }
-      // Only the playlist owner, collaborators, or an admin can close the drop thread.
-      if (!canManagePlaylist(interaction, pl)) {
-        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist", "You don't have permission to close this drop thread.", [], null, null, 0xFF0000)] }).catch(() => {});
+      // Everyone can close (remove themselves); only owner/admin can archive for all.
+      const thread = interaction.channel;
+      const isAdmin = Boolean(interaction.memberPermissions?.has?.(PermissionFlagsBits.ManageGuild));
+      const isOwner = String(pl?.createdBy || "") === interaction.user.id;
+      const collabs = new Set(Array.isArray(pl?.collaborators) ? pl.collaborators.map(String) : []);
+      const isCollab = collabs.has(interaction.user.id);
+      const canClose = isAdmin || isOwner || isCollab;
+
+      if (!canClose) {
+        // Any non-collab can still remove themselves from the thread
+        if (thread?.isThread?.()) {
+          await thread.members.remove(interaction.user.id).catch(() => {});
+        }
+        await interaction.reply({ ephemeral: true, embeds: [makeEmbed("Playlist Drop", "You've been removed from this thread.", [], null, null, QUEUE_COLOR)] }).catch(() => {});
         return true;
       }
-      const thread = interaction.channel;
+
       if (thread?.isThread?.()) {
         await thread.members.remove(interaction.user.id).catch(() => {});
-        // Archive after a short delay so the member removal completes first.
-        setTimeout(() => { thread.setArchived(true).catch(() => {}); }, 1500);
+        // Only archive (hide for everyone) if owner/admin. Collaborators just remove themselves.
+        if ((isOwner || isAdmin) && !thread.archived) {
+          try { await thread.setArchived(true); } catch {}
+        }
       }
       await interaction.reply({
         ephemeral: true,

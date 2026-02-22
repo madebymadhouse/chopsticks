@@ -512,6 +512,24 @@ client.once(Events.ClientReady, async () => {
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
 
+  /* ===================== PLAYLIST DROP THREAD CLEANUP ===================== */
+  // When a playlist drop thread is deleted externally, clean up the channelBinding
+  client.on(Events.ThreadDelete, async thread => {
+    try {
+      const guildId = thread.guildId;
+      if (!guildId) return;
+      const { loadGuildData, saveGuildData } = await import("./utils/storage.js");
+      const data = await loadGuildData(guildId);
+      const bindings = data?.music?.playlists?.channelBindings;
+      if (!bindings || !(thread.id in bindings)) return;
+      const playlistId = bindings[thread.id];
+      delete bindings[thread.id];
+      const pl = data?.music?.playlists?.playlists?.[playlistId];
+      if (pl && pl.channelId === thread.id) pl.channelId = null;
+      await saveGuildData(guildId, data).catch(() => {});
+    } catch {}
+  });
+
   /* ===================== TRACK BOT REMOVALS ===================== */
   // When any bot (including agents) leaves a guild, update agent tracking
   client.on(Events.GuildDelete, async guild => {
