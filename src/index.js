@@ -571,6 +571,18 @@ client.once(Events.ClientReady, async () => {
       healthServer?.close?.();
     } catch {}
 
+    // 6. Close Redis connection
+    try {
+      const { closeRedis } = await import("./utils/redis.js");
+      await closeRedis();
+    } catch {}
+
+    // 7. Close PostgreSQL pool
+    try {
+      const { closeStoragePg } = await import("./utils/storage_pg.js");
+      await closeStoragePg();
+    } catch {}
+
     botLogger.info("[shutdown] Clean exit");
     // Force exit after 5s in case something is hanging
     setTimeout(() => process.exit(0), 5_000).unref();

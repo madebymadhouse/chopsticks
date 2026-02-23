@@ -22,6 +22,13 @@ export async function getRedisClient() {
   return redisClient;
 }
 
+export async function closeRedis() {
+  if (redisClient?.isOpen) {
+    await redisClient.quit().catch(() => {});
+  }
+  redisClient = null;
+}
+
 export async function setCache(key, value, ttlSeconds = 600) {
   const client = await getRedisClient();
   if (!client?.isOpen) {
