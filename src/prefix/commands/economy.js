@@ -15,6 +15,15 @@ import { botLogger } from "../../utils/modernLogger.js";
 import { generateText } from "../../utils/textLlm.js";
 import { httpRequest } from "../../utils/httpFetch.js";
 
+// G5: Prestige title helper
+function getPrestigeTitle(prestige) {
+  const TITLES = [
+    "Apprentice", "Veteran", "Elite", "Champion", "Master",
+    "Grandmaster", "Legend", "Mythic", "Eternal", "Transcendent",
+  ];
+  return TITLES[Math.min(prestige - 1, TITLES.length - 1)] || "Legend";
+}
+
 /** Resolve a target user from mention / bare ID / fallback to author */
 async function resolveUser(message, args) {
   return (
@@ -500,4 +509,82 @@ export default [
   triviaCmd,
   riddleCmd,
   craftCmd,
+
+  // ── Cycle G5: Prestige command ────────────────────────────────────────────
+  {
+    name: "prestige",
+    aliases: ["ascend", "reset"],
+    description: "Prestige — reset to level 1 for exclusive perks — !prestige",
+    guildOnly: true,
+    rateLimit: 10000,
+    async execute(message) {
+      const { getGameProfile, addGameXp } = await import("../../game/profile.js");
+      const { getWallet, addCredits } = await import("../../economy/wallet.js");
+      const { EmbedBuilder } = await import("discord.js");
+      const PRESTIGE_LEVEL_REQ = 50;
+
+      const profile = await getGameProfile(message.author.id).catch(() => null);
+      if (!profile) return message.reply("❌ Couldn't load your profile. Try again!");
+
+      const level = profile.level || 1;
+      if (level < PRESTIGE_LEVEL_REQ) {
+        const embed = new EmbedBuilder()
+          .setTitle("✨ Prestige System")
+          .setDescription([
+            `You need to be **Level ${PRESTIGE_LEVEL_REQ}** to prestige.`,
+            `You are currently **Level ${level}**.`,
+            "",
+            `**Prestige Rewards:**`,
+            `• ⭐ Prestige badge next to your name`,
+            `• 💰 **5,000 credits** bonus`,
+            `• 🏆 Exclusive **Prestige** title`,
+            `• 🎁 Legendary crate`,
+            "",
+            `Keep grinding! ${PRESTIGE_LEVEL_REQ - level} more levels to go.`,
+          ].join("\n"))
+          .setColor(0xF0B232)
+          .setFooter({ text: "Chopsticks !prestige" });
+        return message.reply({ embeds: [embed] });
+      }
+
+      // Get current prestige count from profile title
+      const currentPrestige = profile.prestige || 0;
+      const newPrestige = currentPrestige + 1;
+
+      // Reset XP to 0 (prestige wipe)
+      try {
+        const { getPool } = await import("../../utils/storage_pg.js");
+        const pool = getPool();
+        await pool.query(
+          `UPDATE user_game_profiles SET xp = 0, level = 1, prestige = $1, updated_at = $2 WHERE user_id = $3`,
+          [newPrestige, Date.now(), message.author.id]
+        );
+      } catch {
+        return message.reply("❌ Prestige failed — database error. Try again!");
+      }
+
+      // Award prestige bonus credits
+      await addCredits(message.author.id, 5000 * newPrestige, "prestige_bonus").catch(() => {});
+
+      const PRESTIGE_STARS = ["⭐", "🌟", "💫", "✨", "🔥", "👑", "🌈", "💎", "🌙", "☀️"];
+      const star = PRESTIGE_STARS[Math.min(newPrestige - 1, PRESTIGE_STARS.length - 1)];
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${star} PRESTIGE ${newPrestige} — ${message.author.username}!`)
+        .setDescription([
+          `You have reached **Prestige ${newPrestige}**! Your journey starts anew.`,
+          "",
+          `**Rewards:**`,
+          `• 💰 **${(5000 * newPrestige).toLocaleString()} credits** added to your wallet`,
+          `• 🎖️ Prestige **${newPrestige}** badge`,
+          `• 🏆 Title: **${getPrestigeTitle(newPrestige)}**`,
+          "",
+          `Your XP and level have been reset. Time to grind again! 💪`,
+        ].join("\n"))
+        .setColor(0xF0B232)
+        .setThumbnail(message.author.displayAvatarURL())
+        .setFooter({ text: `Prestige ${newPrestige} • Chopsticks !prestige` });
+      await message.reply({ embeds: [embed] });
+    }
+  },
 ];

@@ -201,3 +201,31 @@ export async function renderGatherCardPng({ title = "Gather Run", subtitle = "",
 
   return execFileBuffer("convert", args);
 }
+
+/**
+ * Convert an SVG string to a PNG Buffer using ImageMagick.
+ * Returns null if ImageMagick is unavailable or conversion fails.
+ * Used by Phase F card builders (profile, welcome, level-up, battle).
+ */
+export async function svgToPngBuffer(svgString) {
+  if (!svgString) return null;
+  const { spawn } = await import("node:child_process");
+  return new Promise((resolve) => {
+    try {
+      const proc = spawn("convert", ["svg:-", "-depth", "8", "-strip", "png:-"], {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      const chunks = [];
+      proc.stdout.on("data", (d) => chunks.push(d));
+      proc.on("close", (code) => {
+        if (code !== 0) { resolve(null); return; }
+        resolve(Buffer.concat(chunks));
+      });
+      proc.on("error", () => resolve(null));
+      proc.stdin.write(Buffer.from(svgString, "utf8"));
+      proc.stdin.end();
+    } catch {
+      resolve(null);
+    }
+  });
+}

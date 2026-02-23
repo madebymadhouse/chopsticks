@@ -2,6 +2,9 @@ import { loadGuildData } from "../utils/storage.js";
 import { maybeBuildGuildFunLine } from "../fun/integrations.js";
 import { maybeSyncMemberLevelRoleRewards } from "../game/levelRewards.js";
 import { runGuildEventAutomations } from "../utils/automations.js";
+import { eventBus, Events } from "../utils/eventBus.js";
+import { buildWelcomeCardSvg } from "../game/render/cards.js";
+import { svgToPngBuffer } from "../game/render/imCards.js";
 
 export default {
   name: "guildMemberAdd",
@@ -37,7 +40,25 @@ export default {
             context: { guildName: member.guild?.name || "" }
           });
           const text = `${baseText}${flavor ? `\n${flavor}` : ""}`.slice(0, 1900);
-          await ch.send(text);
+
+          // Try to attach a welcome card image
+          let cardAttachment = null;
+          try {
+            const memberCount = member.guild.memberCount || 0;
+            const svg = buildWelcomeCardSvg({
+              username: member.user?.username || member.displayName || "New Member",
+              memberCount,
+              serverName: member.guild.name || "Server",
+              avatarInitial: (member.user?.username || "?")[0],
+            });
+            const png = await svgToPngBuffer(svg);
+            if (png) {
+              const { AttachmentBuilder } = await import("discord.js");
+              cardAttachment = new AttachmentBuilder(png, { name: "welcome.png" });
+            }
+          } catch { /* card is optional — never break welcome msg */ }
+
+          await ch.send({ content: text, files: cardAttachment ? [cardAttachment] : [] });
         }
       }
     } catch {}
@@ -56,5 +77,12 @@ export default {
         member
       });
     } catch {}
+
+    // Fire event bus
+    eventBus.fire(Events.MEMBER_JOINED, {
+      userId: member.id,
+      guildId,
+      memberCount: member.guild.memberCount || 0,
+    });
   }
 };
