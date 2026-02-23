@@ -8,7 +8,46 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ## [Unreleased]
 
-### Added
+---
+
+## [1.5.0] — feat/harden-and-polish
+
+### Added — Phase 1: Hardening (Cycles 1–4)
+- **`withTimeout` sweep (Cycle 1):** Wrapped all 43 deferred slash commands in `withTimeout()` — prevents "Unknown Interaction" zombie hangs under load. Only music.js, agents.js, pools.js, tickets.js skipped (complex conditional defer flow).
+- **Input validation sweep (Cycle 2):** `sanitizeString()` applied to all 18 slash command files taking free-text string options (mod reasons, AI prompts, search queries, poll questions, tag content, reminders). Prefix dispatch sanitizes all args before execute().
+- **Prefix registry refactor (Cycle 3):** Broke monolithic 771-line `registry.js` into 6 category modules: `fun.js`, `info.js`, `meta.js`, `mod.js`, `server.js`, `utility.js`. Registry is now a 29-line thin loader. Added `src/prefix/helpers.js` (shared `reply`, `dm`, `parseIntSafe`).
+- **Prefix rate limits + error hardening (Cycle 4):** `rateLimit` metadata on all 37 prefix commands. Per-command Redis cooldown check (`pfx:cd:userId:command`) in dispatch loop.
+
+### Added — Phase 2: Testing (Cycles 5–7)
+- **49 unit tests** for new/modified slash commands (`test/unit/new-commands-phase2.test.js`): `/mod` subcommands, `/lockdown`, `/roast`, `/imagine`, `/fact`, `/wiki`, `/dadjoke`, `/joke`, `/book`, `/urban`, `/apod`, `/github`, `/color`, `/anime`, `/steam`.
+- **38 unit tests** for economy transactions (`test/unit/economy-transactions.test.js`): `formatCooldown`, casino (validateBet, isValidCoinSide, calcSlotsPayout), trade, heist, auction, credit floor guard.
+- **47 unit tests** for prefix command system (`test/unit/prefix-commands-phase2.test.js`): module structure, rateLimit presence, mod permissions, parseIntSafe edge cases.
+
+### Added — Phase 3: Prefix Library Expansion (Cycles 8–9)
+- **14 new prefix commands** in `src/prefix/commands/media.js`: `!fact`, `!dadjoke`, `!joke`, `!wiki`, `!github`, `!anime`, `!book`, `!urban`, `!apod`, `!steam`, `!color`, `!roast`, `!imagine`, `!weather`.
+- **13 new prefix commands** in `src/prefix/commands/economy.js` with aliases: `!balance` (bal, credits), `!daily`, `!work`, `!shop`, `!inventory` (inv), `!leaderboard` (lb, top), `!profile` (p), `!xp`, `!quests`, `!compliment`, `!trivia`, `!riddle`, `!craft`. Total prefix commands: 64.
+
+### Added — Phase 4: Fun Expansion (Cycles 10–12)
+- **Roast hardening (Cycle 10):** `src/fun/roasts.json` — 50-entry fallback roast bank. No-repeat window (last 20 picks per user). Same-target anti-spam guard (3 hits on same target in 5 min → suggest different target).
+- **Imagine hardening (Cycle 10):** Guild opt-in check (`guildData.imagegen`, default enabled). 5/hr per-guild rate limit via `checkRateLimit`. Progress message shown immediately after defer. Improved error messages: `model_loading`, `api_key_invalid`, `safety_filter`, `http_N`.
+- **`/compliment @user` (Cycle 11):** AI-powered compliment (genuine/dramatic/nerdy/rap styles) with 10-entry fallback array and 30s rate limit.
+- **`/wouldyourather` (Cycle 11):** Random question from `src/fun/wyr.json` (50 questions). Bot auto-reacts with 🅰️/🅱️ for voting.
+- **`/ship @user1 @user2` (Cycle 11):** Deterministic hash-based compatibility score (0–100), 7-tier flavor text, heart bar visualization. Same pair always gets same score.
+- **`/battle @user` (Cycle 11):** PvP combat with optional credit wager, XP rewards for both sides, level-based win probability (±30% max), quest event recording, 5min cooldown.
+- **OTDB trivia confirmed integrated (Cycle 12):** `src/game/trivia/opentdb.js` — 14 categories (History, Geography, Sports, Mythology, etc.), automatic local-bank fallback.
+- **`/riddle` (Cycle 12):** 80-riddle local bank in `src/fun/riddles.json`. Spoiler-text answer reveal. `reveal:true` option to show immediately. Zero API calls.
+
+### Added — Phase 5: Production (Cycles 13–15)
+- **`.env.example`:** Added `HUGGINGFACE_API_KEY`, `GITHUB_TOKEN`, `STEAM_API_KEY` with descriptions and setup links.
+- **Session cookie maxAge:** 24-hour explicit session lifetime on dashboard cookie (was unbounded browser-session).
+- **`closeRedis()` export:** `src/utils/redis.js` now exports `closeRedis()` for clean shutdown.
+- **Graceful shutdown (Cycle 14):** Shutdown handler now closes Redis (`closeRedis`) and PostgreSQL pool (`closeStoragePg`) after Discord client.destroy() — steps 6 & 7.
+
+### Changed
+- Global slash command count: ~98 → ~104 (well within Discord's 110-command limit)
+- Total prefix commands: 37 → 64
+
+
 - `/pools help` — 3-page inline guide covering workflows, security promises, and full command reference
 - `/statschannel set/clear/list` — auto-updating voice channel stats (members, online, bots, channels, roles, boosts); refreshes every 10 min
 - `/profilecard` — canvas-rendered profile image card (avatar ring, level bar, XP, economy, rarity breakdown, achievement emoji badges)
