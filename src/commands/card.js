@@ -6,8 +6,6 @@ import {
   AttachmentBuilder,
   EmbedBuilder,
   Colors,
-  ContextMenuCommandBuilder,
-  ApplicationCommandType,
 } from 'discord.js';
 import { fetchAvatar, roundRect, drawCircleImage, drawWrappedText, drawProgressBar, createDarkCard, toPngBuffer } from '../utils/canvas.js';
 import { withTimeout } from '../utils/interactionTimeout.js';

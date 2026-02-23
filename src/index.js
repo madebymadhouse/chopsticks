@@ -1164,9 +1164,16 @@ client.on(Events.InteractionCreate, async interaction => {
     trackCommand(commandName, duration, "success");
     trackCommandInvocation(commandName, "slash");
     void recordUserCommandStat({
+      userId: interaction.user.id,
+      command: commandName,
+      ok: true,
       durationMs: duration,
       source: "slash"
     }).catch(() => {});
+    // Per-guild commands_used stat (fire-and-forget)
+    if (interaction.guildId) {
+      void import('./game/activityStats.js').then(m => m.addStat(interaction.user.id, interaction.guildId, 'commands_used', 1)).catch(() => {});
+    }
     commandLog.info({ duration }, "Command executed successfully");
     
   } catch (error) {
@@ -1174,6 +1181,9 @@ client.on(Events.InteractionCreate, async interaction => {
     trackCommand(commandName, duration, "error");
     trackCommandError(commandName);
     void recordUserCommandStat({
+      userId: interaction.user.id,
+      command: commandName,
+      ok: false,
       durationMs: duration,
       source: "slash"
     }).catch(() => {});

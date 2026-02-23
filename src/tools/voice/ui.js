@@ -983,16 +983,6 @@ async function handleLivePanelButton(interaction, parsed) {
     return true;
   }
 
-  if (action === "game") {
-    const wrapped = Object.create(interaction);
-    wrapped.options = {
-      getSubcommand: () => "panel",
-      getString: (name) => (name === "delivery" ? "ephemeral" : null)
-    };
-    await gameExecute(wrapped);
-    return true;
-  }
-
   if (action === "audiobook") {
     // Show audiobook status / quick controls from VC dashboard
     const { getPlayer, PlayerState } = await import("../../audiobook/player.js");

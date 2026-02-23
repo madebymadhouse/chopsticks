@@ -1,10 +1,7 @@
 <div align="center">
 
 <br/>
-
-<img src="https://raw.githubusercontent.com/wokspec/Chopsticks/main/docs/assets/banner.png" alt="Chopsticks Banner" width="600"/>
-
-<h1>🥢 Chopsticks</h1>
+<h1>Chopsticks</h1>
 
 <p><strong>A feature-rich Discord bot — music, moderation, economy, AI agents, and a flagship agent pool system for community-powered voice bots. Hosted by WokSpec. Open source.</strong></p>
 

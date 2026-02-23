@@ -140,15 +140,11 @@ export async function execute(interaction) {
         await p.query(
           `INSERT INTO guild_agent_actions (guild_id, action_type, name, description, cost, cooldown_s, enabled, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, true, $7)
-           ON CONFLICT DO NOTHING`,
+           ON CONFLICT (guild_id, action_type) DO UPDATE SET
+             enabled = true, cost = EXCLUDED.cost, cooldown_s = EXCLUDED.cooldown_s,
+             name = EXCLUDED.name, description = EXCLUDED.description`,
           [interaction.guildId, type, def.name, def.description, cost, cooldown, Date.now()]
-        ).catch(() => {});
-        // Also update if already exists
-        await p.query(
-          `UPDATE guild_agent_actions SET enabled = true, cost = $1, cooldown_s = $2
-           WHERE guild_id = $3 AND action_type = $4`,
-          [cost, cooldown, interaction.guildId, type]
-        ).catch(() => {});
+        );
 
         await interaction.editReply({ content: `✅ **${def.emoji} ${def.name}** enabled — costs **${cost} credits**, **${cooldown}s** cooldown.` });
         return;

@@ -1419,6 +1419,7 @@ export async function ensureEconomySchema() {
       created_at BIGINT NOT NULL
     )`,
     `CREATE INDEX IF NOT EXISTS idx_agent_actions_guild ON guild_agent_actions(guild_id)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_actions_unique ON guild_agent_actions(guild_id, action_type)`,
 
     `CREATE TABLE IF NOT EXISTS agent_action_uses (
       id SERIAL PRIMARY KEY,
