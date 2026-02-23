@@ -408,15 +408,31 @@ client.once(Events.ClientReady, async () => {
     console.warn(`⚠️  Help registry initialization failed: ${err.message}`);
   }
 
-  // Presence is a UX hint, not a control plane. Keep it best-effort and non-fatal.
+  // Rotating bot presence — cycles every 30s with live stats
   try {
     const enabled = String(process.env.BOT_PRESENCE_ENABLED ?? "true").toLowerCase() !== "false";
     if (enabled && client.user) {
-      const text = String(process.env.BOT_PRESENCE_TEXT || "/tutorials").trim() || "/tutorials";
-      client.user.setPresence({
-        activities: [{ name: text.slice(0, 128), type: ActivityType.Watching }],
-        status: String(process.env.BOT_PRESENCE_STATUS || "online")
-      });
+      const status = String(process.env.BOT_PRESENCE_STATUS || "online");
+
+      async function rotatePresence() {
+        if (!client.isReady()) return;
+        try {
+          const guildCount = client.guilds.cache.size;
+          const agentCount = global.agentManager?.liveAgents?.size ?? 0;
+          const tick = Math.floor(Date.now() / 30_000) % 4;
+          const activities = [
+            { name: `🏠 ${guildCount} guild${guildCount !== 1 ? "s" : ""}`, type: ActivityType.Watching },
+            { name: `🤖 ${agentCount} agent${agentCount !== 1 ? "s" : ""} online`, type: ActivityType.Watching },
+            { name: `🎵 music with /play`, type: ActivityType.Listening },
+            { name: `🥢 /help`, type: ActivityType.Playing }
+          ];
+          client.user.setPresence({ activities: [activities[tick]], status });
+        } catch {}
+      }
+
+      rotatePresence();
+      const presenceTimer = setInterval(rotatePresence, 30_000);
+      presenceTimer.unref();
     }
   } catch {}
 

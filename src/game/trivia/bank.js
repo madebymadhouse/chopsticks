@@ -1,8 +1,12 @@
 // src/game/trivia/bank.js
 import { TRIVIA_QUESTIONS } from "./questions.js";
+import { fetchOtdbQuestion, OTDB_CATEGORIES } from "./opentdb.js";
 
 export const TRIVIA_DIFFICULTIES = ["easy", "normal", "hard", "nightmare"];
 export const TRIVIA_CATEGORIES = ["General", "Tech", "Music", "Games", "Science", "Movies", "Arcana"];
+
+// All categories (local + OTDB extras)
+const ALL_CATEGORIES = [...new Set([...TRIVIA_CATEGORIES, ...OTDB_CATEGORIES])];
 
 function normDifficulty(v) {
   const s = String(v || "").toLowerCase();
@@ -18,7 +22,7 @@ function normCategory(v) {
 }
 
 export function listTriviaCategories() {
-  return ["Any", ...TRIVIA_CATEGORIES];
+  return ["Any", ...ALL_CATEGORIES];
 }
 
 export function pickTriviaQuestion({ difficulty = "normal", category = "Any", excludeIds = [] } = {}) {
@@ -45,5 +49,16 @@ export function pickTriviaQuestion({ difficulty = "normal", category = "Any", ex
 
   const idx = Math.floor(Math.random() * candidates.length);
   return candidates[idx] || null;
+}
+
+/**
+ * Pick a trivia question, falling back to Open Trivia DB when the local bank
+ * has no matching questions (e.g. extended categories like History, Geography).
+ */
+export async function pickTriviaQuestionWithFallback(opts = {}) {
+  const local = pickTriviaQuestion(opts);
+  if (local) return local;
+  // Live fallback — returns null if OTDB is unreachable (graceful degradation)
+  return fetchOtdbQuestion(opts);
 }
 

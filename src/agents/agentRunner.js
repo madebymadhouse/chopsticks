@@ -147,7 +147,7 @@ async function startAgent(agentConfig) {
       // Inject agentId into outgoing messages
       const out = { ...payload, agentId, runnerId: RUNNER_ID };
       // DEBUG: log outgoing WS frames for troubleshooting handshake
-      try { console.debug?.("[agent-runner] OUTGOING_WS", JSON.stringify(out)); } catch {}
+      try { logger.debug("[agent-runner] OUTGOING_WS", JSON.stringify(out)); } catch {}
       ws.send(JSON.stringify(out));
       return true;
     } catch {
@@ -208,7 +208,7 @@ async function startAgent(agentConfig) {
 
     ws.on("open", () => {
       wsReady = true;
-      console.log(`[agent:${agentId}] Connected to control plane at ${CONTROL_URL}`);
+      logger.info(`[agent:${agentId}] Connected to control plane at ${CONTROL_URL}`);
       sendHello();
       sendGuilds();
 
@@ -241,7 +241,7 @@ async function startAgent(agentConfig) {
           });
         }
       })().catch(err => {
-        console.error(`[agent:${agentId}] ws message fatal:`, err?.message ?? err);
+        logger.error({ err }, `[agent:${agentId}] ws message fatal`);
       });
     });
 
@@ -251,12 +251,12 @@ async function startAgent(agentConfig) {
         clearInterval(wsHeartbeat);
         wsHeartbeat = null;
       }
-      console.log(`[agent:${agentId}] WS connection closed. Reconnecting...`);
+      logger.info(`[agent:${agentId}] WS connection closed. Reconnecting...`);
       setTimeout(connectAgentControl, 2000);
     });
 
     ws.on("error", (err) => {
-      console.error(`[agent:${agentId}] WS connection error:`, err?.message ?? err);
+      logger.error({ err }, `[agent:${agentId}] WS connection error`);
     });
   }
 
@@ -1064,17 +1064,17 @@ async function startAgent(agentConfig) {
       const query = payload.query;
       const requester = payload.requester ?? null;
 
-      console.log(`[agent:play] Searching for: ${query}`);
+      logger.debug(`[agent:play] Searching for: ${query}`);
       const res = await mgr.search(ctx, query, requester);
       if (!res?.tracks?.length) {
-        console.log(`[agent:play] No tracks found for: ${query}`);
+        logger.debug(`[agent:play] No tracks found for: ${query}`);
         return { track: null, action: "none", mode: ctx.mode };
       }
 
       const track = res.tracks[0];
-      console.log(`[agent:play] Found track: ${track.info?.title || track.title}, calling enqueueAndPlay`);
+      logger.debug(`[agent:play] Found track: ${track.info?.title || track.title}, calling enqueueAndPlay`);
       const playRes = await mgr.enqueueAndPlay(ctx, track);
-      console.log(`[agent:play] enqueueAndPlay result:`, playRes);
+      logger.debug(`[agent:play] enqueueAndPlay result:`, playRes);
 
       return {
         track: serializeTrack(track),
@@ -1158,20 +1158,20 @@ async function startAgent(agentConfig) {
   }
 
   client.once(Events.ClientReady, async () => {
-    console.log(`✅ Agent ready: ${client.user.tag} (${agentId})`);
+    logger.info(`✅ Agent ready: ${client.user.tag} (${agentId})`);
     try {
       await ensureLavalink();
-      console.log(`[${agentId}] Lavalink initialized successfully.`);
+      logger.info(`[${agentId}] Lavalink initialized successfully.`);
     } catch (err) {
-      console.error(`[${agentId}] Lavalink init failed`, err?.message ?? err);
+      logger.error({ err }, `[${agentId}] Lavalink init failed`);
     }
 
     connectAgentControl(); // Each agent connects to the AgentManager
     if (wsReady) {
       sendHello();
-      console.log(`[agent:${agentId}] Connected to control plane at ${CONTROL_URL}`);
+      logger.info(`[agent:${agentId}] Connected to control plane at ${CONTROL_URL}`);
     } else {
-      console.error(`[agent:${agentId}] Failed to connect to control plane at ${CONTROL_URL}`);
+      logger.error(`[agent:${agentId}] Failed to connect to control plane at ${CONTROL_URL}`);
     }
   });
 
@@ -1243,7 +1243,7 @@ async function startAgent(agentConfig) {
 
 
 async function pollForAgentChanges() {
-  console.log(`[Runner:${RUNNER_ID}] Polling for agent changes...`);
+  logger.info(`[Runner:${RUNNER_ID}] Polling for agent changes...`);
   await upsertAgentRunner(RUNNER_ID, Date.now(), { pid: process.pid }); // Heartbeat
 
   const dbAgents = await fetchAgentBots();
@@ -1255,11 +1255,11 @@ async function pollForAgentChanges() {
     if (!desiredAgentIds.has(agentId)) {
       const agentInstance = activeAgents.get(agentId);
       if (agentInstance) {
-        console.log(`[Runner:${RUNNER_ID}] Stopping agent ${agentId} (no longer active or removed from DB).`);
+        logger.info(`[Runner:${RUNNER_ID}] Stopping agent ${agentId} (no longer active or removed from DB).`);
         try {
           await agentInstance.stopFn(); // Call the stop function returned by startAgent
         } catch (err) {
-          console.error(`[Runner:${RUNNER_ID}] Error stopping agent ${agentId}:`, err?.message ?? err);
+          logger.error({ err }, `[Runner:${RUNNER_ID}] Error stopping agent ${agentId}`);
         } finally {
           activeAgents.delete(agentId);
         }
@@ -1276,22 +1276,22 @@ async function pollForAgentChanges() {
       try {
         plainToken = await fetchAgentToken(agentConfig.agent_id);
       } catch (err) {
-        console.error(`[Runner:${RUNNER_ID}] Could not decrypt token for ${agentConfig.agent_id}:`, err?.message ?? err);
+        logger.error({ err }, `[Runner:${RUNNER_ID}] Could not decrypt token for ${agentConfig.agent_id}`);
         updateAgentBotStatus(agentConfig.agent_id, 'corrupt').catch(() => {});
         continue;
       }
       if (!plainToken) {
-        console.warn(`[Runner:${RUNNER_ID}] Agent ${agentConfig.agent_id} has no usable token (likely key rotated). Marking as corrupt.`);
+        logger.warn(`[Runner:${RUNNER_ID}] Agent ${agentConfig.agent_id} has no usable token (likely key rotated). Marking as corrupt.`);
         updateAgentBotStatus(agentConfig.agent_id, 'corrupt').catch(() => {});
         continue;
       }
-      console.log(`[Runner:${RUNNER_ID}] Starting agent ${agentConfig.agent_id}...`);
+      logger.info(`[Runner:${RUNNER_ID}] Starting agent ${agentConfig.agent_id}...`);
       try {
         const { stop: stopFn } = await startAgent({ ...agentConfig, token: plainToken });
         activeAgents.set(agentConfig.agent_id, { stopFn, agentConfig });
       } catch (err) {
-        console.error(`[Runner:${RUNNER_ID}] Error starting agent ${agentConfig.agent_id}:`, err?.message ?? err);
-        updateAgentBotStatus(agentConfig.agent_id, 'failed').catch(e => console.error("Failed to update agent status to failed:", e));
+        logger.error({ err }, `[Runner:${RUNNER_ID}] Error starting agent ${agentConfig.agent_id}`);
+        updateAgentBotStatus(agentConfig.agent_id, 'failed').catch(e => logger.error({ err: e }, "Failed to update agent status to failed"));
       }
     }
   }
@@ -1299,7 +1299,7 @@ async function pollForAgentChanges() {
 
 // Initial setup on runner boot
 (async () => {
-  console.log(`[Runner:${RUNNER_ID}] Initializing...`);
+  logger.info(`[Runner:${RUNNER_ID}] Initializing...`);
   // Register or update runner on boot
   await upsertAgentRunner(RUNNER_ID, Date.now(), { pid: process.pid, hostname: process.env.HOSTNAME || 'unknown' });
 
@@ -1307,9 +1307,9 @@ async function pollForAgentChanges() {
   // due to the token-not-fetched bug. Safe to retry since we now fetch tokens correctly.
   try {
     const reset = await resetCorruptAgents();
-    if (reset.length) console.log(`[Runner:${RUNNER_ID}] Reset ${reset.length} corrupt/failed agent(s) to active: ${reset.join(', ')}`);
+    if (reset.length) logger.info(`[Runner:${RUNNER_ID}] Reset ${reset.length} corrupt/failed agent(s) to active: ${reset.join(', ')}`);
   } catch (err) {
-    console.warn(`[Runner:${RUNNER_ID}] Could not reset corrupt agents:`, err?.message ?? err);
+    logger.warn({ err }, `[Runner:${RUNNER_ID}] Could not reset corrupt agents`);
   }
 
   await pollForAgentChanges(); // Initial poll
@@ -1319,7 +1319,7 @@ async function pollForAgentChanges() {
 
   // Handle graceful shutdown
   process.on("SIGINT", async () => {
-    console.log(`[Runner:${RUNNER_ID}] SIGINT received. Shutting down...`);
+    logger.info(`[Runner:${RUNNER_ID}] SIGINT received. Shutting down...`);
     await deleteAgentRunner(RUNNER_ID); // Remove runner from DB
     for (const agentId of activeAgents.keys()) {
       const agentInstance = activeAgents.get(agentId);
@@ -1327,7 +1327,7 @@ async function pollForAgentChanges() {
         try {
           await agentInstance.stopFn();
         } catch (err) {
-          console.error(`[Runner:${RUNNER_ID}] Error stopping agent ${agentId} during shutdown:`, err?.message ?? err);
+          logger.error({ err }, `[Runner:${RUNNER_ID}] Error stopping agent ${agentId} during shutdown`);
         }
       }
     }
@@ -1335,7 +1335,7 @@ async function pollForAgentChanges() {
   });
 
   process.on("SIGTERM", async () => {
-    console.log(`[Runner:${RUNNER_ID}] SIGTERM received. Shutting down...`);
+    logger.info(`[Runner:${RUNNER_ID}] SIGTERM received. Shutting down...`);
     await deleteAgentRunner(RUNNER_ID); // Remove runner from DB
     for (const agentId of activeAgents.keys()) {
       const agentInstance = activeAgents.get(agentId);
@@ -1343,7 +1343,7 @@ async function pollForAgentChanges() {
         try {
           await agentInstance.stopFn();
         } catch (err) {
-          console.error(`[Runner:${RUNNER_ID}] Error stopping agent ${agentId} during shutdown:`, err?.message ?? err);
+          logger.error({ err }, `[Runner:${RUNNER_ID}] Error stopping agent ${agentId} during shutdown`);
         }
       }
     }
@@ -1351,6 +1351,6 @@ async function pollForAgentChanges() {
   });
 
 })().catch(err => {
-  console.error(`[Runner:${RUNNER_ID}] Fatal initialization error:`, err?.message ?? err);
+  logger.error({ err }, `[Runner:${RUNNER_ID}] Fatal initialization error`);
   process.exit(1);
 });

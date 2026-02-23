@@ -5,6 +5,7 @@ import { securityLogger } from "./modernLogger.js";
 // Redis client for rate limiting (separate from main Redis)
 let redisClient = null;
 let rateLimiter = null;
+let sensitiveActionLimiter = null; // module-level singleton — not per-call
 
 async function initRateLimiter() {
   try {
@@ -30,6 +31,14 @@ async function initRateLimiter() {
     });
 
     securityLogger.info("Rate limiter initialized with Redis backend");
+    // Initialize the sensitive-action singleton alongside the main limiter
+    sensitiveActionLimiter = new RateLimiterRedis({
+      storeClient: redisClient,
+      keyPrefix: "rl:sensitive:",
+      points: 3,
+      duration: 300,
+      blockDuration: 3600,
+    });
   } catch (err) {
     securityLogger.warn({ err }, "Rate limiter falling back to in-memory");
     redisClient = null;
@@ -39,6 +48,12 @@ async function initRateLimiter() {
       points: 10,
       duration: 1,
       blockDuration: 60,
+    });
+    sensitiveActionLimiter = new RateLimiterMemory({
+      keyPrefix: "rl:sensitive:",
+      points: 3,
+      duration: 300,
+      blockDuration: 3600,
     });
   }
 }
@@ -76,28 +91,14 @@ export async function checkCommandRateLimit(userId, commandName) {
 
 // Aggressive rate limiting for sensitive actions (login, token operations, etc.)
 export async function checkSensitiveActionLimit(identifier) {
-  if (!rateLimiter) {
+  if (!sensitiveActionLimiter) {
     await initRateLimiter();
   }
 
   const key = `sensitive:${identifier}`;
-  const limiter = redisClient
-    ? new RateLimiterRedis({
-        storeClient: redisClient,
-        keyPrefix: "rl:sensitive:",
-        points: 3, // Only 3 attempts
-        duration: 300, // Per 5 minutes
-        blockDuration: 3600, // Block for 1 hour if exceeded
-      })
-    : new RateLimiterMemory({
-        keyPrefix: "rl:sensitive:",
-        points: 3,
-        duration: 300,
-        blockDuration: 3600,
-      });
 
   try {
-    await limiter.consume(key, 1);
+    await sensitiveActionLimiter.consume(key, 1);
     return { allowed: true };
   } catch (rejRes) {
     if (rejRes instanceof Error) {

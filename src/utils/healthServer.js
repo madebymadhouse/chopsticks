@@ -1,11 +1,11 @@
 import http from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { Registry, collectDefaultMetrics, Counter, Gauge, Histogram } from "prom-client";
+import { Counter, Gauge, Histogram } from "prom-client";
 import { createDebugHandler, createDebugDashboard } from "./debugDashboard.js";
 import { register as appMetricsRegister } from "./metrics.js";
+import { botLogger } from "./modernLogger.js";
 
 let server = null;
-let registry = null;
 let commandCounter = null;
 let commandErrorCounter = null;
 let commandLatency = null;
@@ -54,7 +54,7 @@ export function startHealthServer(manager = null) {
   // Store agent manager reference for debug dashboard
   const sec = readHealthSecurityConfig(process.env);
   if (manager) agentManager = manager;
-  if (manager && sec.debugEnabled) console.log("✅ Debug dashboard enabled at /debug/dashboard");
+  if (manager && sec.debugEnabled) botLogger.info("[health] Debug dashboard enabled at /debug/dashboard");
   
   if (server) return server;
 
@@ -64,37 +64,35 @@ export function startHealthServer(manager = null) {
     String(process.env.METRICS_PORT_FALLBACK ?? "true").toLowerCase() !== "false";
   const maxBump = Math.max(0, Math.trunc(Number(process.env.METRICS_PORT_BUMP || 10)));
 
-  registry = new Registry();
-  collectDefaultMetrics({ register: registry, prefix: "chopsticks_" });
-
+  // Register health-server metrics into the shared app registry (unified /metrics scrape target)
   commandCounter = new Counter({
-    name: "chopsticks_commands_total",
-    help: "Total commands executed",
-    labelNames: ["command"]
+    name: "chopsticks_health_commands_total",
+    help: "Total commands executed (health-server internal counter)",
+    labelNames: ["command"],
+    registers: [appMetricsRegister]
   });
-  registry.registerMetric(commandCounter);
 
   commandErrorCounter = new Counter({
     name: "chopsticks_commands_error_total",
     help: "Total command errors",
-    labelNames: ["command"]
+    labelNames: ["command"],
+    registers: [appMetricsRegister]
   });
-  registry.registerMetric(commandErrorCounter);
 
   commandLatency = new Histogram({
     name: "chopsticks_commands_latency_ms",
     help: "Command latency in ms",
     labelNames: ["command"],
-    buckets: [25, 50, 100, 200, 400, 800, 1600, 3200]
+    buckets: [25, 50, 100, 200, 400, 800, 1600, 3200],
+    registers: [appMetricsRegister]
   });
-  registry.registerMetric(commandLatency);
 
   agentGauge = new Gauge({
     name: "chopsticks_agents_total",
     help: "Agent count by state",
-    labelNames: ["state"]
+    labelNames: ["state"],
+    registers: [appMetricsRegister]
   });
-  registry.registerMetric(agentGauge);
 
   function createServer() {
     return http.createServer(async (req, res) => {
@@ -108,23 +106,15 @@ export function startHealthServer(manager = null) {
         return;
       }
 
-      // Prometheus metrics
+      // Prometheus metrics — serve unified app registry (includes health-server metrics)
       if (url.startsWith("/metrics")) {
         if (!isHealthAuthorized(req, security.metricsToken)) {
           res.writeHead(401, { "Content-Type": "text/plain" });
           res.end("unauthorized");
           return;
         }
-        // App metrics from src/utils/metrics.js (includes agent lifecycle utilization gauges)
-        if (url.startsWith("/metrics-app")) {
-          res.writeHead(200, { "Content-Type": appMetricsRegister.contentType });
-          res.end(await appMetricsRegister.metrics());
-          return;
-        }
-
-        // Legacy health-server metrics
-        res.writeHead(200, { "Content-Type": registry.contentType });
-        res.end(await registry.metrics());
+        res.writeHead(200, { "Content-Type": appMetricsRegister.contentType });
+        res.end(await appMetricsRegister.metrics());
         return;
       }
 
@@ -185,25 +175,25 @@ export function startHealthServer(manager = null) {
           srv.close();
         } catch {}
         const next = p + 1;
-        console.warn(`[health] port ${p} in use; trying ${next}`);
+        botLogger.warn(`[health] port ${p} in use; trying ${next}`);
         tryListen(next, remaining - 1);
         return;
       }
       if (err?.code === "EADDRINUSE") {
-        console.warn(`[health] port ${p} already in use; metrics disabled for this instance.`);
+      botLogger.warn(`[health] port ${p} already in use; metrics disabled for this instance.`);
         try {
           srv.close();
         } catch {}
         server = null;
         return;
       }
-      console.error("[health] server error", err?.message ?? err);
+      botLogger.error({ err }, "[health] server error");
     });
 
     srv.listen(p, () => {
       server = srv;
       server.__port = p;
-      console.log(`[health] listening on :${p}`);
+      botLogger.info(`[health] listening on :${p}`);
     });
   }
 

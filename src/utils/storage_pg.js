@@ -167,12 +167,12 @@ export function maskToken(token) {
 // ── End Encryption Configuration ─────────────────────────────────────────
 
 export async function ensureSchema() {
-  logger.info("--> ensureSchema() called in storage_pg.js");
-  logger.info("--> Calling getPool() from ensureSchema()"); // New diagnostic log
+  logger.info("ensureSchema: start");
+  logger.debug("--> Calling getPool() from ensureSchema()"); // New diagnostic log
   const p = getPool();
 
   try {
-    logger.info("Attempting to create guild_settings table...");
+    logger.debug("Attempting to create guild_settings table...");
     await p.query(`
       CREATE TABLE IF NOT EXISTS guild_settings (
         guild_id TEXT PRIMARY KEY,
@@ -181,14 +181,14 @@ export async function ensureSchema() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
-    logger.info("guild_settings table created or already exists.");
+    logger.debug("guild_settings table created or already exists.");
   } catch (err) {
     logger.error("Error creating guild_settings table:", { error: err.message });
     throw err;
   }
 
   try {
-    logger.info("Attempting to create audit_log table...");
+    logger.debug("Attempting to create audit_log table...");
     await p.query(`
       CREATE TABLE IF NOT EXISTS audit_log (
         id BIGSERIAL PRIMARY KEY,
@@ -199,14 +199,14 @@ export async function ensureSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
-    logger.info("audit_log table created or already exists.");
+    logger.debug("audit_log table created or already exists.");
   } catch (err) {
     logger.error("Error creating audit_log table:", { error: err.message });
     throw err;
   }
 
   try {
-    logger.info("Attempting to create command_stats table...");
+    logger.debug("Attempting to create command_stats table...");
     await p.query(`
       CREATE TABLE IF NOT EXISTS command_stats (
         guild_id TEXT NOT NULL,
@@ -219,14 +219,14 @@ export async function ensureSchema() {
         PRIMARY KEY (guild_id, command)
       );
     `);
-    logger.info("command_stats table created or already exists.");
+    logger.debug("command_stats table created or already exists.");
   } catch (err) {
     logger.error("Error creating command_stats table:", { error: err.message });
     throw err;
   }
 
   try {
-    logger.info("Attempting to create command_stats_daily table...");
+    logger.debug("Attempting to create command_stats_daily table...");
     await p.query(`
       CREATE TABLE IF NOT EXISTS command_stats_daily (
         day DATE NOT NULL,
@@ -240,7 +240,7 @@ export async function ensureSchema() {
         PRIMARY KEY (day, guild_id, command)
       );
     `);
-    logger.info("command_stats_daily table created or already exists.");
+    logger.debug("command_stats_daily table created or already exists.");
   } catch (err) {
     logger.error("Error creating command_stats_daily table:", { error: err.message });
     throw err;
@@ -248,7 +248,7 @@ export async function ensureSchema() {
 
   // New agent_bots table (renamed from agent_tokens, timestamps as BIGINT)
   try {
-    logger.info("Attempting to create agent_bots table...");
+    logger.debug("Attempting to create agent_bots table...");
     const createTableSql = `
       CREATE TABLE IF NOT EXISTS agent_bots (
         id SERIAL PRIMARY KEY,
@@ -262,9 +262,9 @@ export async function ensureSchema() {
         pool_id TEXT DEFAULT 'pool_goot27'
       );
     `;
-    logger.info("ensureSchema: Executing SQL:", { sql: createTableSql });
+    logger.debug("ensureSchema: Executing SQL:", { sql: createTableSql });
     await p.query(createTableSql);
-    logger.info("agent_bots table created or already exists.");
+    logger.debug("agent_bots table created or already exists.");
   } catch (err) {
     logger.error("Error creating agent_bots table:", { error: err.message });
     throw err;
@@ -272,7 +272,7 @@ export async function ensureSchema() {
 
   // New agent_pools table - manages pool ownership and visibility
   try {
-    logger.info("Attempting to create agent_pools table...");
+    logger.debug("Attempting to create agent_pools table...");
     const createPoolsTableSql = `
       CREATE TABLE IF NOT EXISTS agent_pools (
         pool_id TEXT PRIMARY KEY,
@@ -284,9 +284,9 @@ export async function ensureSchema() {
         meta JSONB
       );
     `;
-    logger.info("ensureSchema: Executing SQL:", { sql: createPoolsTableSql });
+    logger.debug("ensureSchema: Executing SQL:", { sql: createPoolsTableSql });
     await p.query(createPoolsTableSql);
-    logger.info("agent_pools table created or already exists.");
+    logger.debug("agent_pools table created or already exists.");
   } catch (err) {
     logger.error("Error creating agent_pools table:", { error: err.message });
     throw err;
@@ -294,7 +294,7 @@ export async function ensureSchema() {
 
   // Create default pool for goot27 if it doesn't exist
   try {
-    logger.info("Ensuring default pool_goot27 exists...");
+    logger.debug("Ensuring default pool_goot27 exists...");
     const ensureDefaultPoolSql = `
       INSERT INTO agent_pools (pool_id, owner_user_id, name, visibility, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -309,7 +309,7 @@ export async function ensureSchema() {
       now,
       now
     ]);
-    logger.info("Default pool_goot27 ensured.");
+    logger.debug("Default pool_goot27 ensured.");
   } catch (err) {
     logger.error("Error ensuring default pool:", { error: err.message });
     // Don't throw - pool might already exist
@@ -317,11 +317,11 @@ export async function ensureSchema() {
 
   // Create indices for performance
   try {
-    logger.info("Creating indices for agent_pools...");
+    logger.debug("Creating indices for agent_pools...");
     await p.query('CREATE INDEX IF NOT EXISTS idx_agent_bots_pool_id ON agent_bots(pool_id);');
     await p.query('CREATE INDEX IF NOT EXISTS idx_agent_pools_owner ON agent_pools(owner_user_id);');
     await p.query('CREATE INDEX IF NOT EXISTS idx_agent_pools_visibility ON agent_pools(visibility);');
-    logger.info("Indices created.");
+    logger.debug("Indices created.");
   } catch (err) {
     logger.error("Error creating indices:", { error: err.message });
     // Don't throw - indices might already exist
@@ -329,7 +329,7 @@ export async function ensureSchema() {
 
   // New agent_runners table
   try {
-    logger.info("Attempting to create agent_runners table...");
+    logger.debug("Attempting to create agent_runners table...");
     const createRunnerTableSql = `
       CREATE TABLE IF NOT EXISTS agent_runners (
         runner_id TEXT PRIMARY KEY,
@@ -337,23 +337,23 @@ export async function ensureSchema() {
         meta JSONB
       );
     `;
-    logger.info("ensureSchema: Executing SQL:", { sql: createRunnerTableSql });
+    logger.debug("ensureSchema: Executing SQL:", { sql: createRunnerTableSql });
     await p.query(createRunnerTableSql);
-    logger.info("agent_runners table created or already exists.");
+    logger.debug("agent_runners table created or already exists.");
   } catch (err) {
     logger.error("Error creating agent_runners table:", { error: err.message });
     throw err;
   }
   
   try {
-    logger.info("Attempting to alter agent_bots table to add profile column...");
+    logger.debug("Attempting to alter agent_bots table to add profile column...");
     const alterTableSql = `
       ALTER TABLE agent_bots
       ADD COLUMN IF NOT EXISTS profile JSONB;
     `;
-    logger.info("ensureSchema: Executing SQL:", { sql: alterTableSql });
+    logger.debug("ensureSchema: Executing SQL:", { sql: alterTableSql });
     await p.query(alterTableSql);
-    logger.info("agent_bots table altered or already up-to-date.");
+    logger.debug("agent_bots table altered or already up-to-date.");
   } catch (err) {
     logger.error("Error altering agent_bots table:", { error: err.message });
     throw err;
@@ -361,7 +361,7 @@ export async function ensureSchema() {
 
   // New user_pets table
   try {
-    logger.info("Attempting to create user_pets table...");
+    logger.debug("Attempting to create user_pets table...");
     const createPetsTableSql = `
       CREATE TABLE IF NOT EXISTS user_pets (
         id BIGSERIAL PRIMARY KEY,
@@ -375,7 +375,7 @@ export async function ensureSchema() {
     `;
     await p.query(createPetsTableSql);
     await p.query('CREATE INDEX IF NOT EXISTS idx_user_pets_user_id ON user_pets(user_id);');
-    logger.info("user_pets table created or already exists.");
+    logger.debug("user_pets table created or already exists.");
   } catch (err) {
     logger.error("Error creating user_pets table:", { error: err.message });
     throw err;
@@ -383,13 +383,13 @@ export async function ensureSchema() {
 
   // Migration: Add pool_id to existing agent_bots if not present
   try {
-    logger.info("Attempting to add pool_id column to agent_bots if not exists...");
+    logger.debug("Attempting to add pool_id column to agent_bots if not exists...");
     const addPoolIdSql = `
       ALTER TABLE agent_bots
       ADD COLUMN IF NOT EXISTS pool_id TEXT DEFAULT 'pool_goot27';
     `;
     await p.query(addPoolIdSql);
-    logger.info("pool_id column ensured in agent_bots.");
+    logger.debug("pool_id column ensured in agent_bots.");
   } catch (err) {
     logger.error("Error adding pool_id to agent_bots:", { error: err.message });
     // Don't throw - column might already exist
@@ -397,7 +397,7 @@ export async function ensureSchema() {
 
   // Migration: Add selected_pool_id to guild_settings
   try {
-    logger.info("Attempting to add selected_pool_id column to guild_settings...");
+    logger.debug("Attempting to add selected_pool_id column to guild_settings...");
     // First, check if the data column exists and is JSONB
     const checkColumnSql = `
       SELECT column_name, data_type 
@@ -409,11 +409,12 @@ export async function ensureSchema() {
     
     if (hasDataColumn) {
       // Guild settings uses JSONB data column, we'll store selected_pool_id there
-      logger.info("Guild settings uses JSONB data column. Pool selection will be stored in data.selectedPoolId");
+      logger.debug("Guild settings uses JSONB data column. Pool selection will be stored in data.selectedPoolId");
     }
   } catch (err) {
     logger.error("Error checking guild_settings structure:", { error: err.message });
   }
+  logger.info("ensureSchema: complete");
 }
 
 export async function insertAuditLog(entry) {

@@ -1,5 +1,7 @@
 // Error handler utilities for consistent error reporting
 
+import { botLogger } from "./modernLogger.js";
+
 export const ErrorCategory = {
   MUSIC: 'music',
   AGENT: 'agent',
@@ -18,14 +20,8 @@ export const ErrorSeverity = {
 };
 
 export function handleInteractionError(error, context = {}) {
-  const timestamp = new Date().toISOString();
   const category = context.category || ErrorCategory.UNKNOWN;
-  
-  console.error(`[${timestamp}] ${category.toUpperCase()}_ERROR:`, {
-    message: error.message,
-    stack: error.stack,
-    context
-  });
+  botLogger.error({ err: error, category, context }, `${category.toUpperCase()}_ERROR`);
 }
 
 export function handleSafeError(error, interaction, fallbackMessage = 'An error occurred') {
@@ -35,26 +31,15 @@ export function handleSafeError(error, interaction, fallbackMessage = 'An error 
     return interaction.reply({
       content: fallbackMessage,
       ephemeral: true
-    }).catch(e => console.error('Failed to reply with error:', e.message));
+    }).catch(e => botLogger.error({ err: e }, 'Failed to reply with error'));
   }
 }
 
 export function handleCriticalError(error, context = {}) {
-  const timestamp = new Date().toISOString();
-  console.error(`[${timestamp}] CRITICAL_ERROR:`, {
-    message: error.message,
-    stack: error.stack,
-    context
-  });
+  botLogger.error({ err: error, context }, 'CRITICAL_ERROR');
 }
 
 export function handleVoiceError(error, context = {}) {
-  const timestamp = new Date().toISOString();
   const severity = context.severity || ErrorSeverity.MEDIUM;
-  
-  console.error(`[${timestamp}] VOICE_ERROR [${severity}]:`, {
-    message: error.message,
-    stack: error.stack,
-    context
-  });
+  botLogger.error({ err: error, severity, context }, 'VOICE_ERROR');
 }

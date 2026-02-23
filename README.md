@@ -29,8 +29,9 @@
   <img src="https://img.shields.io/badge/Join%20Support%20Server-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Support Server"/>
 </a>
 &nbsp;
+<!-- Replace YOUR_CLIENT_ID with your bot's application ID from the Discord Developer Portal -->
 <a href="https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands">
-  <img src="https://img.shields.io/badge/Invite%20Chopsticks-57F287?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Bot"/>
+  <img src="https://img.shields.io/badge/Invite%20Chopsticks-57F287?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Bot — replace YOUR_CLIENT_ID in this URL"/>
 </a>
 &nbsp;
 <a href="docs/">

@@ -205,14 +205,14 @@ export class AgentManager {
   handleMessage(ws, data) {
     let msg;
     try {
-      console.log('[AgentManager:RAW]', String(data));
+      logger.debug({ raw: String(data) }, '[AgentManager:RAW]');
       msg = JSON.parse(String(data));
     } catch {
-      console.log('[AgentManager] Invalid JSON received from agent');
+      logger.warn('[AgentManager] Invalid JSON received from agent');
       return;
     }
     
-    console.log(`[AgentManager] Message received: type=${msg?.type}, agentId=${msg?.agentId || ws.__agentId}`);
+    logger.debug({ type: msg?.type, agentId: msg?.agentId || ws.__agentId }, '[AgentManager] Message received');
 
     if (msg?.type === "hello") return void this.handleHello(ws, msg);
     if (msg?.type === "guilds") return void this.handleGuilds(ws, msg);
@@ -352,14 +352,14 @@ export class AgentManager {
     const removed = oldGuildIds.filter(g => !newGuildIds.includes(g));
     
     if (added.length > 0) {
-      console.log(`[GUILDS_UPDATE] Agent ${agentId} joined guilds: ${added.join(', ')}`);
+      logger.debug({ agentId, added }, '[GUILDS_UPDATE] Agent joined guilds');
     }
     if (removed.length > 0) {
-      console.log(`[GUILDS_UPDATE] Agent ${agentId} left guilds: ${removed.join(', ')}`);
+      logger.debug({ agentId, removed }, '[GUILDS_UPDATE] Agent left guilds');
     }
     
     if (added.length === 0 && removed.length === 0 && newGuildIds.length > 0) {
-      console.log(`[GUILDS_UPDATE] Agent ${agentId} guild list unchanged (${newGuildIds.length} guilds)`);
+      logger.debug({ agentId, guildCount: newGuildIds.length }, '[GUILDS_UPDATE] Agent guild list unchanged');
     }
   }
 
@@ -1538,9 +1538,9 @@ export class AgentManager {
 // Enhanced logging for debugging
 const originalRequest = AgentManager.prototype.request;
 AgentManager.prototype.request = function(agent, op, data, timeoutMs) {
-  console.log(`[AgentManager] RPC request: ${op} to agent ${agent?.agentId ?? "unknown"}`);
+  logger.debug({ op, agentId: agent?.agentId ?? "unknown" }, '[AgentManager] RPC request');
   return originalRequest.call(this, agent, op, data, timeoutMs).catch(err => {
-    console.error(`[AgentManager] RPC failed: ${op}`, err.message);
+    logger.error({ op, err }, '[AgentManager] RPC failed');
     throw err;
   });
 };

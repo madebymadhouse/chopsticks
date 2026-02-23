@@ -2738,6 +2738,29 @@ export async function execute(interaction) {
       if (curDur) fields.push({ name: "Duration", value: formatDuration(curDur), inline: true });
       if (current.requester?.username) fields.push({ name: "Requested by", value: current.requester.username, inline: true });
 
+      // Last.fm enrichment — optional, non-blocking, zero regression if unavailable
+      if (process.env.LASTFM_API_KEY && current.author && current.title) {
+        try {
+          const [{ getTrackInfo }, { getSimilarTracks }] = await Promise.all([
+            import("../utils/lastfm.js"),
+            import("../utils/lastfm.js")
+          ]);
+          const [info, similar] = await Promise.allSettled([
+            getTrackInfo(current.author, current.title),
+            getSimilarTracks(current.author, current.title, 1)
+          ]);
+          if (info.status === "fulfilled" && info.value) {
+            const ti = info.value;
+            if (ti.playcount) fields.push({ name: "🌍 Global Plays", value: Number(ti.playcount).toLocaleString(), inline: true });
+            if (ti.tags?.length) fields.push({ name: "🏷️ Tags", value: ti.tags.slice(0, 3).join(", "), inline: true });
+          }
+          if (similar.status === "fulfilled" && similar.value?.length) {
+            const s = similar.value[0];
+            fields.push({ name: "🎵 You might also like", value: `[${s.title} — ${s.artist}](${s.url ?? "https://last.fm"})`, inline: false });
+          }
+        } catch {}
+      }
+
       await interaction.editReply({
         embeds: [makeEmbed(
           "Now Playing",
