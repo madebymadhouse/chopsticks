@@ -1,5 +1,6 @@
 // src/lavalink/client.js
 import { LavalinkManager } from "lavalink-client";
+import { logger } from "../utils/logger.js";
 
 let manager = null;
 let rawHooked = false;
@@ -33,25 +34,25 @@ function bindErrorHandlersOnce() {
 
   try {
     manager.on("error", err => {
-      console.error("[lavalink:manager:error]", err?.message ?? err);
+      logger.error({ err }, "[lavalink:manager:error]");
     });
   } catch {}
 
   try {
     manager.nodeManager?.on?.("error", node => {
-      console.error("[lavalink:node:error]", node?.options?.id ?? "node");
+      logger.error({ node: node?.options?.id ?? "node" }, "[lavalink:node:error]");
     });
   } catch {}
 
   try {
     manager.nodeManager?.on?.("disconnect", node => {
-      console.error("[lavalink:node:disconnect]", node?.options?.id ?? "node");
+      logger.warn({ node: node?.options?.id ?? "node" }, "[lavalink:node:disconnect]");
     });
   } catch {}
 
   try {
     manager.nodeManager?.on?.("reconnecting", node => {
-      console.error("[lavalink:node:reconnecting]", node?.options?.id ?? "node");
+      logger.warn({ node: node?.options?.id ?? "node" }, "[lavalink:node:reconnecting]");
     });
   } catch {}
 }

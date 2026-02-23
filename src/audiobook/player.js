@@ -14,6 +14,7 @@ import {
 } from '@discordjs/voice';
 import { Readable } from 'stream';
 import { generateChunk, splitIntoChunks, resolveVoice } from './tts.js';
+import { logger } from '../utils/logger.js';
 
 // ── State constants ────────────────────────────────────────────────────────────
 export const PlayerState = {
@@ -67,7 +68,7 @@ export class AudiobookPlayer {
     });
 
     this._player.on('error', err => {
-      console.error(`[AudiobookPlayer:${guildId}] Player error:`, err.message);
+      logger.error({ err, guildId }, "[AudiobookPlayer] Player error");
       this._setState(PlayerState.IDLE);
     });
   }

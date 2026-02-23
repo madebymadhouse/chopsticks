@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
+import { logger } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,7 +95,7 @@ app.get('/', async (req, res) => {
             error: null
         });
     } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        logger.error({ err: error }, "Error fetching dashboard data");
         res.render('index', {
             registeredAgents: [],
             activeAgents: [],
@@ -257,7 +258,7 @@ app.post('/api/agents/start/:agentId', async (req, res) => {
 
 // Start the server
 httpServer.listen(PORT, () => {
-    console.log(`Dev Dashboard running on http://localhost:${PORT}`);
+    logger.info(`Dev Dashboard running on http://localhost:${PORT}`);
 });
 
 // Real-time live stats push via Socket.io — polls health API every 5s

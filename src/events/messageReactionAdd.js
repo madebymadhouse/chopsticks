@@ -9,6 +9,7 @@ import {
   reactionMatchesStarboard,
   buildStarboardEmbed
 } from "../utils/starboard.js";
+import { logger } from "../utils/logger.js";
 
 async function applyReactionRole(reaction, user, mode) {
   if (!user || user.bot) return;
@@ -16,7 +17,7 @@ async function applyReactionRole(reaction, user, mode) {
   try {
     if (reaction?.partial) await reaction.fetch();
   } catch (error) {
-    console.warn("[reactionroles:add] failed to fetch partial reaction:", error?.message || error);
+    logger.warn({ err: error }, "[reactionroles:add] failed to fetch partial reaction");
     return;
   }
 
@@ -36,7 +37,7 @@ async function applyReactionRole(reaction, user, mode) {
     try {
       member = await guild.members.fetch(user.id);
     } catch (error) {
-      console.warn("[reactionroles:add] could not fetch member:", error?.message || error);
+      logger.warn({ err: error }, "[reactionroles:add] could not fetch member");
       return;
     }
   }
@@ -54,7 +55,7 @@ async function applyReactionRole(reaction, user, mode) {
       }
     }
   } catch (error) {
-    console.warn(`[reactionroles:${mode}] role update failed:`, error?.message || error);
+    logger.warn({ err: error, mode }, `[reactionroles:${mode}] role update failed`);
   }
 }
 
@@ -108,7 +109,7 @@ async function handleStarboard(reaction, user) {
     cfg.posts[sourceId] = posted.id;
     await saveGuildData(guild.id, guildData);
   } catch (error) {
-    console.warn("[starboard:add] failed:", error?.message || error);
+    logger.warn({ err: error }, "[starboard:add] failed");
   }
 }
 
