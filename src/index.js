@@ -797,6 +797,8 @@ client.on(Events.MessageCreate, async message => {
 
   const raw = message.content.slice(prefix.length).trim();
   if (!raw) return;
+  // Guard: ignore messages with pathologically long raw content
+  if (raw.length > 2000) return;
 
   const parts = parsePrefixArgs(raw);
   if (!parts.length) return;

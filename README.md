@@ -101,10 +101,28 @@
 <details>
 <summary><b>🎮 Games & Fun</b></summary>
 
-- `/trivia` — solo, PvP versus, fleet, and agent-duel modes
+- `/trivia` — solo, PvP versus, fleet, and agent-duel modes (with live Open Trivia DB fallback for extended categories)
 - `/gather` `/work` — loot missions with card-image outputs
 - `/fun` — interactive catalog-driven fun commands
 - `/agent chat` — chat with a deployed agent identity
+- `/fact` — random interesting fact (uselessfacts.jsph.pl, free)
+- `/joke [category]` — programming, pun, misc, dark and more (JokeAPI v2, free)
+- `/urban <term>` — Urban Dictionary lookup with thumbs up/down
+- `/8ball` `/coinflip` `/roll` `/roast` `/choose`
+
+</details>
+
+<details>
+<summary><b>🌐 Info & Lookup Commands</b></summary>
+
+- `/wiki <query>` — Wikipedia article summary + thumbnail
+- `/github <user|user/repo>` — GitHub user profile or repository stats
+- `/anime <title>` — AniList anime info (score, studio, episodes, genres)
+- `/weather <location>` — Current weather via Open-Meteo (free, no API key)
+- `/apod [date]` — NASA Astronomy Picture of the Day
+- `/book <query>` — Open Library book search (cover, author, subjects)
+- `/convert <amount> <from> <to>` — Currency conversion via Frankfurter (ECB data, free)
+- `/botinfo` `/ping` `/serverinfo` `/userinfo` — rich stat embeds
 
 </details>
 
@@ -112,8 +130,9 @@
 <summary><b>📊 Dashboard & Monitoring</b></summary>
 
 - Web dashboard for server config, pool management, and live stats
-- Prometheus metrics + Grafana integration
-- Structured JSON logging with Pino
+- Dev dashboard with **real-time Socket.io push** — commands/min, agents online, error rate, top command
+- Prometheus metrics + Grafana integration (unified `/metrics` endpoint)
+- Structured JSON logging with Pino (zero `console.*` in production paths)
 
 </details>
 
