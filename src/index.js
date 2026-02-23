@@ -409,6 +409,7 @@ client.once(Events.ClientReady, async () => {
   }
 
   // Rotating bot presence — cycles every 30s with live stats
+  let presenceTimer = null;
   try {
     const enabled = String(process.env.BOT_PRESENCE_ENABLED ?? "true").toLowerCase() !== "false";
     if (enabled && client.user) {
@@ -431,7 +432,7 @@ client.once(Events.ClientReady, async () => {
       }
 
       rotatePresence();
-      const presenceTimer = setInterval(rotatePresence, 30_000);
+      presenceTimer = setInterval(rotatePresence, 30_000);
       presenceTimer.unref();
     }
   } catch {}
@@ -531,6 +532,7 @@ client.once(Events.ClientReady, async () => {
   const shutdown = async (signal) => {
     botLogger.info({ signal }, "[shutdown] Graceful shutdown initiated");
     clearInterval(flushTimer);
+    if (presenceTimer) clearInterval(presenceTimer);
 
     // 1. Flush pending command stats to DB
     try {
@@ -770,6 +772,43 @@ client.on(Events.MessageCreate, async message => {
         const { addGuildXp } = await import('./game/guildXp.js');
         addStat(message.author.id, message.guildId, 'messages_sent', 1);
         await addGuildXp(message.author.id, message.guildId, 'message', { client }).catch(() => {});
+      } catch {}
+    })();
+  }
+
+  // ── AFK system ────────────────────────────────────────────────────────────
+  if (message.guildId) {
+    void (async () => {
+      try {
+        const { cacheGet, cacheSet, getRedis } = await import("./utils/cache.js");
+        const clearAfk = async (k) => {
+          try { const rc = getRedis(); if (rc) { await rc.del(k); return; } } catch {}
+          await cacheSet(k, "", 1).catch(() => {});
+        };
+        const authorKey = `afk:${message.guildId}:${message.author.id}`;
+        // Clear AFK if the AFK user speaks
+        const authorAfk = await cacheGet(authorKey).catch(() => null);
+        if (authorAfk) {
+          await clearAfk(authorKey);
+          await message.reply({ content: "👋 Welcome back! Your AFK status has been cleared.", allowedMentions: { repliedUser: false } }).catch(() => {});
+        }
+        // Notify if mentioned user is AFK
+        if (message.mentions.users.size > 0) {
+          for (const [uid, user] of message.mentions.users) {
+            if (uid === message.author.id) continue;
+            const afkKey = `afk:${message.guildId}:${uid}`;
+            const afkRaw = await cacheGet(afkKey).catch(() => null);
+            if (!afkRaw) continue;
+            try {
+              const { reason, since } = JSON.parse(afkRaw);
+              const sinceStr = since ? `<t:${Math.floor(since / 1000)}:R>` : "";
+              await message.reply({
+                content: `💤 **${user.username}** is AFK${sinceStr ? ` (${sinceStr})` : ""}: *${reason}*`,
+                allowedMentions: { repliedUser: false }
+              }).catch(() => {});
+            } catch {}
+          }
+        }
       } catch {}
     })();
   }
@@ -1150,7 +1189,7 @@ setInterval(async () => {
   } catch {
     redisHealthOk.set(0);
   }
-}, 30_000);
+}, 30_000).unref();
 
 // Birthday & Events reminder scheduler — runs every hour
 setInterval(async () => {
@@ -1210,4 +1249,4 @@ setInterval(async () => {
       }
     }
   } catch {}
-}, 60 * 60 * 1000); // every hour
+}, 60 * 60 * 1000).unref(); // every hour

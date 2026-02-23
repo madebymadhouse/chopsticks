@@ -107,6 +107,7 @@
 - `/agent chat` — chat with a deployed agent identity
 - `/fact` — random interesting fact (uselessfacts.jsph.pl, free)
 - `/joke [category]` — programming, pun, misc, dark and more (JokeAPI v2, free)
+- `/dadjoke` — random dad joke (icanhazdadjoke.com, free)
 - `/urban <term>` — Urban Dictionary lookup with thumbs up/down
 - `/8ball` `/coinflip` `/roll` `/roast` `/choose`
 
@@ -121,6 +122,7 @@
 - `/weather <location>` — Current weather via Open-Meteo (free, no API key)
 - `/apod [date]` — NASA Astronomy Picture of the Day
 - `/book <query>` — Open Library book search (cover, author, subjects)
+- `/afk [reason]` — Set AFK status; bot notifies others who mention you
 - `/convert <amount> <from> <to>` — Currency conversion via Frankfurter (ECB data, free)
 - `/botinfo` `/ping` `/serverinfo` `/userinfo` — rich stat embeds
 

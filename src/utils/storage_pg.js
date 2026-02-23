@@ -1279,6 +1279,7 @@ export async function ensureEconomySchema() {
     `CREATE TABLE IF NOT EXISTS user_streaks (user_id TEXT PRIMARY KEY, daily_streak INT NOT NULL DEFAULT 0, weekly_streak INT NOT NULL DEFAULT 0, last_daily BIGINT, last_weekly BIGINT, longest_daily INT NOT NULL DEFAULT 0, longest_weekly INT NOT NULL DEFAULT 0, streak_multiplier DECIMAL(3,2) NOT NULL DEFAULT 1.00 CHECK (streak_multiplier >= 1.00 AND streak_multiplier <= 5.00))`,
     `CREATE TABLE IF NOT EXISTS transaction_log (id SERIAL PRIMARY KEY, from_user TEXT, to_user TEXT, amount BIGINT NOT NULL, reason TEXT NOT NULL, metadata JSONB DEFAULT '{}', timestamp BIGINT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS idx_transactions_time ON transaction_log(timestamp DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_transactions_guild ON transaction_log(from_user, to_user)`,
     `CREATE TABLE IF NOT EXISTS user_profile_privacy (
       user_id TEXT PRIMARY KEY,
       show_progress BOOLEAN NOT NULL DEFAULT TRUE,
@@ -1330,6 +1331,7 @@ export async function ensureEconomySchema() {
     `CREATE INDEX IF NOT EXISTS idx_guild_stats_guild ON user_guild_stats(guild_id)`,
     `CREATE INDEX IF NOT EXISTS idx_guild_stats_vc ON user_guild_stats(guild_id, vc_minutes DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_guild_stats_msgs ON user_guild_stats(guild_id, messages_sent DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_guild_stats_user_guild ON user_guild_stats(user_id, guild_id)`,
 
     `CREATE TABLE IF NOT EXISTS user_guild_xp (
       user_id TEXT NOT NULL,

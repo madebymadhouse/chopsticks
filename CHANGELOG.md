@@ -16,6 +16,50 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ---
 
+## [1.4.0] — 2026-02-23 (feat/harden-and-polish)
+
+### Added — Backend Hardening
+- Replaced all `console.*` calls with structured `botLogger`/`logger.*` across 20+ files (errorHandler, healthServer, agentManager, agentRunner, storage_pg, dashboard, redis, loadCommands, discordOutput, moderation, voice, all economy commands)
+- Graceful shutdown: ordered 5-step teardown with 5 s force-exit safety timeout; `presenceTimer`, `flushTimer` properly cleared on SIGINT/SIGTERM
+- Module-level `setInterval` handles (Redis health check, birthday scheduler) now call `.unref()` — no longer block clean process exit
+- Redis consolidated to single `getRedis()` singleton from `cache.js` in `storage_pg.js`; eliminates duplicate connections
+- PostgreSQL pool tuning via env vars: `PG_POOL_MAX`, `PG_POOL_MIN`, `PG_IDLE_TIMEOUT`, `PG_CONNECT_TIMEOUT`, `PG_STATEMENT_TIMEOUT`
+- New composite DB indexes: `user_guild_stats(user_id, guild_id)`, `transaction_log(from_user, to_user)` — hot-path query speedup
+- `sensitiveActionLimiter` promoted to module-level singleton in `modernRateLimiter.js`
+- `healthServer.js`: removed duplicate `collectDefaultMetrics`, unified metrics into `appMetricsRegister`, renamed counter to avoid Prometheus label conflict, added `/debug/stats` Socket.io endpoint
+- Prefix DoS guard: raw message content > 2000 chars rejected before `parsePrefixArgs`
+- npm overrides for `form-data ≥4.0.0` + `tough-cookie ≥4.1.3` — 2 critical vulnerabilities eliminated
+
+### Added — New Commands (all free, no API key required unless noted)
+- `/weather <location>` — Real-time weather via Open-Meteo + Nominatim geocoding; Redis 15-min cache; WMO condition codes
+- `/fact` — Random interesting fact via uselessfacts.jsph.pl
+- `/dadjoke` — Random dad joke via icanhazdadjoke.com
+- `/afk [reason]` — AFK status system; bot notifies mentioned-of-AFK users; auto-clears on next message
+- `/anime <title>` — AniList GraphQL anime details (score, studio, episodes, genres, synopsis)
+- `/apod [date]` — NASA Astronomy Picture of the Day (optional `NASA_API_KEY`)
+- `/book <query>` — Open Library book search with cover art
+- `/github <user|user/repo>` — GitHub user profile or repository stats
+- `/joke [category]` — JokeAPI v2 jokes (programming, pun, misc, dark, etc.)
+- `/urban <term>` — Urban Dictionary lookup with vote counts
+- `/wiki <query>` — Wikipedia REST API article summary + thumbnail
+
+### Added — UX Polish
+- `/ping` — Rich color-coded embed with green/yellow/red latency tiers
+- `/botinfo` — Expanded stats: agent count, pool count, memory, discord.js version
+- Rotating bot presence (30 s cycle): guilds → agents online → music → /help
+- `/music now` — Last.fm artist/album enrichment (optional `LASTFM_API_KEY`)
+
+### Added — Dev Dashboard
+- Socket.io real-time live-stats panel in dev dashboard (`dev-dashboard/`)
+- `/debug/stats` endpoint on health server for live command delta polling
+- `.env.example` updated with all new optional variables
+
+### Added — Tests
+- 34 new unit tests in `test/unit/new-commands-cycle1-3.test.js`
+- Total: **746 passing** (was 703)
+
+---
+
 ## [1.3.0] — 2026-02-22
 
 ### Added — Agent Pool System: Phase 6–7 + Hardening
