@@ -82,22 +82,58 @@ const DISCORD_CLIENT_ID = String(process.env.DISCORD_CLIENT_ID || process.env.CL
 
 // Auto-detect the public base URL from common hosting platforms.
 // Bot owners can override with DASHBOARD_BASE_URL for custom domains / reverse proxies.
+// Validate a URL string — returns the URL if valid, null otherwise
+function validateUrl(raw) {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.origin + (u.pathname !== '/' ? u.pathname.replace(/\/+$/, '') : '');
+  } catch { return null; }
+}
+
+// Validate a platform app-name slug (only alphanumeric + hyphens)
+function safeSlug(val) {
+  return /^[a-zA-Z0-9-]+$/.test(String(val || '')) ? val : null;
+}
+
 function detectBaseUrl() {
   const explicit = String(process.env.DASHBOARD_BASE_URL || "").trim();
-  if (explicit) return explicit.replace(/\/+$/, "");
+  if (explicit) {
+    const valid = validateUrl(explicit);
+    if (!valid) console.warn(`[dashboard] DASHBOARD_BASE_URL is invalid: "${explicit}" — falling back`);
+    else return valid;
+  }
 
   // Railway
-  if (process.env.RAILWAY_STATIC_URL) return `https://${process.env.RAILWAY_STATIC_URL}`;
+  if (process.env.RAILWAY_STATIC_URL) {
+    const slug = safeSlug(process.env.RAILWAY_STATIC_URL);
+    if (slug) return `https://${slug}`;
+  }
   // Render
-  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, "");
+  if (process.env.RENDER_EXTERNAL_URL) {
+    const valid = validateUrl(process.env.RENDER_EXTERNAL_URL);
+    if (valid) return valid;
+  }
   // Fly.io
-  if (process.env.FLY_APP_NAME) return `https://${process.env.FLY_APP_NAME}.fly.dev`;
+  if (process.env.FLY_APP_NAME) {
+    const slug = safeSlug(process.env.FLY_APP_NAME);
+    if (slug) return `https://${slug}.fly.dev`;
+  }
   // Heroku
-  if (process.env.HEROKU_APP_NAME) return `https://${process.env.HEROKU_APP_NAME}.herokuapp.com`;
+  if (process.env.HEROKU_APP_NAME) {
+    const slug = safeSlug(process.env.HEROKU_APP_NAME);
+    if (slug) return `https://${slug}.herokuapp.com`;
+  }
   // Koyeb
-  if (process.env.KOYEB_PUBLIC_DOMAIN) return `https://${process.env.KOYEB_PUBLIC_DOMAIN}`;
-  // Generic PUBLIC_URL (some VPS/PaaS setups)
-  if (process.env.PUBLIC_URL) return String(process.env.PUBLIC_URL).replace(/\/+$/, "");
+  if (process.env.KOYEB_PUBLIC_DOMAIN) {
+    const slug = safeSlug(process.env.KOYEB_PUBLIC_DOMAIN);
+    if (slug) return `https://${slug}`;
+  }
+  // Generic PUBLIC_URL
+  if (process.env.PUBLIC_URL) {
+    const valid = validateUrl(process.env.PUBLIC_URL);
+    if (valid) return valid;
+  }
 
   // Dev / local fallback
   return `http://localhost:${DASHBOARD_PORT}`;
@@ -320,6 +356,28 @@ async function hasDashboardAccess(guildId, userId, canManage) {
   const roles = await getMemberRoleIds(guildId, userId);
   for (const r of roles) if (allowRoles.has(String(r))) return { ok: true, canManage: false };
   return { ok: false, canManage: false };
+}
+
+/**
+ * Unified guild access check for all /api/guild/:id/* routes.
+ * Handles both console-auth sessions (no Discord OAuth token) and
+ * regular OAuth sessions. Returns { guild, canManage } on success,
+ * or sends a 403 and returns null on failure.
+ */
+async function checkGuildAccess(req, res, guildId) {
+  // Console-auth sessions: scoped to a specific guild, already verified by middleware
+  if (req.session?.guildAdmin && req.session?.consoleAuth && String(req.session.guildId) === String(guildId)) {
+    const botGuild = await botGet(`https://discord.com/api/guilds/${guildId}`).catch(() => null);
+    return { guild: botGuild ?? { id: guildId }, canManage: true };
+  }
+  // OAuth sessions: verify the user has ManageGuild in the target guild
+  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session?.accessToken)) || [];
+  const guild = guilds.find(g => g.id === guildId);
+  if (!guild || !manageGuildPerms(guild)) {
+    res.status(403).json({ ok: false, error: "no-permission" });
+    return null;
+  }
+  return { guild, canManage: manageGuildPerms(guild) };
 }
 
 async function sendAgentCommand(agent, op, data) {
@@ -1816,18 +1874,9 @@ app.get("/api/guild/:id/sessions", requireAuth, rateLimitDashboard, requireGuild
     res.status(400).json({ ok: false, error: "bad-guild" });
     return;
   }
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   const sessions = await listGuildSessions(guildId);
   const assistantSessions = await listGuildAssistantSessions(guildId);
   res.json({ ok: true, sessions, assistantSessions });
@@ -1845,18 +1894,9 @@ app.get("/api/guild/:id/analytics", requireAuth, rateLimitDashboard, requireGuil
     res.status(400).json({ ok: false, error: "bad-guild" });
     return;
   }
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   const persisted = await getPersistedCommandStatsDaily(guildId, days, 50);
   const analytics = persisted.length ? persisted : getCommandStatsForGuild(guildId);
   res.json({ ok: true, analytics });
@@ -1895,18 +1935,9 @@ app.get("/api/guild/:id/audit", requireAuth, rateLimitDashboard, requireGuildAdm
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
 
   const audit = await getAuditLog(guildId, limit, before, action, userId);
   res.json({ ok: true, audit });
@@ -2267,18 +2298,9 @@ app.post("/api/guild/:id/music/default", requireAuth, rateLimitDashboard, requir
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   if (!canManage) {
     res.status(403).json({ ok: false, error: "manage-required" });
     return;
@@ -2303,18 +2325,9 @@ app.post("/api/guild/:id/music/control", requireAuth, rateLimitDashboard, requir
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
 
   const mgr = global.agentManager;
   if (!mgr) {
@@ -2389,18 +2402,9 @@ app.get("/api/guild/:id/music/queue", requireAuth, rateLimitDashboard, requireGu
     res.status(400).json({ ok: false, error: "bad-request" });
     return;
   }
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   const mgr = global.agentManager;
   if (!mgr) {
     res.status(503).json({ ok: false, error: "agents-not-ready" });
@@ -2427,18 +2431,9 @@ app.post("/api/guild/:id/music/remove", requireAuth, rateLimitDashboard, require
     res.status(400).json({ ok: false, error: "bad-request" });
     return;
   }
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   const mgr = global.agentManager;
   if (!mgr) {
     res.status(503).json({ ok: false, error: "agents-not-ready" });
@@ -2466,18 +2461,9 @@ app.post("/api/guild/:id/music/preset", requireAuth, rateLimitDashboard, require
     res.status(400).json({ ok: false, error: "bad-request" });
     return;
   }
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   const mgr = global.agentManager;
   if (!mgr) {
     res.status(503).json({ ok: false, error: "agents-not-ready" });
@@ -2505,18 +2491,9 @@ app.post("/api/guild/:id/assistant/config", requireAuth, rateLimitDashboard, req
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   if (!canManage) {
     res.status(403).json({ ok: false, error: "manage-required" });
     return;
@@ -2563,18 +2540,9 @@ app.post("/api/guild/:id/assistant/control", requireAuth, rateLimitDashboard, re
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
 
   const mgr = global.agentManager;
   if (!mgr) {
@@ -2703,18 +2671,9 @@ app.post("/api/guild/:id/voice/lobby/:channelId", requireAuth, rateLimitDashboar
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   if (!canManage) {
     res.status(403).json({ ok: false, error: "manage-required" });
     return;
@@ -2738,18 +2697,9 @@ app.post("/api/guild/:id/voice/lobby/add", requireAuth, rateLimitDashboard, requ
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   if (!canManage) {
     res.status(403).json({ ok: false, error: "manage-required" });
     return;
@@ -2777,18 +2727,9 @@ app.post("/api/guild/:id/voice/lobby/remove", requireAuth, rateLimitDashboard, r
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   if (!canManage) {
     res.status(403).json({ ok: false, error: "manage-required" });
     return;
@@ -2812,18 +2753,9 @@ app.post("/api/guild/:id/voice/lobby/toggle", requireAuth, rateLimitDashboard, r
     return;
   }
 
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
-  const canManage = manageGuildPerms(guild);
-  const access = await hasDashboardAccess(guildId, req.session?.userId, canManage);
-  if (!access.ok) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild, canManage } = guildAccess;
   if (!canManage) {
     res.status(403).json({ ok: false, error: "manage-required" });
     return;
@@ -2846,12 +2778,9 @@ app.post("/api/guild/:id/dashboard/permissions", requireAuth, rateLimitDashboard
     res.status(400).json({ ok: false, error: "bad-request" });
     return;
   }
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild || !manageGuildPerms(guild)) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild } = guildAccess;
   await setDashboardPerms(guildId, { allowUserIds, allowRoleIds });
   res.json({ ok: true });
 });
@@ -2863,12 +2792,9 @@ app.post("/api/guild/:id/commands/toggle", requireAuth, rateLimitDashboard, requ
     res.status(400).json({ ok: false, error: "bad-request" });
     return;
   }
-  const guilds = (await apiGet("https://discord.com/api/users/@me/guilds", req.session.accessToken)) || [];
-  const guild = guilds.find(g => g.id === guildId);
-  if (!guild || !manageGuildPerms(guild)) {
-    res.status(403).json({ ok: false, error: "no-permission" });
-    return;
-  }
+  const guildAccess = await checkGuildAccess(req, res, guildId);
+  if (!guildAccess) return;
+  const { guild } = guildAccess;
   await setCommandEnabled(guildId, command, Boolean(enabled));
   res.json({ ok: true });
 });

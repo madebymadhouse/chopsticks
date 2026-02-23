@@ -1,21 +1,32 @@
 import { SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, ActionRowBuilder } from "discord.js";
 import jwt from "jsonwebtoken";
-import { createClient } from "redis";
 import { createHash } from "node:crypto";
 
 const CONSOLE_TOKEN_TTL = 10 * 60; // 10 minutes
 
+function safeSlug(v) { return /^[a-zA-Z0-9-]+$/.test(String(v || '')) ? v : null; }
+function safeUrl(v) {
+  try { const u = new URL(v); return (u.protocol === 'http:' || u.protocol === 'https:') ? u.origin : null; }
+  catch { return null; }
+}
+
 function getDashboardUrl() {
-  const explicit = String(process.env.DASHBOARD_BASE_URL || "").replace(/\/+$/g, "");
-  if (explicit) return explicit;
+  const explicit = String(process.env.DASHBOARD_BASE_URL || "").trim();
+  if (explicit) return safeUrl(explicit) ?? explicit.replace(/\/+$/g, "");
 
   // Mirror the server-side auto-detection so the bot generates the right link
-  if (process.env.RAILWAY_STATIC_URL) return `https://${process.env.RAILWAY_STATIC_URL}`;
-  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/g, "");
-  if (process.env.FLY_APP_NAME) return `https://${process.env.FLY_APP_NAME}.fly.dev`;
-  if (process.env.HEROKU_APP_NAME) return `https://${process.env.HEROKU_APP_NAME}.herokuapp.com`;
-  if (process.env.KOYEB_PUBLIC_DOMAIN) return `https://${process.env.KOYEB_PUBLIC_DOMAIN}`;
-  if (process.env.PUBLIC_URL) return String(process.env.PUBLIC_URL).replace(/\/+$/g, "");
+  const railway = safeSlug(process.env.RAILWAY_STATIC_URL);
+  if (railway) return `https://${railway}`;
+  const render = process.env.RENDER_EXTERNAL_URL && safeUrl(process.env.RENDER_EXTERNAL_URL);
+  if (render) return render;
+  const fly = safeSlug(process.env.FLY_APP_NAME);
+  if (fly) return `https://${fly}.fly.dev`;
+  const heroku = safeSlug(process.env.HEROKU_APP_NAME);
+  if (heroku) return `https://${heroku}.herokuapp.com`;
+  const koyeb = safeSlug(process.env.KOYEB_PUBLIC_DOMAIN);
+  if (koyeb) return `https://${koyeb}`;
+  const pub = process.env.PUBLIC_URL && safeUrl(process.env.PUBLIC_URL);
+  if (pub) return pub;
 
   const port = process.env.DASHBOARD_PORT || 8788;
   return `http://localhost:${port}`;
@@ -30,15 +41,6 @@ function getJwtSecret() {
     return createHash("sha256").update(botToken + "chopsticks-console-v1").digest("hex").slice(0, 32);
   }
   throw new Error("DISCORD_TOKEN is not set — cannot derive console secret.");
-}
-
-async function markTokenUsed(tokenId) {
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) return; // no Redis? skip one-time-use enforcement
-  const client = createClient({ url: redisUrl });
-  await client.connect().catch(() => null);
-  await client.set(`console_token:${tokenId}`, "1", { EX: CONSOLE_TOKEN_TTL }).catch(() => null);
-  await client.quit().catch(() => null);
 }
 
 export const meta = { category: "utility" };
@@ -76,8 +78,6 @@ export async function execute(interaction) {
     secret,
     { expiresIn: `${CONSOLE_TOKEN_TTL}s` }
   );
-
-  await markTokenUsed(tokenId).catch(() => null);
 
   const consoleUrl = `${baseUrl}/console-auth?token=${encodeURIComponent(token)}`;
 

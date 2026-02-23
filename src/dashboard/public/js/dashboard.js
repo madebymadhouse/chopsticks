@@ -7,6 +7,17 @@
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 
+// HTML escape — MUST be applied to all user-controlled data in innerHTML
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 function el(tag, props = {}, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(props)) {
@@ -135,7 +146,7 @@ function navigate(page) {
       if (state.currentPage === page) body.innerHTML = html;
       postRender(page);
     }).catch(err => {
-      body.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Failed to load</div><div class="empty-state-sub">${err.message}</div></div>`;
+      body.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Failed to load</div><div class="empty-state-sub">${esc(err.message)}</div></div>`;
     });
   }
 
@@ -249,14 +260,14 @@ async function renderOverview(d) {
   const recentAudit = (d.audit ?? []).slice(0, 5).map(e => `
     <div class="audit-entry">
       <span class="audit-time">${fmtTime(e.timestamp ?? e.ts)}</span>
-      <span class="audit-action">${e.action ?? e.event ?? '?'}</span>
+      <span class="audit-action">${esc(e.action ?? e.event ?? '?')}</span>
       <span class="audit-user">${e.userId ? `· <@${e.userId}>` : ''}</span>
     </div>`).join('') || '<div class="empty-state-sub" style="padding:12px">No recent activity</div>';
 
   // Command stats top 5
   const stats = (d.analyticsGuild ?? d.analyticsGlobal ?? [])
     .slice(0, 5)
-    .map(s => `<tr><td><code>${s.command ?? s.name ?? '?'}</code></td><td>${s.count ?? s.uses ?? 0}</td><td><span class="badge badge-purple">${fmtDate(s.lastUsed ?? s.updatedAt)}</span></td></tr>`)
+    .map(s => `<tr><td><code>${esc(s.command ?? s.name ?? '?')}</code></td><td>${s.count ?? s.uses ?? 0}</td><td><span class="badge badge-purple">${fmtDate(s.lastUsed ?? s.updatedAt)}</span></td></tr>`)
     .join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">No data</td></tr>';
 
   return `
@@ -295,7 +306,7 @@ async function renderOverview(d) {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">${guildIcon}${d.guild?.name ?? 'Server'}</div>
+            <div class="card-title">${guildIcon}${esc(d.guild?.name ?? 'Server')}</div>
             <div class="card-sub">ID: ${guildId}</div>
           </div>
           <span class="badge badge-green">● Online</span>
@@ -395,8 +406,8 @@ function renderNowPlayingCard(s) {
   return `<div class="np-card" style="margin-bottom:12px">
     <div class="np-thumb">🎵</div>
     <div class="np-info">
-      <div class="np-title">${track.title ?? 'Unknown Track'}</div>
-      <div class="np-artist">${track.author ?? track.artist ?? 'Unknown Artist'}</div>
+      <div class="np-title">${esc(track.title ?? 'Unknown Track')}</div>
+      <div class="np-artist">${esc(track.author ?? track.artist ?? 'Unknown Artist')}</div>
       <div class="np-progress">
         <span>${fmtDuration(pos)}</span>
         <div style="flex:1">${progressBar(pct)}</div>
@@ -434,36 +445,36 @@ async function renderPools(d) {
   }
 
   const poolCards = myPools.map(p => `
-    <div class="pool-card" data-pool-id="${p.id}">
+    <div class="pool-card" data-pool-id="${esc(p.id)}">
       <div class="pool-card-header">
-        <div class="pool-name">${p.name ?? 'Unnamed Pool'}</div>
+        <div class="pool-name">${esc(p.name ?? 'Unnamed Pool')}</div>
         <span class="badge ${p.public ? 'badge-green' : 'badge-yellow'}">${p.public ? '🌍 Public' : '🔒 Private'}</span>
       </div>
       <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:8px">
-        ${p.description ?? '<span style="color:var(--text-muted)">No description set</span>'}
+        ${p.description ? esc(p.description) : '<span style="color:var(--text-muted)">No description set</span>'}
       </div>
       <div class="pool-tags">${(p.tags ?? []).map(t => `<span class="pool-tag">${t}</span>`).join('')}</div>
       <div class="completeness-bar">
         <div class="completeness-label">
           <span>Profile Completeness</span>
-          <span>${p.completeness ?? 0}%</span>
+          <span>${Number(p.completeness ?? 0)}%</span>
         </div>
         ${progressBar(p.completeness ?? 0)}
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-ghost btn-sm" onclick="editPool('${p.id}')">✏️ Edit Profile</button>
-        <button class="btn btn-ghost btn-sm" onclick="viewPoolAgents('${p.id}')">🤖 Agents (${p.agentCount ?? 0})</button>
+        <button class="btn btn-ghost btn-sm" onclick="editPool('${esc(p.id)}')">✏️ Edit Profile</button>
+        <button class="btn btn-ghost btn-sm" onclick="viewPoolAgents('${esc(p.id)}')">🤖 Agents (${Number(p.agentCount ?? 0)})</button>
       </div>
     </div>`).join('');
 
   const agentRows = agents.map(a => `
     <tr>
-      <td><span class="status-dot ${getAgentStatus(a)}"></span> ${a.id?.slice(0, 8) ?? '?'}</td>
-      <td><code>${a.guildId ?? '—'}</code></td>
-      <td>${a.state ?? a.status ?? 'unknown'}</td>
-      <td>${a.pool ?? '—'}</td>
+      <td><span class="status-dot ${getAgentStatus(a)}"></span> ${esc(a.id?.slice(0, 8) ?? '?')}</td>
+      <td><code>${esc(a.guildId ?? '—')}</code></td>
+      <td>${esc(a.state ?? a.status ?? 'unknown')}</td>
+      <td>${esc(a.pool ?? '—')}</td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="disconnectAgent('${a.id}')">Disconnect</button>
+        <button class="btn btn-ghost btn-sm" onclick="disconnectAgent('${esc(a.id)}')">Disconnect</button>
       </td>
     </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No agents connected</td></tr>';
 
@@ -575,8 +586,8 @@ async function renderLogs(d) {
   const rows = audit.map(e => `
     <div class="audit-entry">
       <span class="audit-time">${fmtRelative(e.timestamp ?? e.ts ?? Date.now())}</span>
-      <span class="audit-action">${e.action ?? e.event ?? '?'}</span>
-      <span class="audit-user">${e.userId ? `· ${e.username ?? e.userId}` : ''}</span>
+      <span class="audit-action">${esc(e.action ?? e.event ?? '?')}</span>
+      <span class="audit-user">${e.userId ? `· ${esc(e.username ?? e.userId)}` : ''}</span>
       ${e.detail ? `<span class="audit-detail">· ${e.detail}</span>` : ''}
     </div>`).join('') || '<div class="empty-state-sub" style="padding:20px">No audit entries found</div>';
 
@@ -594,7 +605,7 @@ async function renderLogs(d) {
           <tbody>
             ${(d?.analyticsGuild ?? d?.analyticsGlobal ?? []).map(s =>
               `<tr>
-                <td><code>${s.command ?? s.name ?? '?'}</code></td>
+                <td><code>${esc(s.command ?? s.name ?? '?')}</code></td>
                 <td>${s.count ?? s.uses ?? 0}</td>
                 <td>${fmtDate(s.lastUsed ?? s.updatedAt)}</td>
               </tr>`
@@ -613,11 +624,11 @@ async function renderSettings(d) {
 
   const cmdRows = cmdSettings.map(s => `
     <tr>
-      <td><code>${s.command}</code></td>
+      <td><code>${esc(s.command)}</code></td>
       <td>${s.category ?? '—'}</td>
       <td>
         <label class="toggle">
-          <input type="checkbox" class="cmd-toggle" data-cmd="${s.command}" ${s.enabled !== false ? 'checked' : ''} />
+          <input type="checkbox" class="cmd-toggle" data-cmd="${esc(s.command)}" ${s.enabled !== false ? 'checked' : ''} />
           <span class="toggle-slider"></span>
         </label>
       </td>
@@ -700,7 +711,7 @@ if (!guildId || !/^\d+$/.test(guildId)) {
         <div class="splash-inner">
           <div class="splash-logo">⚠️</div>
           <div class="splash-title">Failed to Load</div>
-          <div class="splash-subtitle">${err.message} · <a href="/" style="color:var(--text-accent)">Return home</a></div>
+          <div class="splash-subtitle">${esc(err.message)} · <a href="/" style="color:var(--text-accent)">Return home</a></div>
         </div>
       </div>`;
   });
