@@ -113,6 +113,10 @@ export class AgentManager {
       rollingCountTimeout: 10000, // Check the last 10s for failures
       rollingCountBuckets: 10
     });
+
+    // A2: WS heartbeat — manager actively pings agents, lastSeen updated on pong
+    this.heartbeatIntervalMs = safeInt(process.env.AGENT_HEARTBEAT_INTERVAL_MS, 15_000);
+    this._heartbeatTimer = null;
   }
 
   async start() {
@@ -151,6 +155,12 @@ export class AgentManager {
       }, this.sessionIdleSweepMs);
       this._idleSweepTimer.unref?.();
     }
+
+    // A2: Start WS-level heartbeat — send ping frames to all connected agents
+    if (this.heartbeatIntervalMs > 0) {
+      this._heartbeatTimer = setInterval(() => this._sendHeartbeats(), this.heartbeatIntervalMs);
+      this._heartbeatTimer.unref?.();
+    }
   }
 
   stop() {
@@ -158,9 +168,11 @@ export class AgentManager {
       if (this._pruneTimer) clearInterval(this._pruneTimer);
       if (this._reconcileTimer) clearInterval(this._reconcileTimer);
       if (this._idleSweepTimer) clearInterval(this._idleSweepTimer);
+      if (this._heartbeatTimer) clearInterval(this._heartbeatTimer);
       this._pruneTimer = null;
       this._reconcileTimer = null;
       this._idleSweepTimer = null;
+      this._heartbeatTimer = null;
       this.wss?.close?.();
     } catch {}
   }
@@ -178,6 +190,18 @@ export class AgentManager {
 
     // When an agent connects, it will send a "hello" message containing its agentId
     ws.on("message", data => this.handleMessage(ws, data));
+    // A2: Update lastSeen when agent responds to a WS-level ping frame
+    ws.on("pong", () => {
+      const agent = ws.__agentId ? this.liveAgents.get(ws.__agentId) : null;
+      if (agent) {
+        agent.lastSeen = now();
+        if (agent._pingTs) {
+          const rtt = now() - agent._pingTs;
+          agent.rttMs = agent.rttMs == null ? rtt : Math.round(agent.rttMs * 0.8 + rtt * 0.2);
+          agent._pingTs = null;
+        }
+      }
+    });
     ws.on("close", () => {
       if (ws.__helloTimer) {
         try { clearTimeout(ws.__helloTimer); } catch {}
@@ -304,7 +328,13 @@ export class AgentManager {
         startedAt: null,
         lastSeen: null,
         botUserId: msg?.botUserId ?? null,
-        tag: msg?.tag ?? null
+        tag: msg?.tag ?? null,
+        // A2: Per-agent health metrics
+        rttMs: null,         // Exponential moving average of WS ping RTT
+        _pingTs: null,       // Timestamp of last outbound ping frame
+        errorCount: 0,       // Cumulative request errors
+        requestCount: 0,     // Cumulative requests sent
+        errorWindow: [],     // Rolling 60s error timestamps
       };
       this.liveAgents.set(agentId, agent);
     } else {
@@ -487,6 +517,11 @@ export class AgentManager {
         lastActive: liveAgent?.lastActive ?? null, // Last time RPC request was made
         lastSeen: liveAgent?.lastSeen ?? null, // Last WS heartbeat
         startedAt: liveAgent?.startedAt ?? null, // When agent process started
+        // A2/A3: Health metrics
+        rttMs: liveAgent?.rttMs ?? null,
+        requestCount: liveAgent?.requestCount ?? 0,
+        errorCount: liveAgent?.errorCount ?? 0,
+        healthScore: liveAgent ? this._agentHealthScore(liveAgent) : null,
 
         // Runner info
         runnerId: runner?.runner_id ?? null,
@@ -761,6 +796,38 @@ export class AgentManager {
     return { ok: false, reason: "no-free-agents" };
   }
 
+  // A2: Send WS ping frames to all connected agents
+  _sendHeartbeats() {
+    const ts = now();
+    for (const agent of this.liveAgents.values()) {
+      if (!agent.ws || agent.ws.readyState !== 1 /* OPEN */) continue;
+      try {
+        agent._pingTs = ts;
+        agent.ws.ping();
+      } catch (err) {
+        logger.debug(`[AgentManager] Heartbeat ping failed for ${agent.agentId}: ${err?.message}`);
+      }
+    }
+  }
+
+  // A3: Composite health score for agent selection (higher = healthier, 0–100)
+  _agentHealthScore(agent) {
+    let score = 100;
+    // Penalise by rolling error rate in last 60s
+    const cutoff = now() - 60_000;
+    const recentErrors = (agent.errorWindow || []).filter(t => t >= cutoff).length;
+    if (recentErrors > 0) score -= Math.min(40, recentErrors * 10);
+    // Penalise by RTT (>200ms = -10, >500ms = -20, >1000ms = -30)
+    if (agent.rttMs != null) {
+      if (agent.rttMs > 1000) score -= 30;
+      else if (agent.rttMs > 500) score -= 20;
+      else if (agent.rttMs > 200) score -= 10;
+    }
+    // Bonus for idle agents (not holding any sessions)
+    if (!agent.busyKey) score += 5;
+    return Math.max(0, score);
+  }
+
   listIdleAgentsInGuild(guildId) {
     const out = [];
     for (const agent of this.liveAgents.values()) {
@@ -769,7 +836,11 @@ export class AgentManager {
       if (!agent.guildIds.has(guildId)) continue;
       out.push(agent);
     }
-    out.sort((a, b) => String(a.agentId).localeCompare(String(b.agentId)));
+    // A3: Sort by health score descending (healthiest first), then by agentId for stability
+    out.sort((a, b) => {
+      const scoreDiff = this._agentHealthScore(b) - this._agentHealthScore(a);
+      return scoreDiff !== 0 ? scoreDiff : String(a.agentId).localeCompare(String(b.agentId));
+    });
     return out;
   }
 
@@ -1472,14 +1543,28 @@ export class AgentManager {
     const id = randomUUID();
     const payload = { type: "req", id, op, data, agentId: agent.agentId };
     agent.lastActive = now();
+    // A2: track request count and start time for latency measurement
+    agent.requestCount = (agent.requestCount || 0) + 1;
+    const reqStartTs = now();
 
     const response = new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(id);
+        // A2: Record timeout as an error in rolling window
+        agent.errorCount = (agent.errorCount || 0) + 1;
+        if (!agent.errorWindow) agent.errorWindow = [];
+        agent.errorWindow.push(now());
+        // Trim window older than 60s
+        const cutoff = now() - 60_000;
+        agent.errorWindow = agent.errorWindow.filter(t => t >= cutoff);
         reject(new Error("agent-timeout"));
       }, timeoutMs);
 
-      this.pending.set(id, { resolve, reject, timeout });
+      this.pending.set(id, {
+        resolve,
+        reject,
+        timeout,
+      });
     });
 
     try {
