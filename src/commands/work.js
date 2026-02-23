@@ -112,6 +112,18 @@ export default {
         multiplier: xpMult
       });
 
+      // Per-guild stats + XP
+      if (interaction.guildId) {
+        void (async () => {
+          try {
+            const { addStat } = await import('../game/activityStats.js');
+            const { addGuildXp } = await import('../game/guildXp.js');
+            addStat(interaction.user.id, interaction.guildId, 'work_runs', 1);
+            await addGuildXp(interaction.user.id, interaction.guildId, 'work', { client: interaction.client }).catch(() => {});
+          } catch {}
+        })();
+      }
+
       // Set cooldown (can be reduced by buffs)
       const effectiveCooldown = Math.max(60 * 1000, Math.trunc(WORK_COOLDOWN * cdMult));
       await setCooldown(interaction.user.id, "work", effectiveCooldown);

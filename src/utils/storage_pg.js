@@ -3,6 +3,7 @@ import crypto from "node:crypto"; // Added for encryption
 import retry from "async-retry";
 import { createClient } from "redis";
 import { logger } from "./logger.js";
+import { levelFromXp } from "../game/progression.js";
 
 let pool = null;
 let redisClient = null;
@@ -1313,13 +1314,292 @@ export async function ensureEconomySchema() {
       PRIMARY KEY (user_id, command, source)
     )`,
     `CREATE INDEX IF NOT EXISTS idx_user_command_stats_user ON user_command_stats(user_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_user_command_stats_runs ON user_command_stats(user_id, count DESC)`
+    `CREATE INDEX IF NOT EXISTS idx_user_command_stats_runs ON user_command_stats(user_id, count DESC)`,
+
+    // ── Per-guild stats & leveling ─────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS user_guild_stats (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      vc_minutes BIGINT NOT NULL DEFAULT 0,
+      vc_sessions BIGINT NOT NULL DEFAULT 0,
+      messages_sent BIGINT NOT NULL DEFAULT 0,
+      credits_earned BIGINT NOT NULL DEFAULT 0,
+      credits_spent BIGINT NOT NULL DEFAULT 0,
+      trades_completed BIGINT NOT NULL DEFAULT 0,
+      items_sold BIGINT NOT NULL DEFAULT 0,
+      work_runs BIGINT NOT NULL DEFAULT 0,
+      gather_runs BIGINT NOT NULL DEFAULT 0,
+      fight_wins BIGINT NOT NULL DEFAULT 0,
+      trivia_wins BIGINT NOT NULL DEFAULT 0,
+      trivia_runs BIGINT NOT NULL DEFAULT 0,
+      heist_runs BIGINT NOT NULL DEFAULT 0,
+      casino_wins BIGINT NOT NULL DEFAULT 0,
+      agent_actions_used BIGINT NOT NULL DEFAULT 0,
+      commands_used BIGINT NOT NULL DEFAULT 0,
+      last_active BIGINT NOT NULL DEFAULT 0,
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL,
+      PRIMARY KEY (user_id, guild_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_guild_stats_guild ON user_guild_stats(guild_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_guild_stats_vc ON user_guild_stats(guild_id, vc_minutes DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_guild_stats_msgs ON user_guild_stats(guild_id, messages_sent DESC)`,
+
+    `CREATE TABLE IF NOT EXISTS user_guild_xp (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      xp BIGINT NOT NULL DEFAULT 0,
+      level INT NOT NULL DEFAULT 1,
+      updated_at BIGINT NOT NULL,
+      PRIMARY KEY (user_id, guild_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_guild_xp_board ON user_guild_xp(guild_id, xp DESC)`,
+
+    `CREATE TABLE IF NOT EXISTS achievements (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      emoji TEXT NOT NULL DEFAULT '🏆',
+      category TEXT NOT NULL DEFAULT 'general',
+      xp_reward INT NOT NULL DEFAULT 0,
+      credit_reward INT NOT NULL DEFAULT 0,
+      rarity TEXT NOT NULL DEFAULT 'common'
+    )`,
+
+    `CREATE TABLE IF NOT EXISTS user_achievements (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      achievement_id TEXT NOT NULL,
+      unlocked_at BIGINT NOT NULL,
+      PRIMARY KEY (user_id, guild_id, achievement_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_user_achievements_guild ON user_achievements(guild_id, unlocked_at DESC)`,
+
+    `CREATE TABLE IF NOT EXISTS guild_xp_config (
+      guild_id TEXT PRIMARY KEY,
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      xp_per_message INT NOT NULL DEFAULT 5,
+      xp_per_vc_minute INT NOT NULL DEFAULT 2,
+      xp_per_work INT NOT NULL DEFAULT 40,
+      xp_per_gather INT NOT NULL DEFAULT 30,
+      xp_per_fight_win INT NOT NULL DEFAULT 50,
+      xp_per_trivia_win INT NOT NULL DEFAULT 60,
+      xp_per_daily INT NOT NULL DEFAULT 80,
+      xp_per_command INT NOT NULL DEFAULT 1,
+      xp_per_agent_action INT NOT NULL DEFAULT 20,
+      message_xp_cooldown_s INT NOT NULL DEFAULT 60,
+      xp_multiplier NUMERIC(4,2) NOT NULL DEFAULT 1.0,
+      levelup_channel_id TEXT,
+      levelup_message TEXT NOT NULL DEFAULT 'GG {user}, you hit **level {level}**! 🎉',
+      sync_global_xp BOOLEAN NOT NULL DEFAULT true,
+      updated_at BIGINT NOT NULL DEFAULT 0
+    )`,
+
+    // ── Guild agent actions (economy) ──────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS guild_agent_actions (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      cost INT NOT NULL DEFAULT 100,
+      cooldown_s INT NOT NULL DEFAULT 300,
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      target_type TEXT NOT NULL DEFAULT 'any',
+      config JSONB NOT NULL DEFAULT '{}',
+      created_at BIGINT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_agent_actions_guild ON guild_agent_actions(guild_id)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_actions_unique ON guild_agent_actions(guild_id, action_type)`,
+
+    `CREATE TABLE IF NOT EXISTS agent_action_uses (
+      id SERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      target_channel_id TEXT,
+      cost_paid INT NOT NULL,
+      used_at BIGINT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_action_uses_guild ON agent_action_uses(guild_id, used_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_action_uses_cooldown ON agent_action_uses(guild_id, user_id, action_type, used_at DESC)`
   ];
   
   for (const query of queries) {
     await p.query(query);
   }
   logger.info('Economy schema ensured');
+}
+
+// ── Per-guild stats functions ─────────────────────────────────────────────
+
+export async function addGuildStat(userId, guildId, field, amount = 1) {
+  if (!userId || !guildId || !field) return;
+  const VALID_FIELDS = new Set([
+    'vc_minutes','vc_sessions','messages_sent','credits_earned','credits_spent',
+    'trades_completed','items_sold','work_runs','gather_runs','fight_wins',
+    'trivia_wins','trivia_runs','heist_runs','casino_wins','agent_actions_used','commands_used'
+  ]);
+  if (!VALID_FIELDS.has(field)) return;
+  const safeAmt = Math.max(0, Math.trunc(Number(amount) || 0));
+  if (safeAmt === 0) return;
+  const p = getPool();
+  const now = Date.now();
+  await p.query(
+    `INSERT INTO user_guild_stats (user_id, guild_id, ${field}, last_active, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $4, $4)
+     ON CONFLICT (user_id, guild_id) DO UPDATE
+       SET ${field} = user_guild_stats.${field} + $3,
+           last_active = $4,
+           updated_at = $4`,
+    [userId, guildId, safeAmt, now]
+  );
+}
+
+export async function getGuildStats(userId, guildId) {
+  const p = getPool();
+  const res = await p.query(
+    `SELECT * FROM user_guild_stats WHERE user_id = $1 AND guild_id = $2`,
+    [userId, guildId]
+  );
+  return res.rows[0] || null;
+}
+
+export async function getGuildLeaderboard(guildId, field, limit = 10, offset = 0) {
+  const VALID_FIELDS = new Set([
+    'vc_minutes','messages_sent','credits_earned','work_runs','gather_runs',
+    'fight_wins','trivia_wins','commands_used','agent_actions_used'
+  ]);
+  if (!VALID_FIELDS.has(field)) return [];
+  const p = getPool();
+  const res = await p.query(
+    `SELECT user_id, ${field} as value FROM user_guild_stats
+     WHERE guild_id = $1 AND ${field} > 0
+     ORDER BY ${field} DESC
+     LIMIT $2 OFFSET $3`,
+    [guildId, Math.min(limit, 50), offset]
+  );
+  return res.rows;
+}
+
+export async function getGuildXpLeaderboard(guildId, limit = 10, offset = 0) {
+  const p = getPool();
+  const res = await p.query(
+    `SELECT user_id, xp, level FROM user_guild_xp
+     WHERE guild_id = $1 AND xp > 0
+     ORDER BY xp DESC
+     LIMIT $2 OFFSET $3`,
+    [guildId, Math.min(limit, 50), offset]
+  );
+  return res.rows;
+}
+
+export async function getGuildXpConfig(guildId) {
+  const p = getPool();
+  const res = await p.query(
+    `SELECT * FROM guild_xp_config WHERE guild_id = $1`,
+    [guildId]
+  );
+  return res.rows[0] || null;
+}
+
+export async function upsertGuildXpConfig(guildId, fields) {
+  const ALLOWED = new Set([
+    'enabled','xp_per_message','xp_per_vc_minute','xp_per_work','xp_per_gather',
+    'xp_per_fight_win','xp_per_trivia_win','xp_per_daily','xp_per_command',
+    'xp_per_agent_action','message_xp_cooldown_s','xp_multiplier',
+    'levelup_channel_id','levelup_message','sync_global_xp'
+  ]);
+  const safe = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (ALLOWED.has(k)) safe[k] = v;
+  }
+  if (!Object.keys(safe).length) return;
+  const now = Date.now();
+  const keys = Object.keys(safe);
+  const vals = Object.values(safe);
+  const setClauses = keys.map((k, i) => `${k} = $${i + 2}`).join(', ');
+  const p = getPool();
+  await p.query(
+    `INSERT INTO guild_xp_config (guild_id, updated_at, ${keys.join(', ')})
+     VALUES ($1, ${now}, ${keys.map((_, i) => `$${i + 2}`).join(', ')})
+     ON CONFLICT (guild_id) DO UPDATE SET updated_at = ${now}, ${setClauses}`,
+    [guildId, ...vals]
+  );
+}
+
+export async function addGuildXpRow(userId, guildId, amount) {
+  if (!amount || amount <= 0) return { leveledUp: false, fromLevel: 1, toLevel: 1, xp: 0 };
+  const p = getPool();
+  const now = Date.now();
+  const client = await p.connect();
+  try {
+    await client.query('BEGIN');
+    const cur = await client.query(
+      `INSERT INTO user_guild_xp (user_id, guild_id, xp, level, updated_at)
+       VALUES ($1, $2, 0, 1, $3)
+       ON CONFLICT (user_id, guild_id) DO UPDATE SET updated_at = $3
+       RETURNING xp, level`,
+      [userId, guildId, now]
+    );
+    const { xp: oldXp, level: oldLevel } = cur.rows[0];
+    const newXp = Number(oldXp) + amount;
+    const newLevel = levelFromXp(newXp);
+    await client.query(
+      `UPDATE user_guild_xp SET xp = $1, level = $2, updated_at = $3
+       WHERE user_id = $4 AND guild_id = $5`,
+      [newXp, newLevel, now, userId, guildId]
+    );
+    await client.query('COMMIT');
+    return { leveledUp: newLevel > Number(oldLevel), fromLevel: Number(oldLevel), toLevel: newLevel, xp: newXp };
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getUserAchievements(userId, guildId) {
+  const p = getPool();
+  const res = await p.query(
+    `SELECT ua.achievement_id, ua.unlocked_at, a.name, a.emoji, a.description, a.rarity, a.xp_reward, a.credit_reward, a.category
+     FROM user_achievements ua
+     JOIN achievements a ON ua.achievement_id = a.id
+     WHERE ua.user_id = $1 AND ua.guild_id = $2
+     ORDER BY ua.unlocked_at DESC`,
+    [userId, guildId]
+  );
+  return res.rows;
+}
+
+export async function grantAchievement(userId, guildId, achievementId) {
+  const p = getPool();
+  const now = Date.now();
+  const res = await p.query(
+    `INSERT INTO user_achievements (user_id, guild_id, achievement_id, unlocked_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id, guild_id, achievement_id) DO NOTHING
+     RETURNING achievement_id`,
+    [userId, guildId, achievementId, now]
+  );
+  return res.rows.length > 0; // true if newly granted
+}
+
+export async function seedAchievements(defs) {
+  if (!defs.length) return;
+  const p = getPool();
+  for (const d of defs) {
+    await p.query(
+      `INSERT INTO achievements (id, name, description, emoji, category, xp_reward, credit_reward, rarity)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (id) DO UPDATE SET
+         name = $2, description = $3, emoji = $4, category = $5,
+         xp_reward = $6, credit_reward = $7, rarity = $8`,
+      [d.id, d.name, d.description, d.emoji || '🏆', d.category || 'general',
+       d.xp_reward || 0, d.credit_reward || 0, d.rarity || 'common']
+    );
+  }
 }
 
 // ── Specializations ───────────────────────────────────────────────────────

@@ -734,6 +734,18 @@ client.on(Events.MessageCreate, async message => {
     }
   }
 
+  // ── Per-guild message XP + stats ────────────────────────────────────────
+  if (message.guildId && !message.author.bot) {
+    void (async () => {
+      try {
+        const { addStat } = await import('./game/activityStats.js');
+        const { addGuildXp } = await import('./game/guildXp.js');
+        addStat(message.author.id, message.guildId, 'messages_sent', 1);
+        await addGuildXp(message.author.id, message.guildId, 'message', { client }).catch(() => {});
+      } catch {}
+    })();
+  }
+
   let prefix = "!";
   let aliases = {};
   let guildData = null;
@@ -1057,9 +1069,16 @@ client.on(Events.InteractionCreate, async interaction => {
     trackCommand(commandName, duration, "success");
     trackCommandInvocation(commandName, "slash");
     void recordUserCommandStat({
+      userId: interaction.user.id,
+      command: commandName,
+      ok: true,
       durationMs: duration,
       source: "slash"
     }).catch(() => {});
+    // Per-guild commands_used stat (fire-and-forget)
+    if (interaction.guildId) {
+      void import('./game/activityStats.js').then(m => m.addStat(interaction.user.id, interaction.guildId, 'commands_used', 1)).catch(() => {});
+    }
     commandLog.info({ duration }, "Command executed successfully");
     
   } catch (error) {
@@ -1067,6 +1086,9 @@ client.on(Events.InteractionCreate, async interaction => {
     trackCommand(commandName, duration, "error");
     trackCommandError(commandName);
     void recordUserCommandStat({
+      userId: interaction.user.id,
+      command: commandName,
+      ok: false,
       durationMs: duration,
       source: "slash"
     }).catch(() => {});

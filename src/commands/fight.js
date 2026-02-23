@@ -108,6 +108,19 @@ export default {
         multiplier: xpMult
       });
 
+      // Per-guild stats + XP
+      if (interaction.guildId) {
+        void (async () => {
+          try {
+            const { addStat } = await import('../game/activityStats.js');
+            const { addGuildXp } = await import('../game/guildXp.js');
+            addStat(interaction.user.id, interaction.guildId, 'fight_wins', 1);
+            addStat(interaction.user.id, interaction.guildId, 'credits_earned', credits);
+            await addGuildXp(interaction.user.id, interaction.guildId, 'fight_win', { client: interaction.client }).catch(() => {});
+          } catch {}
+        })();
+      }
+
       // Drop: always one, with a small chance for an extra on harder difficulties.
       const drop1 = pick(diff.drops);
       await addItem(interaction.user.id, drop1, 1);

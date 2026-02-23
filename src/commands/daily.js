@@ -47,6 +47,18 @@ export async function execute(interaction) {
     const xpMult = await getMultiplier(userId, "xp:mult", 1);
     const xpBase = 120 + Math.min(600, claim.streak * 15);
     const xpRes = await addGameXp(userId, xpBase, { reason: "daily", multiplier: xpMult });
+
+    // Per-guild stats + XP
+    if (interaction.guildId) {
+      void (async () => {
+        try {
+          const { addStat } = await import('../game/activityStats.js');
+          const { addGuildXp } = await import('../game/guildXp.js');
+          addStat(userId, interaction.guildId, 'credits_earned', claim.totalReward);
+          await addGuildXp(userId, interaction.guildId, 'daily', { client: interaction.client }).catch(() => {});
+        } catch {}
+      })();
+    }
     
     const fields = [
       { name: "🔥 Current Streak", value: `${claim.streak} day${claim.streak === 1 ? '' : 's'}`, inline: true },

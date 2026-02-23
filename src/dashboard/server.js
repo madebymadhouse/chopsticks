@@ -632,7 +632,8 @@ async function getInstancesStatus() {
   const out = [self];
   for (const p of peers) {
     try {
-      const res = await request(`${p.url.replace(//+$/, "")}/api/internal/status`, {
+      const peerUrl = p.url.replace(/\/+$/, "");
+      const res = await request(`${peerUrl}/api/internal/status`, {
         headers: { "x-admin-token": token }
       });
       if (res.statusCode >= 400) {
@@ -2797,8 +2798,6 @@ app.post("/api/guild/:id/commands/toggle", requireAuth, rateLimitDashboard, requ
   const { guild } = guildAccess;
   await setCommandEnabled(guildId, command, Boolean(enabled));
   res.json({ ok: true });
-});
-
 });
 
 let _server = null;

@@ -766,3 +766,55 @@ export async function deletePet(petId, userId) {
   const pg = await getPg();
   return pg.deletePet(petId, userId);
 }
+
+// ── Per-guild stats & leveling ───────────────────────────────────────────
+
+export async function addGuildStat(userId, guildId, field, amount = 1) {
+  const pg = await getPg();
+  return pg.addGuildStat(userId, guildId, field, amount);
+}
+
+export async function getGuildStats(userId, guildId) {
+  const pg = await getPg();
+  return pg.getGuildStats(userId, guildId);
+}
+
+export async function getGuildLeaderboard(guildId, field, limit = 10, offset = 0) {
+  const pg = await getPg();
+  return pg.getGuildLeaderboard(guildId, field, limit, offset);
+}
+
+export async function getGuildXpLeaderboard(guildId, limit = 10, offset = 0) {
+  const pg = await getPg();
+  return pg.getGuildXpLeaderboard(guildId, limit, offset);
+}
+
+export async function getGuildXpConfig(guildId) {
+  const pg = await getPg();
+  return pg.getGuildXpConfig(guildId);
+}
+
+export async function upsertGuildXpConfig(guildId, fields) {
+  const pg = await getPg();
+  return pg.upsertGuildXpConfig(guildId, fields);
+}
+
+export async function addGuildXpRow(userId, guildId, amount) {
+  const pg = await getPg();
+  return pg.addGuildXpRow(userId, guildId, amount);
+}
+
+export async function getUserAchievements(userId, guildId) {
+  const pg = await getPg();
+  return pg.getUserAchievements(userId, guildId);
+}
+
+export async function grantAchievement(userId, guildId, achievementId) {
+  const pg = await getPg();
+  return pg.grantAchievement(userId, guildId, achievementId);
+}
+
+export async function seedAchievements(defs) {
+  const pg = await getPg();
+  return pg.seedAchievements(defs);
+}

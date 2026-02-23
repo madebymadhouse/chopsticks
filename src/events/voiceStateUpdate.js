@@ -21,6 +21,9 @@ import { ownerPermissionFlags, ownerPermissionOverwrite } from "../tools/voice/o
 import { deliverVoiceRoomDashboard } from "../tools/voice/panel.js";
 import { refreshRegisteredRoomPanelsForRoom } from "../tools/voice/ui.js";
 
+// VC join timestamps for time tracking: "guildId:userId" → joined_ms
+const vcJoinTimes = new Map();
+
 export default {
   name: "voiceStateUpdate",
 
@@ -42,6 +45,43 @@ export default {
       "state",
       { old: oldChannel?.id ?? null, next: newChannel?.id ?? null, user: member.id }
     );
+
+    // ── VC Time & XP tracking ─────────────────────────────────────────────
+    const vcKey = `${guild.id}:${member.id}`;
+    if (!oldChannel && newChannel) {
+      // User joined VC
+      vcJoinTimes.set(vcKey, Date.now());
+      void (async () => {
+        try {
+          const { addStat } = await import('../game/activityStats.js');
+          addStat(member.id, guild.id, 'vc_sessions', 1);
+        } catch {}
+      })();
+    } else if (oldChannel && !newChannel) {
+      // User left VC — compute session minutes
+      const joinedAt = vcJoinTimes.get(vcKey);
+      vcJoinTimes.delete(vcKey);
+      if (joinedAt) {
+        const minutes = Math.floor((Date.now() - joinedAt) / 60000);
+        if (minutes > 0) {
+          void (async () => {
+            try {
+              const { addStat } = await import('../game/activityStats.js');
+              const { addGuildXp } = await import('../game/guildXp.js');
+              const { getGuildXpConfig } = await import('../utils/storage.js');
+              addStat(member.id, guild.id, 'vc_minutes', minutes);
+              // Award xp_per_vc_minute × minutes, respecting guild multiplier
+              const cfg = await getGuildXpConfig(guild.id).catch(() => null);
+              const xpPerMin = Number(cfg?.xp_per_vc_minute ?? 2);
+              await addGuildXp(member.id, guild.id, 'vc_minute', {
+                client: member.client,
+                baseXp: xpPerMin * minutes,
+              }).catch(() => {});
+            } catch {}
+          })();
+        }
+      }
+    }
 
     const voice = await getVoiceState(guild.id);
     if (!voice) return;

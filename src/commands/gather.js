@@ -129,6 +129,18 @@ export default {
         multiplier: xpMult
       });
 
+      // Per-guild stats + XP
+      if (interaction.guildId) {
+        void (async () => {
+          try {
+            const { addStat } = await import('../game/activityStats.js');
+            const { addGuildXp } = await import('../game/guildXp.js');
+            addStat(interaction.user.id, interaction.guildId, 'gather_runs', 1);
+            await addGuildXp(interaction.user.id, interaction.guildId, 'gather', { client: interaction.client }).catch(() => {});
+          } catch {}
+        })();
+      }
+
       // Build response
       const rarityEmojis = {
         mythic: "✨",

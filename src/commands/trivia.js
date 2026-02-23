@@ -1007,6 +1007,21 @@ async function finalizeSoloSession(client, sessionId, session, { reason = "compl
   try { await recordQuestEvent(session.userId, "trivia_runs", 1); } catch {}
   try { if (result === "win") await recordQuestEvent(session.userId, "trivia_wins", 1); } catch {}
 
+  // Per-guild stats + XP
+  if (session.guildId) {
+    void (async () => {
+      try {
+        const { addStat } = await import('../game/activityStats.js');
+        const { addGuildXp } = await import('../game/guildXp.js');
+        addStat(session.userId, session.guildId, 'trivia_runs', 1);
+        if (result === 'win') {
+          addStat(session.userId, session.guildId, 'trivia_wins', 1);
+          await addGuildXp(session.userId, session.guildId, 'trivia_win').catch(() => {});
+        }
+      } catch {}
+    })();
+  }
+
   session.endedAt = Date.now();
   session.endReason = reason;
   await deleteTriviaSession(sessionId);
