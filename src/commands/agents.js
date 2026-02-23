@@ -1115,63 +1115,73 @@ export async function execute(interaction) {
       const idleInGuild = inGuild.filter(a => a.ready && !a.busyKey);
       const busyInGuild = inGuild.filter(a => a.ready && a.busyKey);
 
-      const registeredButNotInGuild = allAgents.filter(a => !liveAgentIds.has(a.agent_id) || !liveById.get(a.agent_id)?.guildIds.includes(guildId));
-      const invitable = registeredButNotInGuild.filter(a => a.status === 'active'); // Only active registered agents are invitable
+      // Registered in DB with active status
+      const registeredActive = allAgents.filter(a => a.status === 'active');
+      // Online = connected to agentManager WebSocket
+      const onlineAgents = registeredActive.filter(a => liveAgentIds.has(a.agent_id));
+      // Offline = active in DB but NOT connected (agentRunner hasn't started them yet)
+      const offlineAgents = registeredActive.filter(a => !liveAgentIds.has(a.agent_id));
+      // Online but not yet in this guild (need invite)
+      const onlineNotInGuild = onlineAgents.filter(a => !liveById.get(a.agent_id)?.guildIds?.includes?.(guildId));
+      // Invitable = offline active agents (once runner starts them, they'll need inviting)
+      const invitable = offlineAgents;
+
+      // Status emoji legend
+      const statusLine = [
+        `🟢 Online: **${liveAgents.length}**`,
+        `🔵 In this guild: **${inGuild.length}**`,
+        `⚪ Registered (active): **${registeredActive.length}**`,
+        `🔴 Offline (starting up): **${offlineAgents.length}**`,
+      ].join("\n");
 
       const embed = new EmbedBuilder()
-        .setTitle("Agent Status")
-        .setColor(Colors.INFO)
+        .setTitle("🤖 Agent Status")
+        .setColor(inGuild.length > 0 ? Colors.SUCCESS : offlineAgents.length > 0 ? Colors.WARNING : Colors.INFO)
         .setTimestamp()
         .addFields(
-          { 
-            name: "Overview",
-            value: `Registered (visible): **${allAgents.length}**\nConnected: **${liveAgents.length}**\nAvailable in guild: **${idleInGuild.length}**`
-          },
-          { 
-            name: `This Guild (${inGuild.length})`,
-            value: `Idle: **${idleInGuild.length}**\nBusy: **${busyInGuild.length}**\nOffline: **${registeredButNotInGuild.length}**`
-          },
+          { name: "Overview", value: statusLine },
           {
-            name: "Selected Pool",
-            value: `\`${selectedPoolId}\``,
-            inline: true
-          }
+            name: `This Guild · ${inGuild.length} agent${inGuild.length !== 1 ? 's' : ''}`,
+            value: inGuild.length
+              ? `🎵 Idle: **${idleInGuild.length}**  |  ⚡ Busy: **${busyInGuild.length}**`
+              : "No agents present. Use `/agents deploy` to get invite links.",
+          },
+          { name: "Selected Pool", value: `\`${selectedPoolId}\``, inline: true }
         );
 
-      const liveInGuildText = inGuild
-        .sort((x, y) => String(x.agentId).localeCompare(String(y.agentId)))
-        .map(a => {
-          let statusIcon = "•";
-          let statusText = 'down';
-          
-          if (a.ready) {
-            if (a.busyKey) {
-              statusIcon = "•";
-              statusText = `busy (${a.busyKind || "?"})`;
-            } else {
-              statusIcon = "•";
-              statusText = 'idle';
-            }
-          }
-          
-          const ident = a.tag ? `${a.tag}` : (a.botUserId ? `User ${a.botUserId}` : "unknown-id");
-          return `${statusIcon} \`${a.agentId}\` - **${statusText}** - ${ident}`;
-        })
-        .join("\n");
-
-      if (liveInGuildText) {
-        embed.addFields({ name: "Connected Agents", value: liveInGuildText.slice(0, 1024) });
-      } else {
-        embed.addFields({ name: "Connected Agents", value: "No connected agents in this guild.\nUse `/agents deploy` to request invites." });
+      // In-guild agent list
+      if (inGuild.length > 0) {
+        const liveInGuildText = inGuild
+          .sort((x, y) => String(x.agentId).localeCompare(String(y.agentId)))
+          .map(a => {
+            const status = !a.ready ? '🔴 down' : a.busyKey ? `⚡ busy (${a.busyKind || "?"})` : '🟢 idle';
+            const ident = a.tag || a.botUserId || a.agentId;
+            return `${status}  \`${a.agentId}\`  ${ident}`;
+          })
+          .join("\n");
+        embed.addFields({ name: "Agents in Guild", value: liveInGuildText.slice(0, 1024) });
       }
 
-      const invitableText = invitable
-        .sort((x, y) => String(x.agent_id).localeCompare(String(y.agent_id)))
-        .map(a => `• \`${a.agent_id}\` - ${a.tag}`)
-        .join("\n");
+      // Online but not in guild
+      if (onlineNotInGuild.length > 0) {
+        const text = onlineNotInGuild
+          .sort((x, y) => String(x.agent_id).localeCompare(String(y.agent_id)))
+          .map(a => `🔵 \`${a.agent_id}\`  ${a.tag || ''}  — invite needed`)
+          .join("\n");
+        embed.addFields({ name: "Online — Not Yet in Guild", value: text.slice(0, 1024) });
+      }
 
-      if (invitableText) {
-        embed.addFields({ name: "Invitable Agents", value: invitableText.slice(0, 1024) });
+      // Offline active agents
+      if (offlineAgents.length > 0) {
+        const text = offlineAgents
+          .sort((x, y) => String(x.agent_id).localeCompare(String(y.agent_id)))
+          .map(a => `🔴 \`${a.agent_id}\`  ${a.tag || ''}  — runner starting`)
+          .join("\n");
+        embed.addFields({ name: "Offline (agentRunner starting)", value: text.slice(0, 512) });
+      }
+
+      if (inGuild.length === 0 && registeredActive.length === 0) {
+        embed.addFields({ name: "Getting Started", value: "1. `/pools create` — create your pool\n2. `/agents add_token` — register a bot token\n3. `/agents deploy` — get invite links to add bots to this guild" });
       }
 
       await replyInteraction(interaction, { embeds: [embed] });
@@ -1258,15 +1268,6 @@ export async function execute(interaction) {
       const fromPoolOption = interaction.options.getString("from_pool", false);
       const requesterUserId = interaction.user.id;
 
-      if (desiredTotal % 10 !== 0) {
-        trackAgentDeployment(false);
-        await replyError(
-          interaction,
-          "Invalid Desired Total",
-          `The desired total must be a multiple of 10. Received: **${desiredTotal}**.`
-        );
-        return;
-      }
 
       // Defer reply because verification may take time
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -1485,14 +1486,6 @@ export async function execute(interaction) {
       const desiredTotal = interaction.options.getInteger("desired_total", false) ?? 10;
       const setBestDefault = interaction.options.getBoolean("set_best_default", false) === true;
 
-      if (desiredTotal % 10 !== 0) {
-        await replyError(
-          interaction,
-          "Invalid Desired Total",
-          `The desired total must be a multiple of 10. Received: **${desiredTotal}**.`
-        );
-        return;
-      }
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -2094,7 +2087,7 @@ export async function execute(interaction) {
         }
         
         // Add as pending (requires manual activation by pool owner)
-        const result = await insertAgentBot(agentId, token, clientId, botUser.tag, poolId, userId);
+        const result = await insertAgentBot(agentId, token, clientId, botUser.tag, poolId, userId, 'pending');
         
         const operationMsg = result.operation === 'inserted' ? 'submitted' : 'updated';
         await interaction.editReply({

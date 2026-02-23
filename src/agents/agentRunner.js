@@ -17,7 +17,7 @@ import * as prism from "prism-media";
 import { request } from "undici";
 import WebSocket from "ws";
 import { createAgentLavalink } from "../lavalink/agentLavalink.js";
-import { fetchAgentBots, updateAgentBotStatus, upsertAgentRunner, deleteAgentRunner } from "../utils/storage.js";
+import { fetchAgentBots, fetchAgentToken, resetCorruptAgents, updateAgentBotStatus, upsertAgentRunner, deleteAgentRunner } from "../utils/storage.js";
 import { randomUUID } from "node:crypto";
 import { handleSafeError, handleCriticalError, handleVoiceError, ErrorCategory, ErrorSeverity } from "../utils/errorHandler.js";
 import { logger } from "../utils/logger.js";
@@ -1270,18 +1270,27 @@ async function pollForAgentChanges() {
   // Start agents that are desired but not currently running
   for (const agentConfig of dbAgents) {
     if (agentConfig.status === 'active' && !activeAgents.has(agentConfig.agent_id)) {
-      if (!agentConfig.token) {
+      // fetchAgentBots() intentionally omits the token for security.
+      // Fetch and decrypt it now, only when we actually need to start the agent.
+      let plainToken;
+      try {
+        plainToken = await fetchAgentToken(agentConfig.agent_id);
+      } catch (err) {
+        console.error(`[Runner:${RUNNER_ID}] Could not decrypt token for ${agentConfig.agent_id}:`, err?.message ?? err);
+        updateAgentBotStatus(agentConfig.agent_id, 'corrupt').catch(() => {});
+        continue;
+      }
+      if (!plainToken) {
         console.warn(`[Runner:${RUNNER_ID}] Agent ${agentConfig.agent_id} has no usable token (likely key rotated). Marking as corrupt.`);
         updateAgentBotStatus(agentConfig.agent_id, 'corrupt').catch(() => {});
         continue;
       }
       console.log(`[Runner:${RUNNER_ID}] Starting agent ${agentConfig.agent_id}...`);
       try {
-        const { stop: stopFn } = await startAgent(agentConfig); // startAgent returns { agentId, stop }
+        const { stop: stopFn } = await startAgent({ ...agentConfig, token: plainToken });
         activeAgents.set(agentConfig.agent_id, { stopFn, agentConfig });
       } catch (err) {
         console.error(`[Runner:${RUNNER_ID}] Error starting agent ${agentConfig.agent_id}:`, err?.message ?? err);
-        // Optionally update agent status in DB to indicate failure
         updateAgentBotStatus(agentConfig.agent_id, 'failed').catch(e => console.error("Failed to update agent status to failed:", e));
       }
     }
@@ -1293,6 +1302,16 @@ async function pollForAgentChanges() {
   console.log(`[Runner:${RUNNER_ID}] Initializing...`);
   // Register or update runner on boot
   await upsertAgentRunner(RUNNER_ID, Date.now(), { pid: process.pid, hostname: process.env.HOSTNAME || 'unknown' });
+
+  // Reset any agents previously marked corrupt/failed — they may have been mis-marked
+  // due to the token-not-fetched bug. Safe to retry since we now fetch tokens correctly.
+  try {
+    const reset = await resetCorruptAgents();
+    if (reset.length) console.log(`[Runner:${RUNNER_ID}] Reset ${reset.length} corrupt/failed agent(s) to active: ${reset.join(', ')}`);
+  } catch (err) {
+    console.warn(`[Runner:${RUNNER_ID}] Could not reset corrupt agents:`, err?.message ?? err);
+  }
+
   await pollForAgentChanges(); // Initial poll
 
   // Start polling

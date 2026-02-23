@@ -20,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { timingSafeEqual } from "node:crypto";
+import { spawn } from "node:child_process";
 import { ActivityType, Client, Collection, GatewayIntentBits, Events, Partials, PermissionFlagsBits } from "discord.js";
 import { AgentManager } from "./agents/agentManager.js";
 import { handleButton as handleAgentsButton, handleSelect as handleAgentsSelect } from "./commands/agents.js";
@@ -464,9 +465,28 @@ client.once(Events.ClientReady, async () => {
   }
 
 
-  // Agent spawning and scaling are now handled by agentRunner processes
-  // which poll the database for agent configurations.
-  // The global.__agentsChild and agentTimer logic has been removed from here.
+  // Auto-start agentRunner as a child process (unless DISABLE_AGENT_RUNNER=true).
+  // This ensures agents come online automatically when the bot starts —
+  // no separate process or PM2 needed out of the box.
+  if (String(process.env.DISABLE_AGENT_RUNNER || "false").toLowerCase() !== "true") {
+    const runnerPath = new URL("./agents/agentRunner.js", import.meta.url).pathname;
+    const agentChild = spawn(process.execPath, [runnerPath], {
+      env: { ...process.env },
+      stdio: "inherit",
+      detached: false,
+    });
+    global.__agentsChild = agentChild;
+    agentChild.on("exit", (code, signal) => {
+      console.warn(`⚠️  agentRunner exited (code=${code}, signal=${signal}). Agents will be offline until restart.`);
+      global.__agentsChild = null;
+    });
+    agentChild.on("error", err => {
+      console.error("❌ agentRunner child error:", err?.message ?? err);
+    });
+    console.log(`🤖 agentRunner spawned (pid=${agentChild.pid})`);
+  } else {
+    console.log("ℹ️  DISABLE_AGENT_RUNNER=true — manage agentRunner externally (e.g. via PM2).");
+  }
 
   const flushMs = Math.max(5_000, Math.trunc(Number(process.env.ANALYTICS_FLUSH_MS || 15000)));
   const flushTimer = setInterval(() => {
@@ -508,8 +528,12 @@ client.once(Events.ClientReady, async () => {
       }
     } catch {}
 
-    // global.__agentsChild removed as PM2 manages agentRunner processes
-    // (Old code for killing child process removed from here)
+    // Kill agentRunner child process on shutdown
+    try {
+      if (global.__agentsChild && !global.__agentsChild.killed) {
+        global.__agentsChild.kill("SIGTERM");
+      }
+    } catch {}
 
     try {
       await client.destroy();

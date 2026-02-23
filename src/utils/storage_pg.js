@@ -568,7 +568,7 @@ export async function fetchCommandStatsDaily(guildId, days = 7, limit = 50) {
   }));
 }
 
-export async function insertAgentBot(agentId, token, clientId, tag, poolId = 'pool_goot27', contributedBy = '') {
+export async function insertAgentBot(agentId, token, clientId, tag, poolId = 'pool_goot27', contributedBy = '', initialStatus = 'active') {
   const p = getPool();
   const now = Date.now();
 
@@ -584,11 +584,12 @@ export async function insertAgentBot(agentId, token, clientId, tag, poolId = 'po
 
   const { ciphertext, encVersion } = encrypt(token, poolId, Number(pool.created_at));
   const resolvedContributor = contributedBy || pool.owner_user_id;
+  const safeStatus = ['active', 'pending', 'inactive', 'suspended'].includes(initialStatus) ? initialStatus : 'active';
 
   const upsertSql = `
     INSERT INTO agent_bots
-      (agent_id, token, client_id, tag, pool_id, contributed_by, enc_version, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      (agent_id, token, client_id, tag, pool_id, contributed_by, enc_version, status, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     ON CONFLICT (agent_id) DO UPDATE SET
       token         = EXCLUDED.token,
       client_id     = EXCLUDED.client_id,
@@ -599,7 +600,7 @@ export async function insertAgentBot(agentId, token, clientId, tag, poolId = 'po
       updated_at    = EXCLUDED.updated_at
     RETURNING agent_id, client_id, tag, status, pool_id, contributed_by, enc_version, created_at, updated_at;
   `;
-  const res = await p.query(upsertSql, [agentId, ciphertext, clientId, tag, poolId, resolvedContributor, encVersion, now, now]);
+  const res = await p.query(upsertSql, [agentId, ciphertext, clientId, tag, poolId, resolvedContributor, encVersion, safeStatus, now, now]);
   const row = res.rows[0];
 
   // Ensure contributor has a pool_members row
@@ -687,6 +688,16 @@ export async function updateAgentBotStatus(agentId, status, actorUserId = '') {
     if (poolId) await logPoolEvent(poolId, actorUserId, `token_${status}`, agentId, {});
   }
   return res.rowCount > 0;
+}
+
+/** Bulk-reset agents incorrectly marked corrupt/failed back to active so runner retries them. */
+export async function resetCorruptAgents() {
+  const p = getPool();
+  const res = await p.query(
+    "UPDATE agent_bots SET status = 'active', updated_at = $1 WHERE status IN ('corrupt', 'failed') RETURNING agent_id",
+    [Date.now()]
+  );
+  return res.rows.map(r => r.agent_id);
 }
 
 export async function updateAgentBotProfile(agentId, profile) {

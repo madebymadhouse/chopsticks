@@ -514,9 +514,9 @@ export async function saveGuildData(guildId, data) {
   throw new Error("save-conflict");
 }
 
-export async function insertAgentBot(agentId, token, clientId, tag, poolId, contributedBy) {
+export async function insertAgentBot(agentId, token, clientId, tag, poolId, contributedBy, initialStatus) {
   const pg = await getPg();
-  return pg.insertAgentBot(agentId, token, clientId, tag, poolId, contributedBy);
+  return pg.insertAgentBot(agentId, token, clientId, tag, poolId, contributedBy, initialStatus);
 }
 
 export async function fetchAgentBots() {
@@ -527,6 +527,11 @@ export async function fetchAgentBots() {
 export async function fetchAgentToken(agentId) {
   const pg = await getPg();
   return pg.fetchAgentToken(agentId);
+}
+
+export async function resetCorruptAgents() {
+  const pg = await getPg();
+  return pg.resetCorruptAgents();
 }
 
 export async function updateAgentBotStatus(agentId, status, actorUserId) {

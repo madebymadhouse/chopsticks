@@ -870,16 +870,6 @@ function buildPoolUiComponents(ctx, userId) {
         description: 'Jump to your owned pool.'
       },
       {
-        label: 'Create My Pool (Private)',
-        value: 'create_private',
-        description: 'Create your personal pool with private visibility.'
-      },
-      {
-        label: 'Create My Pool (Public)',
-        value: 'create_public',
-        description: 'Create your personal pool with public visibility.'
-      },
-      {
         label: 'Toggle Selected Visibility',
         value: 'toggle_visibility',
         description: 'Owner only: flip selected pool between public/private.'
