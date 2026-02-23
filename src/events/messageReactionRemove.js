@@ -4,6 +4,7 @@ import {
   emojiKeyFromReaction,
   reactionRoleBindingKey
 } from "../utils/reactionRoles.js";
+import { logger } from "../utils/logger.js";
 
 export default {
   name: "messageReactionRemove",
@@ -13,7 +14,7 @@ export default {
     try {
       if (reaction?.partial) await reaction.fetch();
     } catch (error) {
-      console.warn("[reactionroles:remove] failed to fetch partial reaction:", error?.message || error);
+      logger.warn({ err: error }, "[reactionroles:remove] failed to fetch partial reaction");
       return;
     }
 
@@ -33,7 +34,7 @@ export default {
       try {
         member = await guild.members.fetch(user.id);
       } catch (error) {
-        console.warn("[reactionroles:remove] could not fetch member:", error?.message || error);
+        logger.warn({ err: error }, "[reactionroles:remove] could not fetch member");
         return;
       }
     }
@@ -43,7 +44,7 @@ export default {
         await member.roles.remove(binding.roleId, "Reaction role remove");
       }
     } catch (error) {
-      console.warn("[reactionroles:remove] role update failed:", error?.message || error);
+      logger.warn({ err: error }, "[reactionroles:remove] role update failed");
     }
   }
 };

@@ -20,6 +20,7 @@ import {
 import { ownerPermissionFlags, ownerPermissionOverwrite } from "../tools/voice/ownerPerms.js";
 import { deliverVoiceRoomDashboard } from "../tools/voice/panel.js";
 import { refreshRegisteredRoomPanelsForRoom } from "../tools/voice/ui.js";
+import { logger } from "../utils/logger.js";
 
 // VC join timestamps for time tracking: "guildId:userId" → joined_ms
 const vcJoinTimes = new Map();
@@ -29,7 +30,7 @@ export default {
 
   async execute(oldState, newState) {
     const debug = process.env.VOICE_DEBUG === "true";
-    const log = (...args) => debug && console.log("[voiceStateUpdate]", ...args);
+    const log = (...args) => debug && logger.debug({ args }, "[voiceStateUpdate]");
     const guild = newState.guild ?? oldState.guild;
     if (!guild) return;
 
