@@ -6,7 +6,7 @@
 
 <h1>🥢 Chopsticks</h1>
 
-<p><strong>A self-hostable, feature-rich Discord bot — music, moderation, economy, AI agents, and a flagship agent pool system for community-powered voice bots.</strong></p>
+<p><strong>A feature-rich Discord bot — music, moderation, economy, AI agents, and a flagship agent pool system for community-powered voice bots. Hosted by WokSpec. Open source.</strong></p>
 
 <br/>
 
@@ -56,8 +56,9 @@
 
 - [✨ Features](#-features)
 - [🤖 Agent Pool System](#-agent-pool-system)
-- [🚀 Getting Started](#-getting-started)
-- [🐳 Docker Deployment](#-docker-deployment)
+- [🚀 Adding Chopsticks to Your Server](#-adding-chopsticks-to-your-server)
+- [🛠️ Running Locally (Contributors)](#-running-locally-contributors)
+- [🐳 Docker (Local Dev Stack)](#-docker-local-dev-stack)
 - [🛠️ Tech Stack](#-tech-stack)
 - [📁 Project Structure](#-project-structure)
 - [🧪 Testing](#-testing)
@@ -189,7 +190,26 @@ Your Server ──► Guild Pool Config ──► Primary Pool + up to 2 Seconda
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Adding Chopsticks to Your Server
+
+Chopsticks is hosted by WokSpec — no setup required on your end.
+Just invite the bot and start using slash commands immediately.
+
+<div align="center">
+<a href="https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands">
+  <img src="https://img.shields.io/badge/Invite%20Chopsticks%20to%20Your%20Server-57F287?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Chopsticks"/>
+</a>
+</div>
+
+<br/>
+
+Once Chopsticks is in your server, run `/help` or browse the features below. No configuration required.
+
+---
+
+## 🛠️ Running Locally (Contributors)
+
+Want to contribute or explore the code? You can run a local dev instance.
 
 ### Prerequisites
 
@@ -200,7 +220,7 @@ Your Server ──► Guild Pool Config ──► Primary Pool + up to 2 Seconda
 | [Redis](https://redis.io) | 7+ |
 | [Lavalink](https://github.com/lavalink-devs/Lavalink) | 4+ |
 
-### Installation
+### Setup
 
 ```bash
 # 1. Clone the repository
@@ -221,25 +241,25 @@ cp .env.example .env
 # Run database migrations
 npm run migrate
 
-# Deploy slash commands to your Discord guild
+# Deploy slash commands to your test guild
 node scripts/deployCommands.js
 
 # Start the bot
 npm run bot
 ```
 
-> 📖 See [QUICKSTART.md](QUICKSTART.md) for a detailed walkthrough, or [docs/deploy/](docs/deploy/) for production deployment guides.
+> 📖 See [QUICKSTART.md](QUICKSTART.md) for a detailed walkthrough.
 
 ---
 
-## 🐳 Docker Deployment
+## 🐳 Docker (Local Dev Stack)
 
-The recommended way to run Chopsticks in production. All services (bot, Lavalink, PostgreSQL, Redis, Grafana, Prometheus, Caddy) start with a single command.
+The easiest way to spin up a full local environment for development. Starts all services (bot, Lavalink, PostgreSQL, Redis, Grafana, Prometheus, Caddy) with a single command.
 
 ```bash
 # Copy and configure environment
 cp .env.example .env
-# Edit .env with your tokens and credentials
+# Edit .env with your dev bot token and credentials
 
 # Start all services
 docker compose -f docker-compose.laptop.yml up -d
@@ -264,8 +284,6 @@ docker logs chopsticks-bot -f
 | `chopsticks-caddy` | 80/443 | Reverse proxy |
 | `chopsticks-prometheus` | 9090 | Metrics |
 | `chopsticks-grafana` | 3001 | Dashboards |
-
-> See [docs/deploy/FREE_HOSTING.md](docs/deploy/FREE_HOSTING.md) for free self-hosted cloud options.
 
 ---
 
