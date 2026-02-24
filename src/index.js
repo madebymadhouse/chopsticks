@@ -903,7 +903,6 @@ client.on(Events.MessageCreate, async message => {
         } catch {}
       })();
     }
-  }
 
   // ── Per-guild message XP + stats ────────────────────────────────────────
   if (message.guildId && !message.author.bot) {
