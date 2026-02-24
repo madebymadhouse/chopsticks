@@ -583,14 +583,9 @@ function buildAdvisorUiComponents(state, actorUserId) {
     .setCustomId(buildAdvisorUiId("refresh", actorUserId, state.desiredTotal, state.selectedPoolId))
     .setStyle(ButtonStyle.Secondary)
     .setLabel("Refresh");
-  const handoffButton = new ButtonBuilder()
-    .setCustomId(buildAdvisorUiId("handoff", actorUserId, state.desiredTotal, state.selectedPoolId))
-    .setStyle(ButtonStyle.Primary)
-    .setLabel("Open Deploy Panel")
-    .setDisabled(!state.selectedPoolId);
   const linksButton = new ButtonBuilder()
     .setCustomId(buildAdvisorUiId("links", actorUserId, state.desiredTotal, state.selectedPoolId))
-    .setStyle(ButtonStyle.Secondary)
+    .setStyle(ButtonStyle.Primary)
     .setLabel("Invite Links")
     .setDisabled(!state.selectedPoolId);
   const setDefaultButton = new ButtonBuilder()
@@ -602,7 +597,7 @@ function buildAdvisorUiComponents(state, actorUserId) {
   return [
     new ActionRowBuilder().addComponents(desiredSelect),
     new ActionRowBuilder().addComponents(poolSelect),
-    new ActionRowBuilder().addComponents(refreshButton, handoffButton, linksButton, setDefaultButton)
+    new ActionRowBuilder().addComponents(refreshButton, linksButton, setDefaultButton)
   ];
 }
 
@@ -901,11 +896,6 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(s =>
     s
-      .setName("deploy_ui")
-      .setDescription("Interactive deployment panel with pool + target dropdowns")
-  )
-  .addSubcommand(s =>
-    s
       .setName("advisor")
       .setDescription("Compare accessible pools and recommend the best deployment source")
       .addIntegerOption(o =>
@@ -925,8 +915,8 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(s =>
     s
-      .setName("advisor_ui")
-      .setDescription("Interactive pool advisor with ranked dropdown + deploy handoff")
+      .setName("panel")
+      .setDescription("Interactive agent deployment panel (pool selector + invite links)")
   )
   .addSubcommand(s =>
     s
@@ -1243,22 +1233,12 @@ export async function execute(interaction) {
     return;
   }
 
-  if (sub === "deploy_ui") {
-    try {
-      await renderDeployUi(interaction, mgr, ownerIds);
-    } catch (error) {
-      botLogger.error({ err: error }, "[agents:deploy_ui] Error");
-      await replyError(interaction, "Deploy UI Failed", error.message || "Unknown error.");
-    }
-    return;
-  }
-
-  if (sub === "advisor_ui") {
+  if (sub === "panel" || sub === "advisor_ui" || sub === "deploy_ui") {
     try {
       await renderAdvisorUi(interaction, mgr, ownerIds);
     } catch (error) {
-      botLogger.error({ err: error }, "[agents:advisor_ui] Error");
-      await replyError(interaction, "Advisor UI Failed", error.message || "Unknown error.");
+      botLogger.error({ err: error }, "[agents:panel] Error");
+      await replyError(interaction, "Panel Failed", error.message || "Unknown error.");
     }
     return;
   }
@@ -1550,8 +1530,8 @@ export async function execute(interaction) {
       embed.addFields({
         name: "Next Actions",
         value: [
-          "Use the buttons below to open Advisor UI or Deploy UI.",
-          `Deploy with best pool: \`/agents deploy desired_total:${desiredTotal} from_pool:${top?.pool?.pool_id || currentDefault}\``,
+          "Use the button below to open the interactive deployment panel.",
+          `Or deploy directly: \`/agents deploy desired_total:${desiredTotal} from_pool:${top?.pool?.pool_id || currentDefault}\``,
           "Browse public pools: `/pools public`"
         ].join("\n"),
         inline: false
@@ -1567,11 +1547,7 @@ export async function execute(interaction) {
           new ButtonBuilder()
             .setCustomId(buildAdvisorUiId("refresh", interaction.user.id, desiredTotal, selectedPoolId))
             .setStyle(ButtonStyle.Primary)
-            .setLabel("Open Advisor UI"),
-          new ButtonBuilder()
-            .setCustomId(buildDeployUiId("refresh", interaction.user.id, desiredTotal, selectedPoolId))
-            .setStyle(ButtonStyle.Secondary)
-            .setLabel("Open Deploy UI")
+            .setLabel("Open Panel")
         )
       ];
 
@@ -2492,7 +2468,7 @@ export async function handleSelect(interaction) {
       desiredTotal: deployParsed.action === "desired" ? clampDeployUiDesired(selectedValue) : deployParsed.desired,
       poolId: deployParsed.action === "pool" ? (selectedValue === "_" ? null : selectedValue) : deployParsed.poolId
     };
-    await renderDeployUi(interaction, mgr, ownerIds, requested, { update: true });
+    await renderAdvisorUi(interaction, mgr, ownerIds, requested, { update: true });
     return true;
   }
 
@@ -2647,7 +2623,7 @@ export async function handleButton(interaction) {
     const requested = { desiredTotal: deployParsed.desired, poolId: deployParsed.poolId };
 
     if (deployParsed.action === "refresh") {
-      await renderDeployUi(interaction, mgr, ownerIds, requested, { update: true, note: "Refreshed deployment plan." });
+      await renderAdvisorUi(interaction, mgr, ownerIds, requested, { update: true, note: "Refreshed deployment plan." });
       return true;
     }
 
@@ -2669,7 +2645,7 @@ export async function handleButton(interaction) {
       }
 
       await setGuildSelectedPool(interaction.guildId, deployParsed.poolId);
-      await renderDeployUi(interaction, mgr, ownerIds, requested, {
+      await renderAdvisorUi(interaction, mgr, ownerIds, requested, {
         update: true,
         note: `Guild default pool updated to \`${deployParsed.poolId}\`.`
       });
@@ -2714,7 +2690,7 @@ export async function handleButton(interaction) {
     }
   }
 
-  if (advisorParsed && ["refresh", "links", "setdefault", "handoff"].includes(advisorParsed.action)) {
+  if (advisorParsed && ["refresh", "links", "setdefault"].includes(advisorParsed.action)) {
     if (advisorParsed.userId !== interaction.user.id) {
       await interaction.reply({
         embeds: [buildInfoEmbed("Panel Locked", "This advisor panel belongs to another user.", Colors.ERROR)],
@@ -2749,14 +2725,6 @@ export async function handleButton(interaction) {
       await renderAdvisorUi(interaction, mgr, ownerIds, requested, {
         update: true,
         note: `Guild default pool updated to \`${advisorParsed.poolId}\`.`
-      });
-      return true;
-    }
-
-    if (advisorParsed.action === "handoff") {
-      await renderDeployUi(interaction, mgr, ownerIds, requested, {
-        update: true,
-        note: "Opened from advisor ranking."
       });
       return true;
     }

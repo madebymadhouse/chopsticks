@@ -118,7 +118,7 @@ export default [
         const embed = new EmbedBuilder()
           .setTitle("🥁 Dad Joke")
           .setDescription(joke)
-          .setColor(0xff9f43);
+          .setColor(0xFF9F43);
         await message.reply({ embeds: [embed] });
       } catch (err) {
         botLogger.error({ err }, "[prefix:dadjoke] execute error");
@@ -157,7 +157,7 @@ export default [
         const embed = new EmbedBuilder()
           .setTitle("😄 Joke")
           .setDescription(description)
-          .setColor(0xfee75c);
+          .setColor(0xFEE75C);
         await message.reply({ embeds: [embed] });
       } catch (err) {
         botLogger.error({ err }, "[prefix:joke] execute error");

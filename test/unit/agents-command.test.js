@@ -7,9 +7,10 @@ describe('Agents command definition', function () {
     const json = agentsCommand.toJSON();
     const names = new Set((json.options || []).map(o => o.name));
     assert.ok(names.has('idle_policy'));
-    assert.ok(names.has('deploy_ui'));
+    assert.ok(names.has('panel'));        // unified deployment panel (replaced deploy_ui + advisor_ui)
     assert.ok(names.has('advisor'));
-    assert.ok(names.has('advisor_ui'));
+    assert.ok(!names.has('deploy_ui'),  'deploy_ui removed — superseded by panel');
+    assert.ok(!names.has('advisor_ui'), 'advisor_ui removed — superseded by panel');
   });
 
   it('idle policy exposes expected options', function () {
