@@ -40,6 +40,11 @@ services:
       - FUN_PROVIDER=${FUN_PROVIDER:-auto}
       - FUNHUB_URL=${FUNHUB_URL:-http://funhub:8790}
       - FUNHUB_INTERNAL_API_KEY=${FUNHUB_INTERNAL_API_KEY:-}
+      # AgentManager must bind on all interfaces so the agents container can reach it
+      - AGENT_CONTROL_HOST=0.0.0.0
+      - AGENT_CONTROL_PORT=8787
+      # Agents container runs its own runner — do not spawn a second one here
+      - DISABLE_AGENT_RUNNER=true
     volumes:
       - ./data:/app/data
     networks:
@@ -95,7 +100,7 @@ services:
       lavalink:
         condition: service_healthy
       bot:
-        condition: service_started
+        condition: service_healthy
     mem_limit: 768m
     mem_reservation: 128m
     cpus: '1.5'

@@ -10,10 +10,15 @@ if (process.env.STORAGE_DRIVER !== 'postgres') {
 }
 
 if (!process.env.AGENT_TOKEN_KEY || process.env.AGENT_TOKEN_KEY.length !== 64) {
-  botLogger.error("FATAL: AGENT_TOKEN_KEY environment variable is missing or is not a 64-character (32-byte) hex key.");
-  process.exit(1);
+  botLogger.warn(
+    "AGENT_TOKEN_KEY is missing or not a 64-character hex key — agent token encryption disabled. " +
+    "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\" " +
+    "and add it to your .env as AGENT_TOKEN_KEY."
+  );
+  // Non-fatal: bot runs normally; agent tokens will be marked corrupt until key is set.
+} else {
+  botLogger.info("✅ Configuration validated.");
 }
-botLogger.info("✅ Configuration validated.");
 // ====================================================================
 
 import fs from "node:fs";

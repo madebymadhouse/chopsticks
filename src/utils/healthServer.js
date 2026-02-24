@@ -100,7 +100,15 @@ export function startHealthServer(manager = null) {
       const security = readHealthSecurityConfig(process.env);
       
       // Health check compatibility (`/healthz` primary, `/health` alias).
+      // Returns 200 only after the AgentManager WS is listening (set via startHealthServer(mgr)).
+      // This ensures Docker's service_healthy condition fires only when agents can connect.
       if (url.startsWith("/healthz") || url.startsWith("/health")) {
+        if (!agentManager) {
+          // Still starting up — AgentManager not yet initialized
+          res.writeHead(503, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, reason: "starting", ts: Date.now() }));
+          return;
+        }
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, ts: Date.now() }));
         return;

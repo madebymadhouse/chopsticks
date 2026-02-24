@@ -51,6 +51,6 @@ ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD node -e "console.log('Agent runner healthy')" || exit 1
+  CMD node -e "require('fs').statSync('/proc/1/status')" || exit 1
 
 CMD ["npm", "run", "agents"]
