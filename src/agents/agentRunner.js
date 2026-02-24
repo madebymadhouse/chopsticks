@@ -1319,6 +1319,7 @@ async function pollForAgentChanges() {
       }, RETRY_AFTER_MS).unref?.();
     }
   }
+}
 
 // Initial setup on runner boot
 (async () => {
