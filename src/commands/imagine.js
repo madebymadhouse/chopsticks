@@ -11,6 +11,7 @@ export const meta = {
   name: 'imagine',
   description: 'Generate AI images for free using HuggingFace',
   category: 'fun',
+  deployGlobal: false, // merged into /ai image
 };
 
 export const data = new SlashCommandBuilder()

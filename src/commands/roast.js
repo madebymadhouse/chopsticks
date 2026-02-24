@@ -14,6 +14,7 @@ export const meta = {
   name: 'roast',
   description: 'Roast someone with AI',
   category: 'fun',
+  deployGlobal: false, // merged into /social roast
 };
 
 export const data = new SlashCommandBuilder()

@@ -36,6 +36,8 @@ export const data = new SlashCommandBuilder()
     .addStringOption(o => o.setName('metric').setDescription('What to rank by').setRequired(false)
       .addChoices(
         { name: '⚡ XP / Level', value: 'xp' },
+        { name: '🏆 Level (global)', value: 'level' },
+        { name: '💎 Net Worth', value: 'networth' },
         { name: '🎙️ VC Time', value: 'vc' },
         { name: '💬 Messages', value: 'messages' },
         { name: '💰 Credits Earned', value: 'credits' },
@@ -131,6 +133,28 @@ export async function execute(interaction) {
         rows = await getGuildXpLeaderboard(interaction.guildId, 10).catch(() => []);
         title = '⚡ XP Leaderboard';
         formatter = r => `Level **${r.level}** • ${Number(r.xp).toLocaleString()} XP`;
+      } else if (metric === 'level') {
+        // Global level leaderboard (user_game_profiles)
+        const { getPool } = await import('../utils/storage_pg.js');
+        const p = getPool();
+        const res = await p.query(
+          `SELECT user_id, level, xp FROM user_game_profiles ORDER BY level DESC, xp DESC LIMIT 10`
+        ).catch(() => ({ rows: [] }));
+        rows = res.rows.map(r => ({ user_id: r.user_id, value: r.level, xp: r.xp }));
+        title = '🏆 Global Level Leaderboard';
+        formatter = r => `Level **${r.value}** • ${Number(r.xp || 0).toLocaleString()} XP`;
+      } else if (metric === 'networth') {
+        // Net worth = wallet + bank balance
+        const { getPool } = await import('../utils/storage_pg.js');
+        const p = getPool();
+        const res = await p.query(
+          `SELECT w.user_id, COALESCE(w.balance,0)+COALESCE(b.balance,0) AS networth
+           FROM wallets w LEFT JOIN bank_accounts b ON b.user_id = w.user_id
+           ORDER BY networth DESC LIMIT 10`
+        ).catch(() => ({ rows: [] }));
+        rows = res.rows.map(r => ({ user_id: r.user_id, value: r.networth }));
+        title = '💎 Net Worth Leaderboard';
+        formatter = r => `💰 ${Number(r.value).toLocaleString()} credits`;
       } else {
         const field = LEADERBOARD_FIELDS[metric] || metric;
         rows = await getGuildLeaderboard(interaction.guildId, field, 10).catch(() => []);

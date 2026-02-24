@@ -90,6 +90,18 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .setMaxLength(2000)
       )
+      .addStringOption(o =>
+        o.setName("style")
+          .setDescription("Response style / persona (default: helper)")
+          .setRequired(false)
+          .addChoices(
+            { name: '🤖 Helper (default)', value: 'helper' },
+            { name: '🎙️ Agent — chat with a deployed agent identity', value: 'agent' },
+            { name: '🎲 Dungeon Master', value: 'dm' },
+            { name: '💪 Coach', value: 'coach' },
+            { name: '🔥 Roast', value: 'roast' },
+          )
+      )
       .addBooleanOption(o =>
         o.setName("public")
           .setDescription("Post the response publicly in the channel (default: private)")
@@ -98,12 +110,25 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub.setName("image")
-      .setDescription("Generate an image from a text prompt (requires linked OpenAI key)")
+      .setDescription("Generate an AI image — free via HuggingFace FLUX or premium via linked OpenAI")
       .addStringOption(o =>
         o.setName("prompt")
-          .setDescription("Description of the image to generate (max 1000 chars)")
+          .setDescription("Description of the image to generate (max 500 chars)")
           .setRequired(true)
-          .setMaxLength(1000)
+          .setMaxLength(500)
+      )
+      .addStringOption(o =>
+        o.setName("style")
+          .setDescription("Visual style (optional)")
+          .setRequired(false)
+          .addChoices(
+            { name: 'Default', value: 'default' },
+            { name: '🎨 Artistic', value: 'artistic' },
+            { name: '📸 Photorealistic', value: 'photorealistic' },
+            { name: '🌌 Fantasy', value: 'fantasy' },
+            { name: '🤖 Cyberpunk', value: 'cyberpunk' },
+            { name: '🎭 Anime', value: 'anime' },
+          )
       )
   )
   .addSubcommand(sub =>
@@ -247,9 +272,40 @@ const MAX_CTX_MESSAGES = 10;
 async function handleChat(interaction) {
   const isPublic  = interaction.options.getBoolean("public") ?? false;
   const message   = sanitizeString(interaction.options.getString("message", true));
+  const style     = interaction.options.getString("style") || "helper";
   const guildId   = interaction.guildId;
   const userId    = interaction.user.id;
   const channelId = interaction.channelId;
+
+  // Style: agent — route to a deployed agent in this guild via agentManager
+  if (style === "agent") {
+    const mgr = global.agentManager;
+    const agents = mgr ? [...mgr.liveAgents.values()].filter(a => a.ready && a.guildIds?.includes(guildId)) : [];
+    if (!agents.length) {
+      return interaction.reply({
+        content: "🤖 No agents are online in this server. Deploy one with `/agents panel`.",
+        ephemeral: true,
+      });
+    }
+    await interaction.deferReply({ ephemeral: !isPublic });
+    const agent = agents[Math.floor(Math.random() * agents.length)];
+    try {
+      const result = await mgr.request(agent.agentId, "chat", { message, guildId, channelId, userId }).catch(() => null);
+      const reply = result?.reply || result?.content || "…";
+      return interaction.editReply({ content: String(reply).slice(0, 2000) });
+    } catch {
+      return interaction.editReply({ content: "❌ Agent did not respond. Try again." });
+    }
+  }
+
+  // Style: prepend a system persona prefix
+  const STYLE_PERSONAS = {
+    dm:     "You are a dramatic Dungeon Master narrating an epic adventure. Be vivid and immersive.",
+    coach:  "You are an energetic life coach. Give clear, actionable advice. Be encouraging and direct.",
+    roast:  "You are a comedian who lightly roasts the user's message. Keep it fun, not mean.",
+    helper: "",
+  };
+  const stylePrefix = STYLE_PERSONAS[style] || "";
 
   let resolved;
   try {
@@ -286,13 +342,13 @@ async function handleChat(interaction) {
   context.push({ role: "user", content: message });
   if (context.length > MAX_CTX_MESSAGES) context.splice(0, context.length - MAX_CTX_MESSAGES);
 
-  // Build system prompt from persona + conversation history
+  // Build system prompt from style + persona + conversation history
   const history = context.slice(0, -1);
   const personaPrefix = guildConfig.persona ? `${guildConfig.persona}\n\n` : "";
   const historyStr = history.length > 0
     ? "Conversation history:\n" + history.map(m => `${m.role}: ${m.content}`).join("\n")
     : "";
-  const system = personaPrefix + historyStr;
+  const system = [stylePrefix, personaPrefix, historyStr].filter(Boolean).join("\n\n");
 
   let reply;
   try {
@@ -355,40 +411,161 @@ async function callAiLlm({ prompt, system = "", provider, apiKey, ollamaUrl }) {
 
 // ── /ai image ─────────────────────────────────────────────────────────────────
 
+const _HF_IMAGE_MODELS = [
+  'black-forest-labs/FLUX.1-schnell',
+  'stabilityai/stable-diffusion-xl-base-1.0',
+  'runwayml/stable-diffusion-v1-5',
+];
+
+const _IMAGE_STYLE_SUFFIXES = {
+  artistic:       ', digital art, vibrant colors, artistic',
+  photorealistic: ', photorealistic, 8k uhd, DSLR photo, sharp focus',
+  fantasy:        ', fantasy art, magical, ethereal, detailed illustration',
+  cyberpunk:      ', cyberpunk, neon lights, dark futuristic, ultra-detailed',
+  anime:          ', anime style, Studio Ghibli, detailed anime art',
+  default:        '',
+};
+
+const _IMAGE_BANNED = /\b(nude|naked|nsfw|porn|sexual|sex|gore|violent|blood|weapon|terrorist|bomb)\b/i;
+
+// Per-user rate limit (30s, in-memory)
+const _imageRateLimits = new Map();
+const _IMAGE_RATE_MS = 30_000;
+
 async function handleImage(interaction) {
   const prompt  = sanitizeString(interaction.options.getString("prompt", true));
+  const style   = interaction.options.getString("style") || "default";
   const guildId = interaction.guildId;
   const userId  = interaction.user.id;
 
-  let resolved;
-  try {
-    resolved = await resolveAiKey(guildId, userId);
-  } catch {
-    resolved = { provider: null, apiKey: null, ollamaUrl: null };
+  // Guild disable check
+  if (guildId) {
+    const { loadGuildData } = await import("../utils/storage.js");
+    const guildData = await loadGuildData(guildId).catch(() => ({}));
+    if (guildData.imagegen === false) {
+      return interaction.reply({ content: '❌ Image generation has been disabled in this server.', ephemeral: true });
+    }
   }
 
-  // Image generation requires an OpenAI key with a valid apiKey (not just guild provider)
+  // Safety filter
+  if (_IMAGE_BANNED.test(prompt)) {
+    return interaction.reply({ content: '❌ Your prompt contains disallowed content.', ephemeral: true });
+  }
+
+  // Per-user rate limit
+  const rlKey = `${guildId || 'dm'}:${userId}`;
+  const lastUsed = _imageRateLimits.get(rlKey) || 0;
+  if (Date.now() - lastUsed < _IMAGE_RATE_MS) {
+    const remaining = Math.ceil((_IMAGE_RATE_MS - (Date.now() - lastUsed)) / 1000);
+    return interaction.reply({ content: `⏳ Please wait **${remaining}s** before generating another image.`, ephemeral: true });
+  }
+  _imageRateLimits.set(rlKey, Date.now());
+
+  await interaction.deferReply();
+  await interaction.editReply({ content: '🖼️ Generating your image… this may take up to 30 seconds.' });
+
+  const fullPrompt = prompt + (_IMAGE_STYLE_SUFFIXES[style] || '');
+  const hfKey = process.env.HUGGINGFACE_API_KEY;
+
+  // ── Try HuggingFace (free, no OpenAI key needed) ──────────────────────────
+  if (hfKey) {
+    let imageBuffer = null;
+    let usedModel = null;
+    let lastError = null;
+
+    for (const model of _HF_IMAGE_MODELS) {
+      try {
+        const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${hfKey}`, 'Content-Type': 'application/json', 'X-Use-Cache': 'false' },
+          body: JSON.stringify({ inputs: fullPrompt, parameters: { num_inference_steps: 4 } }),
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (!res.ok) {
+          lastError = res.status === 503 ? 'model_loading' : `http_${res.status}`;
+          if (res.status === 401 || res.status === 403) { lastError = 'api_key_invalid'; break; }
+          const et = await res.text().catch(() => '');
+          if (et.toLowerCase().includes('safety') || et.toLowerCase().includes('filter')) { lastError = 'safety_filter'; break; }
+          continue;
+        }
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.startsWith('image/')) { lastError = `bad_content_type`; continue; }
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.length < 1000) { lastError = 'empty_image'; continue; }
+        imageBuffer = buf; usedModel = model; break;
+      } catch (err) { lastError = err.message; continue; }
+    }
+
+    if (imageBuffer) {
+      const { AttachmentBuilder } = await import("discord.js");
+      const att = new AttachmentBuilder(imageBuffer, { name: 'imagine.png' });
+      const embed = new EmbedBuilder()
+        .setTitle('🎨 AI Image Generated')
+        .setDescription(`**Prompt:** ${prompt}${style !== 'default' ? `\n**Style:** ${style}` : ''}`)
+        .setImage('attachment://imagine.png')
+        .setColor(0x7289da)
+        .setFooter({ text: `Model: ${usedModel?.split('/')[1] || usedModel} • Powered by HuggingFace` });
+      return interaction.editReply({ content: null, embeds: [embed], files: [att] });
+    }
+
+    // HF failed — try OpenAI fallback below if key available
+    if (lastError === 'api_key_invalid') {
+      return interaction.editReply({
+        content: null,
+        embeds: [new EmbedBuilder().setTitle('❌ HuggingFace Key Invalid').setColor(0xff4444)
+          .setDescription('The `HUGGINGFACE_API_KEY` is invalid or expired. Contact the bot owner.')]
+      });
+    }
+    if (lastError === 'safety_filter') {
+      return interaction.editReply({
+        content: null,
+        embeds: [new EmbedBuilder().setTitle('🛡️ Prompt Blocked').setColor(0xff8800)
+          .setDescription('Your prompt was blocked by the safety filter. Try rephrasing it.')]
+      });
+    }
+    if (lastError === 'model_loading') {
+      return interaction.editReply({
+        content: null,
+        embeds: [new EmbedBuilder().setTitle('🕐 Models Loading').setColor(0xff8800)
+          .setDescription('All models are warming up on HuggingFace free tier — **try again in 30 seconds**.')]
+      });
+    }
+    // fall through to OpenAI
+  }
+
+  // ── Try OpenAI DALL-E (requires linked key) ───────────────────────────────
+  let resolved;
+  try { resolved = await resolveAiKey(guildId, userId); }
+  catch { resolved = { provider: null, apiKey: null }; }
+
   const imageApiKey = resolved.provider === "openai" ? resolved.apiKey : null;
   if (!imageApiKey) {
-    return interaction.reply({
-      content: "🎨 Image generation requires an OpenAI key. Link yours with `/ai token link openai`.",
-      ephemeral: true,
+    return interaction.editReply({
+      content: null,
+      embeds: [new EmbedBuilder()
+        .setTitle('🎨 Image Generation — Setup Required')
+        .setColor(0xff8800)
+        .setDescription([
+          hfKey ? '⚠️ HuggingFace generation failed. Add an OpenAI key as a backup:' : 'Image generation requires either:',
+          '',
+          '**Option A — Free (HuggingFace):**',
+          '1. Get a free token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)',
+          '2. Add `HUGGINGFACE_API_KEY=hf_...` to your `.env` and restart',
+          '',
+          '**Option B — OpenAI DALL-E:**',
+          '• Link your key with `/ai token link openai`',
+        ].join('\n'))
+      ]
     });
   }
-
-  await interaction.deferReply({ ephemeral: false });
 
   let imageUrl;
   try {
     const r = await request("https://api.openai.com/v1/images/generations", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${imageApiKey}`,
-      },
-      body: JSON.stringify({ prompt, model: "dall-e-3", n: 1, size: "1024x1024" }),
-      bodyTimeout:   30_000,
-      headersTimeout: 30_000,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${imageApiKey}` },
+      body: JSON.stringify({ prompt: fullPrompt, model: "dall-e-3", n: 1, size: "1024x1024" }),
+      bodyTimeout: 30_000, headersTimeout: 30_000,
     });
     const body = await r.body.json().catch(() => null);
     if (r.statusCode !== 200 || !body?.data?.[0]?.url) {
@@ -396,18 +573,17 @@ async function handleImage(interaction) {
     }
     imageUrl = body.data[0].url;
   } catch (err) {
-    await interaction.editReply({ content: `❌ Image generation failed: \`${err?.message?.slice(0, 100)}\`` });
-    return;
+    return interaction.editReply({ content: null, content: `❌ Image generation failed: \`${err?.message?.slice(0, 100)}\`` });
   }
 
   const embed = new EmbedBuilder()
     .setTitle("🎨 Generated Image")
-    .setDescription(prompt.length > 200 ? prompt.slice(0, 197) + "…" : prompt)
+    .setDescription(`${prompt.length > 200 ? prompt.slice(0, 197) + "…" : prompt}${style !== 'default' ? `\n**Style:** ${style}` : ''}`)
     .setImage(imageUrl)
     .setColor(0x00b4d8)
     .setFooter({ text: "Powered by OpenAI DALL-E" });
 
-  await interaction.editReply({ embeds: [embed] });
+  return interaction.editReply({ content: null, embeds: [embed] });
 }
 
 // ── /ai set-provider ──────────────────────────────────────────────────────────
@@ -724,7 +900,7 @@ async function handleHelp(interaction) {
         name:  "Commands",
         value: [
           "`/ai chat [message]` — Chat with the AI",
-          "`/ai image [prompt]` — Generate an image (OpenAI only)",
+          "`/ai image [prompt]` — Generate an image (free via HuggingFace FLUX or linked OpenAI)",
           "`/ai token link` — Link your personal API key",
           "`/ai token unlink` — Remove your linked key",
           "`/ai set-provider` — (Admin) Set guild default provider",

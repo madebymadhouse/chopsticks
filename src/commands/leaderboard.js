@@ -11,6 +11,7 @@ function rankLines(rows, fmt) {
 export const meta = {
   category: "economy",
   guildOnly: true,
+  deployGlobal: false, // merged into /stats leaderboard
 };
 
 export default {

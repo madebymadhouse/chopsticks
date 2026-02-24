@@ -10,6 +10,7 @@ export const meta = {
   name: 'compliment',
   description: 'Compliment someone with AI',
   category: 'fun',
+  deployGlobal: false, // merged into /social compliment
 };
 
 export const data = new SlashCommandBuilder()

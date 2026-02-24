@@ -49,6 +49,7 @@ async function sendViaAgent({ agent, guildId, channelId, actorUserId, content, e
 export const meta = {
   category: "social",
   guildOnly: false,
+  deployGlobal: false, // use /ai chat style:agent instead
 };
 
 export default {

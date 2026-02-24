@@ -1684,6 +1684,7 @@ async function handleApprove(interaction) {
     await storageLayer.updateAgentBotStatus(agentId, 'active', userId);
     await evaluatePoolBadges(pool.pool_id).catch(() => {});
 
+    const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${agent.client_id}&permissions=277293639680&scope=bot%20applications.commands`;
     await interaction.editReply({ embeds: [
       new EmbedBuilder()
         .setTitle('✅ Contribution Approved')
@@ -1692,9 +1693,10 @@ async function handleApprove(interaction) {
         .addFields(
           { name: 'Agent ID', value: `\`${agentId}\``, inline: true },
           { name: 'Pool', value: `\`${agent.pool_id}\``, inline: true },
-          { name: 'Status', value: '🟢 Active', inline: true }
+          { name: 'Status', value: '🟢 Active', inline: true },
+          { name: '🔗 Invite to your server', value: `[Click here to invite ${agent.tag}](${inviteUrl})\n\nAgent must join your server before it can receive tasks.` }
         )
-        .setFooter({ text: 'AgentRunner will start this agent automatically' })
+        .setFooter({ text: 'AgentRunner will start this agent — then invite it to go live' })
         .setTimestamp()
     ] });
   } catch (err) {

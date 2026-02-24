@@ -874,6 +874,8 @@ export const data = new SlashCommandBuilder()
   .setDescription("Deploy and manage Chopsticks agents")
   .addSubcommand(s => s.setName("status").setDescription("Status overview for this guild"))
   .addSubcommand(s => s.setName("manifest").setDescription("List every connected agent and identity"))
+  .addSubcommand(s => s.setName("diagnose").setDescription("Diagnose why an agent may not be coming online")
+    .addStringOption(o => o.setName("agent_id").setDescription("Agent ID to diagnose (optional — diagnoses all if omitted)").setRequired(false)))
   .addSubcommand(s =>
     s
       .setName("deploy")
@@ -1229,6 +1231,62 @@ export async function execute(interaction) {
     } catch (error) {
       botLogger.error({ err: error }, "[agents:manifest] Error");
       await replyError(interaction, "Manifest Failed", `Could not fetch agent manifest.\n${error.message}`);
+    }
+    return;
+  }
+
+  if (sub === "diagnose") {
+    try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const targetAgentId = interaction.options.getString("agent_id", false);
+      const allAgentsRaw = await fetchAgentBots();
+      const liveAgents = await mgr.listAgents();
+      const liveById = new Map(liveAgents.map(a => [a.agentId, a]));
+
+      const agents = targetAgentId
+        ? allAgentsRaw.filter(a => a.agent_id === targetAgentId)
+        : allAgentsRaw.slice(0, 10);
+
+      if (!agents.length) {
+        await interaction.editReply({ content: `❌ No agents found${targetAgentId ? ` matching \`${targetAgentId}\`` : ""}.` });
+        return;
+      }
+
+      const tokenKeyOk = process.env.AGENT_TOKEN_KEY && process.env.AGENT_TOKEN_KEY.length === 32;
+      const runnerSecretOk = Boolean(process.env.AGENT_RUNNER_SECRET);
+
+      const lines = [`**Environment**\n🔑 AGENT_TOKEN_KEY: ${tokenKeyOk ? "✅ 32-byte key found" : "❌ Missing or wrong length — tokens cannot decrypt"}\n🔒 AGENT_RUNNER_SECRET: ${runnerSecretOk ? "✅ Set" : "⚠️ Not set (runner hello may fail)"}\n`];
+
+      for (const a of agents) {
+        const live = liveById.get(a.agent_id);
+        const inGuild = live?.guildIds?.includes?.(guildId);
+        const phase =
+          a.status === 'pending' ? "⏳ Pending — awaiting pool owner approval" :
+          a.status === 'corrupt' ? `🔴 Corrupt — token failed to decrypt (AGENT_TOKEN_KEY mismatch, enc_version=${a.enc_version ?? "?"})\n   → Fix: re-add token with \`/agents add_token\`` :
+          a.status === 'suspended' ? "🟠 Suspended by pool owner" :
+          a.status === 'revoked' ? "🔴 Revoked" :
+          !live ? "⚪ Active in DB — agentRunner hasn't started it yet (check runner process)" :
+          !live.ready ? "🔵 Runner started — waiting for hello from agent client" :
+          !inGuild ? `🟡 Online — NOT in this guild\n   → [Invite link](${buildMainInvite(a.client_id)}) — click to add agent to this server` :
+          `🟢 Fully online and in this guild`;
+
+        lines.push(`**\`${a.agent_id}\`** — ${a.tag || "no tag"}\n${phase}`);
+      }
+
+      if (!targetAgentId && allAgentsRaw.length > 10) {
+        lines.push(`\n_+${allAgentsRaw.length - 10} more — use \`agent_id\` option to diagnose specific agents._`);
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle("🩺 Agent Diagnostics")
+        .setDescription(lines.join("\n\n").slice(0, 4096))
+        .setColor(Colors.INFO)
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      botLogger.error({ err: error }, "[agents:diagnose] Error");
+      await replyError(interaction, "Diagnose Failed", error.message || "Unknown error.");
     }
     return;
   }
@@ -2066,6 +2124,26 @@ export async function execute(interaction) {
         // Add as pending (requires manual activation by pool owner)
         const result = await insertAgentBot(agentId, token, clientId, botUser.tag, poolId, userId, 'pending');
         
+        // DM the pool owner to notify them of the pending contribution
+        try {
+          const ownerUser = await interaction.client.users.fetch(pool.owner_user_id);
+          if (ownerUser && ownerUser.id !== userId) {
+            await ownerUser.send({
+              embeds: [{
+                title: '📥 New Agent Contribution',
+                description: `**${interaction.user.tag}** submitted agent **${botUser.tag}** to your pool **${pool.name}**.`,
+                color: 0xf0a500,
+                fields: [
+                  { name: 'Agent ID', value: `\`${agentId}\``, inline: true },
+                  { name: 'Pool', value: `\`${poolId}\``, inline: true },
+                  { name: 'Action', value: 'Run `/pools approve agent_id:' + agentId + '` to activate it.', inline: false }
+                ],
+                timestamp: new Date()
+              }]
+            });
+          }
+        } catch { /* DM may fail if owner has DMs closed — ignore */ }
+
         const operationMsg = result.operation === 'inserted' ? 'submitted' : 'updated';
         await interaction.editReply({
           embeds: [{
@@ -2090,6 +2168,7 @@ export async function execute(interaction) {
         const result = await insertAgentBot(agentId, token, clientId, botUser.tag, poolId, userId);
         const operationMsg = result.operation === 'inserted' ? 'added' : 'updated';
         
+        const inviteUrl = buildMainInvite(clientId);
         await interaction.editReply({
           embeds: [{
             title: `Agent ${operationMsg}`,
@@ -2099,9 +2178,9 @@ export async function execute(interaction) {
               { name: 'Agent ID', value: `\`${agentId}\``, inline: true },
               { name: 'Pool', value: `\`${poolId}\``, inline: true },
               { name: 'Status', value: 'active', inline: true },
-              { 
-                name: 'Deployment',
-                value: 'Use /agents deploy to invite to guilds.'
+              {
+                name: '🔗 Invite to this server',
+                value: `[Click here to add ${botUser.tag} to this server](${inviteUrl})\n\nAgentRunner will start the bot — click the link to let it join your guild.`
               }
             ],
             timestamp: new Date()

@@ -12,6 +12,7 @@ import { withTimeout } from "../utils/interactionTimeout.js";
 export const meta = {
   category: "profile",
   guildOnly: false,
+  deployGlobal: false, // use /card profile instead
 };
 
 export const data = new SlashCommandBuilder()
