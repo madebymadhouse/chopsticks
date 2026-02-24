@@ -2,8 +2,9 @@
 // Cycle P6 — Animal image pack + anime reaction GIFs (all free, no-key APIs)
 
 import { EmbedBuilder } from "discord.js";
+import { httpFetch } from "../../utils/httpFetch.js";
 
-const USER_AGENT = "Chopsticks-Discord-Bot/1.6";
+const USER_AGENT = "Chopsticks-Discord-Bot/2.0";
 const RATE_MS = 3000;
 const userCooldowns = new Map(); // userId → timestamp
 
@@ -14,24 +15,24 @@ function checkCool(userId) {
   return 0;
 }
 
-async function fetchJson(url, opts = {}) {
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(8_000), ...opts });
+async function fetchJson(service, url) {
+  const res = await httpFetch(service, url, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 // ── Animal endpoints ──────────────────────────────────────────────────────────
 
-async function getCat()      { const d = await fetchJson("https://api.thecatapi.com/v1/images/search"); return { url: d[0]?.url, source: "thecatapi.com" }; }
-async function getDog()      { const d = await fetchJson("https://dog.ceo/api/breeds/image/random"); return { url: d.message, source: "dog.ceo" }; }
-async function getFox()      { const d = await fetchJson("https://randomfox.ca/floof/"); return { url: d.image, source: "randomfox.ca" }; }
-async function getDuck()     { const d = await fetchJson("https://random-d.uk/api/random"); return { url: d.url, source: "random-d.uk" }; }
-async function getShibe()    { const d = await fetchJson("http://shibe.online/api/shibes?count=1"); return { url: d[0], source: "shibe.online" }; }
-async function getBird()     { const d = await fetchJson("http://shibe.online/api/birds?count=1"); return { url: d[0], source: "shibe.online" }; }
+async function getCat()      { const d = await fetchJson("thecatapi", "https://api.thecatapi.com/v1/images/search"); return { url: d[0]?.url, source: "thecatapi.com" }; }
+async function getDog()      { const d = await fetchJson("dogceo", "https://dog.ceo/api/breeds/image/random"); return { url: d.message, source: "dog.ceo" }; }
+async function getFox()      { const d = await fetchJson("randomfox", "https://randomfox.ca/floof/"); return { url: d.image, source: "randomfox.ca" }; }
+async function getDuck()     { const d = await fetchJson("randomduck", "https://random-d.uk/api/random"); return { url: d.url, source: "random-d.uk" }; }
+async function getShibe()    { const d = await fetchJson("shibeOnline", "http://shibe.online/api/shibes?count=1"); return { url: d[0], source: "shibe.online" }; }
+async function getBird()     { const d = await fetchJson("shibeOnline", "http://shibe.online/api/birds?count=1"); return { url: d[0], source: "shibe.online" }; }
 
 // nekos.best — anime reaction GIFs
 async function getNekos(type) {
-  const d = await fetchJson(`https://nekos.best/api/v2/${type}`);
+  const d = await fetchJson("nekosBest", `https://nekos.best/api/v2/${type}`);
   return { url: d.results?.[0]?.url, anime_name: d.results?.[0]?.anime_name, source: "nekos.best" };
 }
 

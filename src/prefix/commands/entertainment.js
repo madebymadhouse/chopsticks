@@ -2,11 +2,12 @@
 // Cycle P7 — Pop Culture & Entertainment Pack (all free/no-key APIs)
 
 import { EmbedBuilder, Colors } from "discord.js";
+import { httpFetch } from "../../utils/httpFetch.js";
 
-const USER_AGENT = "Chopsticks-Discord-Bot/1.6";
+const USER_AGENT = "Chopsticks-Discord-Bot/2.0";
 
-async function fetchJson(url) {
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(8_000) });
+async function fetchJson(service, url) {
+  const res = await httpFetch(service, url, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -21,7 +22,7 @@ export default [
       const query = args[0]?.toLowerCase().trim();
       if (!query) return message.reply("Usage: `!pokemon <name or id>` — e.g. `!pokemon pikachu`");
       try {
-        const d = await fetchJson(`https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(query)}`);
+        const d = await fetchJson("pokeapi", `https://pokeapi.co/api/v2/pokemon/${encodeURIComponent(query)}`);
         const types = d.types.map(t => t.type.name).join(", ");
         const hp = d.stats.find(s => s.stat.name === "hp")?.base_stat || "?";
         const atk = d.stats.find(s => s.stat.name === "attack")?.base_stat || "?";
@@ -56,7 +57,7 @@ export default [
       const query = args.join(" ").trim();
       if (!query) return message.reply("Usage: `!rickmorty <character name>` — e.g. `!rickmorty Rick`");
       try {
-        const d = await fetchJson(`https://rickandmortyapi.com/api/character/?name=${encodeURIComponent(query)}`);
+        const d = await fetchJson("rickmortyapi", `https://rickandmortyapi.com/api/character/?name=${encodeURIComponent(query)}`);
         const char = d.results?.[0];
         if (!char) return message.reply(`❌ No character found for \`${query}\`.`);
         const embed = new EmbedBuilder()
@@ -87,7 +88,7 @@ export default [
       const query = args.join(" ").trim();
       if (!query) return message.reply("Usage: `!show <title>` — e.g. `!show Breaking Bad`");
       try {
-        const results = await fetchJson(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(query)}`);
+        const results = await fetchJson("tvmaze", `https://api.tvmaze.com/search/shows?q=${encodeURIComponent(query)}`);
         const show = results?.[0]?.show;
         if (!show) return message.reply(`❌ No show found for \`${query}\`.`);
         const embed = new EmbedBuilder()
@@ -121,7 +122,7 @@ export default [
         ? `https://www.thecocktaildb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`
         : `https://www.thecocktaildb.com/api/json/v1/1/random.php`;
       try {
-        const d = await fetchJson(url);
+        const d = await fetchJson("cocktaildb", url);
         const drink = d.drinks?.[0];
         if (!drink) return message.reply(`❌ No cocktail found for \`${query}\`.`);
         const ingredients = [];
@@ -160,9 +161,9 @@ export default [
         ? `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`
         : `https://www.themealdb.com/api/json/v1/1/random.php`;
       try {
-        const d = await fetchJson(url);
+        const d = await fetchJson("mealdb", url);
         const meal = d.meals?.[0];
-        if (!meal) return message.reply(`❌ No meal found for \`${query}\`.`);
+        if (!meal) return message.reply(`❌ No meal found for \`${query || "random"}\`.`);
         const embed = new EmbedBuilder()
           .setTitle(`🍽️ ${meal.strMeal}`)
           .setColor(0xED4245)
@@ -188,7 +189,7 @@ export default [
     rateLimit: 3000,
     async execute(message) {
       try {
-        const d = await fetchJson("https://api.kanye.rest/");
+        const d = await fetchJson("kanyeRest", "https://api.kanye.rest/");
         const embed = new EmbedBuilder()
           .setTitle("🎤 Kanye Says...")
           .setDescription(`*"${d.quote}"*`)
@@ -208,7 +209,7 @@ export default [
     rateLimit: 3000,
     async execute(message) {
       try {
-        const d = await fetchJson("https://api.chucknorris.io/jokes/random");
+        const d = await fetchJson("chuckNorris", "https://api.chucknorris.io/jokes/random");
         const embed = new EmbedBuilder()
           .setTitle("💪 Chuck Norris Fact")
           .setDescription(d.value)
