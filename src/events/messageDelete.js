@@ -1,10 +1,14 @@
 // src/events/messageDelete.js
 import { EmbedBuilder, AuditLogEvent } from "discord.js";
 import { dispatchAuditLog } from "../tools/auditLog/dispatcher.js";
+import { cacheDelete } from "../commands/snipe.js";
 
 export default {
   name: "messageDelete",
   async execute(message) {
+    // Snipe cache (before guild check — captures DM deletions too, but we guard inside cacheDelete)
+    if (!message.author?.bot) cacheDelete(message);
+
     if (!message.guild || message.author?.bot) return;
     const content = message.content ?? "(no text content)";
 
@@ -19,7 +23,6 @@ export default {
       .setTimestamp()
       .setFooter({ text: `User ID: ${message.author?.id ?? "?"}` });
 
-    // Try to fetch executor from audit log (best-effort)
     try {
       await new Promise(r => setTimeout(r, 800));
       const audit = await message.guild.fetchAuditLogs({ type: AuditLogEvent.MessageDelete, limit: 1 });

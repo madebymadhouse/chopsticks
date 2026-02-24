@@ -1,10 +1,15 @@
 // src/events/messageUpdate.js
 import { EmbedBuilder } from "discord.js";
 import { dispatchAuditLog } from "../tools/auditLog/dispatcher.js";
+import { cacheEdit } from "../commands/snipe.js";
 
 export default {
   name: "messageUpdate",
   async execute(oldMessage, newMessage) {
+    if (!newMessage.author?.bot && oldMessage.content !== newMessage.content) {
+      cacheEdit(oldMessage, newMessage);
+    }
+
     if (!newMessage.guild || newMessage.author?.bot) return;
     if (oldMessage.content === newMessage.content) return;
 

@@ -857,6 +857,22 @@ client.on(Events.MessageCreate, async message => {
     })();
   }
 
+  // ── Auto-responders ───────────────────────────────────────────────────────
+  if (message.guildId) {
+    (async () => {
+      const { processAutoresponders } = await import("./commands/autoresponder.js");
+      await processAutoresponders(message);
+    })().catch(() => null);
+  }
+
+  // ── Keyword highlights ────────────────────────────────────────────────────
+  if (message.guildId) {
+    (async () => {
+      const { processHighlights } = await import("./commands/highlight.js");
+      await processHighlights(message);
+    })().catch(() => null);
+  }
+
     void runGuildEventAutomations({
       guild: message.guild,
       eventKey: "message_create",
@@ -1173,6 +1189,12 @@ client.on(Events.InteractionCreate, async interaction => {
         await handleVerifyButton(interaction);
         return;
       }
+      // Marriage proposal buttons
+      if (interaction.customId.startsWith("chopsticks:marry:")) {
+        const { handleMarryButton } = await import("./commands/marry.js");
+        await handleMarryButton(interaction);
+        return;
+      }
       // Role menu buttons
       {
         const { handleRoleMenuButton } = await import("./tools/roles/handler.js");
@@ -1290,6 +1312,33 @@ client.on(Events.InteractionCreate, async interaction => {
       await replyInteraction(interaction, { content: msg });
     } catch {}
     return;
+  }
+
+  // Feature gate: check if the command's category is enabled in this server's theme
+  if (interaction.guildId) {
+    try {
+      const CATEGORY_FEATURE_MAP = {
+        economy: "economy", bank: "economy", shop: "economy", casino: "economy",
+        music: "music",
+        ai: "ai", assistant: "ai",
+        levels: "leveling", xp: "leveling", leaderboard: "leveling",
+        voice: "voicemaster",
+        tickets: "tickets",
+        mod: "moderation", moderation: "moderation",
+        fun: "fun", games: "fun",
+        social: "social",
+        notify: "notifications",
+      };
+      const feat = CATEGORY_FEATURE_MAP[command.meta?.category] ?? CATEGORY_FEATURE_MAP[commandName];
+      if (feat) {
+        const { getTheme } = await import("./utils/theme.js");
+        const theme = await getTheme(interaction.guildId);
+        if (theme.features[feat] === false) {
+          await replyInteraction(interaction, { content: `> The **${feat}** module is disabled in this server.` });
+          return;
+        }
+      }
+    } catch { /* feature gate errors must not block commands */ }
   }
 
   try {

@@ -1,23 +1,24 @@
 import { AttachmentBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 import { renderEmbedCardPng } from "../render/svgCard.js";
 import { botLogger } from "./modernLogger.js";
+import { Branding } from "../config/branding.js";
 
-// Canonical UI color palette (from color_palette.json)
+// Canonical UI color palette — values sourced from Branding config (overridable via env)
 export const Colors = {
-  Success: 0x57F287,
-  Error:   0xED4245,
-  Warning: 0xFEE75C,
-  Info:    0x5865F2,
-  Neutral: 0x99AAB5,
-  Premium: 0xFF73FA,
-  Music:   0x1DB954,
+  Success: Branding.colors.success,
+  Error:   Branding.colors.error,
+  Warning: Branding.colors.warning,
+  Info:    Branding.colors.info,
+  Neutral: Branding.colors.neutral,
+  Premium: Branding.colors.premium,
+  Music:   Branding.colors.music,
   Danger:  0xFF0000,
   // Legacy keys kept for backward compatibility
-  PRIMARY: 0x2563EB,
-  SUCCESS: 0x16A34A,
-  ERROR:   0xDC2626,
-  WARNING: 0xD97706,
-  INFO:    0x0284C7,
+  PRIMARY: Branding.colors.primary,
+  SUCCESS: Branding.colors.success,
+  ERROR:   Branding.colors.error,
+  WARNING: Branding.colors.warning,
+  INFO:    Branding.colors.info,
 };
 
 export function buildEmbed(title, description, color = Colors.PRIMARY) {
