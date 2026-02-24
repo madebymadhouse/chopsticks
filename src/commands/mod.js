@@ -5,6 +5,8 @@ import { dispatchModerationLog } from "../utils/modLogs.js";
 import { addWarning, listWarnings, clearWarnings } from "../utils/moderation.js";
 import { replyError, Colors } from "../utils/discordOutput.js";
 import { sanitizeString } from "../utils/validation.js";
+import { createCase } from "../tools/modcases/store.js";
+import { checkEscalation } from "../tools/modcases/escalation.js";
 
 export const meta = {
   guildOnly: true,
@@ -397,9 +399,10 @@ export async function execute(interaction) {
     );
     try {
       await member.kick(reason);
+      const kickCase = await createCase(interaction.guildId, { type: "kick", userId: user.id, modId: interaction.user.id, reason }).catch(() => null);
       await replyModSuccess(interaction, {
         title: "User Kicked",
-        summary: `Successfully kicked **${user.tag}**.`,
+        summary: `Successfully kicked **${user.tag}**.${kickCase ? ` Case #${kickCase.id}.` : ""}`,
         fields: [
           { name: "User", value: `${user.tag} (${user.id})` },
           { name: "DM Notify", value: dmStatus, inline: true },
@@ -467,6 +470,9 @@ export async function execute(interaction) {
     const ms = minutes === 0 ? null : minutes * 60 * 1000;
     try {
       await member.timeout(ms, reason);
+      if (minutes > 0) {
+        await createCase(interaction.guildId, { type: "mute", userId: user.id, modId: interaction.user.id, reason, duration: ms }).catch(() => null);
+      }
       await replyModSuccess(interaction, {
         title: minutes === 0 ? "Timeout Cleared" : "User Timed Out",
         summary: minutes === 0
@@ -519,9 +525,19 @@ export async function execute(interaction) {
       return;
     }
     const list = await addWarning(interaction.guildId, user.id, interaction.user.id, reason);
+
+    // Create mod case
+    const modCase = await createCase(interaction.guildId, {
+      type: "warn", userId: user.id, modId: interaction.user.id, reason,
+    }).catch(() => null);
+
+    // Check escalation
+    const escalation = await checkEscalation(interaction.guildId, user.id).catch(() => null);
+    const escalationNote = escalation ? `\n> Escalation triggered: **${escalation.action}** — execute manually or enable auto-escalation.` : "";
+
     await replyModSuccess(interaction, {
       title: "User Warned",
-      summary: `Warning recorded for **${user.tag}**.`,
+      summary: `Warning recorded for **${user.tag}**.${modCase ? ` Case #${modCase.id}.` : ""}`,
       fields: [
         { name: "User", value: `${user.tag} (${user.id})` },
         { name: "Total Warnings", value: String(list.length), inline: true },

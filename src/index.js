@@ -101,7 +101,8 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildIntegrations
+    GatewayIntentBits.GuildIntegrations,
+    GatewayIntentBits.GuildModeration,
   ],
   partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User]
 });
@@ -606,7 +607,35 @@ client.once(Events.ClientReady, async () => {
   process.once("SIGINT", () => shutdown("SIGINT"));
   process.once("SIGTERM", () => shutdown("SIGTERM"));
 
-  /* ===================== PLAYLIST DROP THREAD CLEANUP ===================== */
+  /* ===================== TEMP ROLE EXPIRY LOOP ===================== */
+  setInterval(async () => {
+    try {
+      const { getExpiredTempRoles, removeTempRole } = await import("./tools/roles/menus.js");
+      for (const guild of client.guilds.cache.values()) {
+        try {
+          const expired = await getExpiredTempRoles(guild.id);
+          for (const record of expired) {
+            const member = await guild.members.fetch(record.userId).catch(() => null);
+            if (member && member.roles.cache.has(record.roleId)) {
+              await member.roles.remove(record.roleId, "Temp role expired").catch(() => null);
+            }
+            await removeTempRole(guild.id, record.userId, record.roleId);
+          }
+        } catch { /* per-guild error must not stop others */ }
+      }
+    } catch { /* expiry loop must never crash */ }
+  }, 60_000);
+
+  /* ===================== STREAM NOTIFICATION POLLERS ===================== */
+  {
+    const { pollTwitchNotifications } = await import("./tools/notify/twitch.js");
+    const { pollYouTubeNotifications } = await import("./tools/notify/youtube.js");
+    // Twitch: poll every 5 minutes
+    setInterval(() => pollTwitchNotifications(client).catch(() => null), 5 * 60_000);
+    // YouTube: poll every 15 minutes
+    setInterval(() => pollYouTubeNotifications(client).catch(() => null), 15 * 60_000);
+  }
+
   // When a playlist drop thread is deleted externally, clean up the channelBinding
   client.on(Events.ThreadDelete, async thread => {
     try {
@@ -758,7 +787,76 @@ client.on(Events.MessageCreate, async message => {
     } catch {}
   }
 
+  // ── AutoMod content filtering ─────────────────────────────────────────────
+  if (message.guildId && message.guild) {
+    try {
+      const { processAutomod, enforceAutomod } = await import("./tools/automod/engine.js");
+      const hit = await processAutomod(message);
+      if (hit) {
+        await enforceAutomod(message, hit);
+        return; // stop further processing for this message
+      }
+    } catch { /* automod must never crash the bot */ }
+  }
+
+  // ── Analytics: count messages per day ────────────────────────────────────
   if (message.guildId) {
+    (async () => {
+      try {
+        const { loadGuildData: lgd, saveGuildData: sgd } = await import("./utils/storage.js");
+        const gd = await lgd(message.guildId);
+        const key = new Date().toISOString().slice(0, 10);
+        gd.analytics ??= {};
+        gd.analytics.messages ??= {};
+        gd.analytics.messages[key] ??= { total: 0 };
+        gd.analytics.messages[key].total++;
+        // Prune to 30 days
+        const days = Object.keys(gd.analytics.messages).sort();
+        if (days.length > 30) delete gd.analytics.messages[days[0]];
+        await sgd(message.guildId, gd);
+      } catch {}
+    })();
+  }
+
+  // ── Auto-thread & Auto-publish ────────────────────────────────────────────
+  if (message.guildId && message.guild && !message.system) {
+    (async () => {
+      try {
+        const gd = await loadGuildData(message.guildId);
+        const threads = gd?.threads;
+        if (threads?.autoThread?.some(e => e.channelId === message.channelId)) {
+          const entry = threads.autoThread.find(e => e.channelId === message.channelId);
+          const threadName = entry.prefix
+            ? `${entry.prefix} — ${message.author.username}`
+            : (message.content.slice(0, 50) || `Thread by ${message.author.username}`);
+          await message.startThread({ name: threadName, autoArchiveDuration: 1440 }).catch(() => null);
+        }
+        if (threads?.autoPublish?.includes(message.channelId)) {
+          if (message.crosspostable) await message.crosspost().catch(() => null);
+        }
+      } catch {}
+    })();
+  }
+
+  // ── Custom commands ───────────────────────────────────────────────────────
+  if (message.guildId && message.content) {
+    (async () => {
+      try {
+        const gd = await loadGuildData(message.guildId);
+        const prefix = gd?.prefix ?? "!";
+        if (message.content.startsWith(prefix)) {
+          const [cmdName, ...args] = message.content.slice(prefix.length).trim().split(/\s+/);
+          if (cmdName) {
+            const { getCustomCmd } = await import("./tools/customcmd/store.js");
+            const { executeCustomCmd } = await import("./tools/customcmd/executor.js");
+            const cmd = await getCustomCmd(message.guildId, cmdName.toLowerCase());
+            if (cmd) await executeCustomCmd(message, cmd, args);
+          }
+        }
+      } catch {}
+    })();
+  }
+
     void runGuildEventAutomations({
       guild: message.guild,
       eventKey: "message_create",
@@ -1036,6 +1134,11 @@ client.on(Events.InteractionCreate, async interaction => {
       if (await handleMusicSelect(interaction)) return;
       if (await handleCommandsSelect(interaction)) return;
       if (await handleVoiceSelect(interaction)) return;
+      // Role menu select
+      {
+        const { handleRoleMenuSelect } = await import("./tools/roles/handler.js");
+        if (await handleRoleMenuSelect(interaction)) return;
+      }
     } catch (err) {
       botLogger.error({ err }, "[select] interaction handler threw");
       try {
@@ -1064,6 +1167,17 @@ client.on(Events.InteractionCreate, async interaction => {
       if (await handleVoiceButton(interaction)) return;
       if (await handlePurgeButton(interaction)) return;
       if (await handleTutorialsButton(interaction)) return;
+      // Verification system button
+      if (interaction.customId === "chopsticks:verify:button") {
+        const { handleVerifyButton } = await import("./tools/verify/handler.js");
+        await handleVerifyButton(interaction);
+        return;
+      }
+      // Role menu buttons
+      {
+        const { handleRoleMenuButton } = await import("./tools/roles/handler.js");
+        if (await handleRoleMenuButton(interaction)) return;
+      }
     } catch (err) {
       botLogger.error({ err }, "[button] interaction handler threw");
       try {
@@ -1195,6 +1309,17 @@ client.on(Events.InteractionCreate, async interaction => {
     // Per-guild commands_used stat (fire-and-forget)
     if (interaction.guildId) {
       void import('./game/activityStats.js').then(m => m.addStat(interaction.user.id, interaction.guildId, 'commands_used', 1)).catch(() => {});
+      // Analytics: track command uses
+      (async () => {
+        try {
+          const { loadGuildData: lgd2, saveGuildData: sgd2 } = await import("./utils/storage.js");
+          const g2 = await lgd2(interaction.guildId);
+          g2.analytics ??= {};
+          g2.analytics.commandUses ??= {};
+          g2.analytics.commandUses[commandName] = (g2.analytics.commandUses[commandName] ?? 0) + 1;
+          await sgd2(interaction.guildId, g2);
+        } catch {}
+      })();
     }
     commandLog.info({ duration }, "Command executed successfully");
     

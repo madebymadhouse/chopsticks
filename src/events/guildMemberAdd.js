@@ -84,5 +84,59 @@ export default {
       guildId,
       memberCount: member.guild.memberCount || 0,
     });
+
+    // Verification system — assign quarantine role and optionally DM
+    try {
+      const { getVerifyConfig } = await import("../tools/verify/setup.js");
+      const { verify } = await getVerifyConfig(guildId);
+      if (verify?.enabled && verify.quarantineRoleId) {
+        const quarRole = member.guild.roles.cache.get(verify.quarantineRoleId)
+          ?? await member.guild.roles.fetch(verify.quarantineRoleId).catch(() => null);
+        if (quarRole) await member.roles.add(quarRole, "Verification — quarantine role").catch(() => null);
+
+        // DM on join if configured
+        if (verify.dmMessage) {
+          await member.user.send(verify.dmMessage).catch(() => null);
+        }
+
+        // Schedule auto-kick for unverified after timeoutHours
+        if (verify.timeoutHours > 0) {
+          const ms = verify.timeoutHours * 60 * 60 * 1000;
+          setTimeout(async () => {
+            try {
+              const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
+              if (!freshMember) return;
+              const { gd: freshGd } = await getVerifyConfig(guildId);
+              const freshVerify = freshGd.verify;
+              if (!freshVerify?.enabled) return;
+              // If still has quarantine role → still unverified → kick
+              if (freshMember.roles.cache.has(freshVerify.quarantineRoleId)) {
+                await freshMember.kick("Verification timeout — did not verify in time").catch(() => null);
+              }
+            } catch { /* best-effort */ }
+          }, ms);
+        }
+      }
+    } catch { /* verify system must not break member add */ }
+
+    // Analytics: track joins per day + update member count VC
+    (async () => {
+      try {
+        const { loadGuildData, saveGuildData } = await import("../utils/storage.js");
+        const gd = await loadGuildData(member.guild.id);
+        const key = new Date().toISOString().slice(0, 10);
+        gd.analytics ??= {};
+        gd.analytics.memberJoins ??= {};
+        gd.analytics.memberJoins[key] = (gd.analytics.memberJoins[key] ?? 0) + 1;
+        const days = Object.keys(gd.analytics.memberJoins).sort();
+        if (days.length > 30) delete gd.analytics.memberJoins[days[0]];
+        // Member count VC
+        if (gd.memberCountChannelId) {
+          const vc = member.guild.channels.cache.get(gd.memberCountChannelId);
+          if (vc) await vc.setName(`Members: ${member.guild.memberCount}`).catch(() => null);
+        }
+        await saveGuildData(member.guild.id, gd);
+      } catch {}
+    })();
   }
 };
