@@ -40,9 +40,12 @@
 | `/heist start/join` | 🏦 Cooperative server heist for credits |
 | `/inventory` | 🎒 View your item inventory |
 | `/leaderboard [type]` | 🏆 Server leaderboard (credits, XP, level) |
+| `/marry propose/view/divorce` | 💍 Propose, manage, or view your in-bot marriage |
+| `/pay @user <amount>` | 💸 Transfer credits to another user |
 | `/profile [@user]` | 👤 View full game profile with stats and achievements |
 | `/profilecard [@user]` | 🖼️ Canvas-rendered profile image card |
 | `/quests` | 📋 View and track active quests |
+| `/reputation give/check` | ⭐ Give or check reputation points for users |
 | `/shop browse/buy` | 🛒 Browse and buy items from the shop |
 | `/trade @user` | 🤝 Trade items or credits with another user |
 | `/use <item>` | 🧪 Use a consumable item from inventory |
@@ -58,7 +61,10 @@
 | `/agent <name> [message]` | 💬 Chat directly with a deployed agent identity |
 | `/agents deploy/list/recall/rename/status` | 🤖 Deploy and manage Chopsticks agents |
 | `/ai chat/settings/token` | 🧠 Chat with AI and manage provider (OpenAI, Anthropic, Ollama) |
+| `/assistant join/leave/status` | 🎙️ Voice assistant — join/leave your voice channel |
 | `/audiobook read/stop/pause` | 📖 AI text-to-speech audiobook reader in voice channels |
+| `/pools create/list/delete/join` | 🏊 Manage agent pools for grouped deployments |
+| `/social roast/compliment` | 🎭 Fun AI-powered social interactions — roast or compliment someone |
 
 ### 🎵 Music
 
@@ -74,11 +80,13 @@
 | `/apod [date]` | 🔭 NASA Astronomy Picture of the Day |
 | `/book <title/author>` | 📚 Search books via Open Library |
 | `/color <hex/rgb/name>` | 🎨 Color info — preview, hex, RGB, HSL |
+| `/convert unit/currency <value>` | 🔄 Convert units of measurement or currencies |
 | `/dadjoke` | 👴 Random dad joke |
 | `/fact` | 🧪 Random interesting fact |
 | `/github <user/repo>` | 🐙 GitHub user or repository info |
 | `/joke` | 😄 Random joke (setup + punchline) |
 | `/riddle` | 🧩 Random riddle (see Fun section) |
+| `/snipe deleted/edited` | 👀 Show the last deleted or edited message in a channel |
 | `/steam <username>` | 🎮 Steam profile lookup |
 | `/trivia [difficulty] [category] [mode]` | 🧠 Multi-mode trivia (solo/PvP/duel/fleet) with OTDB live questions |
 | `/urban <term>` | 📖 Urban Dictionary definition |
@@ -89,9 +97,14 @@
 
 | Command | Description |
 |---------|-------------|
+| `/antinuke enable/disable/status` | 🛡️ Anti-nuke / anti-raid protection system |
 | `/antispam enable/disable/config` | 🛡️ Automatic spam detection and punishment |
+| `/automod setup/config` | 🔍 Configure AutoMod content filtering |
+| `/cases list/view/edit` | 📂 View and manage moderation cases |
 | `/lockdown start/end/lock/unlock` | 🔒 Server or channel lockdown |
 | `/mod ban/unban/softban/massban/kick/timeout/warn/warnings/clearwarns` | ⚖️ Core moderation commands |
+| `/modlogs setup/clear` | 📋 Configure moderation action logs |
+| `/note add/list/remove` | 📝 Manage moderator notes for users |
 | `/purge <count> [options]` | 🗑️ Bulk delete messages with filters |
 | `/reactionroles` | 🎭 Self-assignable reaction roles |
 | `/starboard setup/remove` | ⭐ Starboard configuration |
@@ -103,25 +116,43 @@
 |---------|-------------|
 | `/afk [reason]` | 💤 Set or clear AFK status |
 | `/alias list/add/remove` | 🔗 Prefix command aliases |
+| `/analytics overview/activity` | 📊 View server activity and engagement analytics |
 | `/automations add/list/remove/run` | ⚡ Event-triggered script automations |
 | `/autorole set/clear` | 🤖 Auto-assign roles on join |
+| `/autoresponder add/list/remove` | 🤖 Create auto-responders that react to message triggers |
 | `/avatar [@user]` | 🖼️ Show user or server avatar |
 | `/birthday set/clear/list` | 🎂 Birthday reminders |
+| `/boosterperks color/setup` | 🚀 Customize boost role or configure boost perks |
 | `/colorrole` | 🎨 Self-assignable colour roles |
 | `/commands list/enable/disable` | 📋 Enable or disable commands per-server |
+| `/confessions setup/post` | 🤫 Anonymous confession system |
+| `/custom set/delete/list` | ✏️ Create and manage custom slash commands |
+| `/customcmd create/delete/list` | ✏️ Create prefix-triggered custom text commands |
+| `/embed create` | 📝 Create and send a custom embed to a channel |
+| `/emoji add/delete/rename/list` | 🙂 Manage server emojis |
 | `/events create/list/delete` | 📅 Server event scheduling |
 | `/help [command]` | ❓ Help and command reference |
+| `/highlight add/remove/list` | 🔔 Get notified when a keyword is mentioned |
 | `/invite` | 📨 Get the bot's invite link |
+| `/levels rewards/config` | 📈 Level rewards and progression configuration |
+| `/macro set/delete/list` | 📌 Create macro shortcuts for common actions |
 | `/mod-log set/clear` | 📋 Set moderation log channel |
+| `/notify channel/twitch/youtube` | 📡 Configure Twitch and YouTube stream/upload notifications |
 | `/ping` | 🏓 Bot latency check |
 | `/poll create` | 📊 Create a server poll |
 | `/reminders add/list/remove` | ⏰ Personal reminders |
+| `/reputation give/check` | ⭐ Give or check server reputation (see Economy section) |
+| `/schedule message` | 🕐 Schedule a message to be sent in a channel |
 | `/serverinfo` | ℹ️ Server, bot, and role info |
 | `/setup wizard` | 🔧 Guided server setup |
+| `/suggest <text>` | 💡 Submit a suggestion to the server's suggestions channel |
 | `/tags create/edit/delete/list/use` | 🏷️ Custom tag/response shortcuts |
+| `/theme color/reset` | 🎨 Customize how the bot looks in this server |
+| `/threads autothread-add/remove` | 🧵 Auto-thread and announcement channel management |
 | `/tickets config/close/create` | 🎫 Support ticket system |
 | `/tutorials list/view` | 📚 Interactive tutorials |
 | `/userinfo [@user]` | 👤 Detailed user information |
+| `/verify setup/config` | ✅ Set up and manage the member verification system |
 | `/welcome set/clear/test` | 👋 Welcome message configuration |
 
 ---
@@ -256,4 +287,4 @@ The following slash commands are only deployed to specific guilds (not global) a
 
 ---
 
-*Last updated: v1.5.0 (feat/harden-and-polish)*
+*Last updated: v2.1.0 (hardening/ha-6 — full command reference audit)*
