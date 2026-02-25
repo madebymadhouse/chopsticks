@@ -25,6 +25,7 @@
 - [Docker](#docker)
 - [Configuration](#configuration)
 - [Project Structure](#project-structure)
+- [Website](#website)
 - [Testing](#testing)
 - [Contributing](#contributing)
 - [Security](#security)
@@ -370,6 +371,7 @@ Chopsticks/
 │   └── deployCommands.js   Slash command deploy (guild or global)
 ├── docs/                   Architecture and deployment guides
 ├── test/                   Unit and contract tests (872 tests)
+├── web/                    Public website (Next.js → chopsticks.wokspec.org)
 ├── docker-compose.*.yml    Compose files for different environments
 ├── Dockerfile.bot          Bot container image
 ├── Dockerfile.agentrunner  Agent runner container image
@@ -394,6 +396,19 @@ Chopsticks/
 | Image generation | HuggingFace Inference API (FLUX.1-schnell, free tier) |
 | Containerization | Docker + Docker Compose |
 | Reverse proxy | Caddy |
+
+---
+
+## Website
+
+The [`web/`](web/) directory contains the [Next.js](https://nextjs.org) site deployed at **[chopsticks.wokspec.org](https://chopsticks.wokspec.org)** via Cloudflare Pages.
+
+```bash
+cd web
+npm install
+npm run dev       # local dev server
+npm run deploy    # build + deploy to Cloudflare Pages
+```
 
 ---
 

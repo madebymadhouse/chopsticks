@@ -22,3 +22,11 @@ data/
 
 # node
 node_modules/
+
+# web (Next.js site)
+web/.next/
+web/out/
+web/.vercel
+web/.wrangler/
+web/.env.local
+web/.env*.local
