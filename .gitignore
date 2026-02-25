@@ -30,3 +30,4 @@ web/.vercel
 web/.wrangler/
 web/.env.local
 web/.env*.local
+!web/public/data/

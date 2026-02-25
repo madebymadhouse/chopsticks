@@ -1,0 +1,1264 @@
+[
+  {
+    "name": "music",
+    "displayName": "Music",
+    "category": "Music",
+    "summary": "Queue and control music in any voice channel.",
+    "description": "Up to 49 concurrent sessions \u2014 one per voice channel, running simultaneously across the server. Play tracks from YouTube, Spotify, or SoundCloud by search or URL. Full queue management, looping, shuffle, volume control, lyrics, and seeking. Backed by the Agent Pool for maximum uptime.",
+    "subcommands": [
+      "play",
+      "skip",
+      "pause",
+      "resume",
+      "stop",
+      "now",
+      "queue",
+      "remove",
+      "volume",
+      "loop",
+      "shuffle",
+      "seek",
+      "lyrics"
+    ],
+    "permissions": "Everyone",
+    "examples": [
+      "/music play lofi hip hop",
+      "/music queue",
+      "/music skip",
+      "/music stop"
+    ],
+    "tags": [
+      "voice",
+      "music"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "play",
+        "desc": "Search or URL \u2014 YouTube, Spotify, SoundCloud"
+      },
+      {
+        "name": "skip",
+        "desc": "Skip the current track"
+      },
+      {
+        "name": "pause",
+        "desc": "Pause playback"
+      },
+      {
+        "name": "resume",
+        "desc": "Resume paused playback"
+      },
+      {
+        "name": "stop",
+        "desc": "Stop and clear the queue"
+      },
+      {
+        "name": "now",
+        "desc": "Show what's currently playing"
+      },
+      {
+        "name": "queue",
+        "desc": "Display the full queue"
+      },
+      {
+        "name": "remove",
+        "desc": "Remove a specific track from the queue"
+      },
+      {
+        "name": "volume",
+        "desc": "Set playback volume (0\u2013100)"
+      },
+      {
+        "name": "loop",
+        "desc": "Loop the current track or entire queue"
+      },
+      {
+        "name": "shuffle",
+        "desc": "Shuffle the queue randomly"
+      },
+      {
+        "name": "seek",
+        "desc": "Jump to a timestamp in the current track"
+      },
+      {
+        "name": "lyrics",
+        "desc": "Fetch lyrics for the current track"
+      }
+    ]
+  },
+  {
+    "name": "ban",
+    "displayName": "Ban",
+    "category": "Moderation",
+    "summary": "Ban a member from the server.",
+    "description": "Permanently bans a member. Supports an optional reason and message purge duration. The action is logged to your mod log channel if configured.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/ban @user Spamming",
+      "/ban @user Breaking rules --delete-messages 7"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "kick",
+    "displayName": "Kick",
+    "category": "Moderation",
+    "summary": "Remove a member without a permanent ban.",
+    "description": "Kicks a member from the server. They can rejoin with a new invite. Reason is recorded in the mod log.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/kick @user Trolling"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "warn",
+    "displayName": "Warn",
+    "category": "Moderation",
+    "summary": "Issue a formal warning to a member.",
+    "description": "Records a warning against a member. Warnings are visible to moderators via /warnings and can be cleared with /clearwarns.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/warn @user First strike for spam"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "purge",
+    "displayName": "Purge",
+    "category": "Moderation",
+    "summary": "Bulk-delete messages with filters.",
+    "description": "Deletes up to 100 messages at once. Filter by user, bots, content match, or attachments. Shows a confirmation before deleting so you don't nuke the wrong thing.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/purge 50",
+      "/purge 20 --user @spammer"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "timeout",
+    "displayName": "Timeout",
+    "category": "Moderation",
+    "summary": "Temporarily mute a member.",
+    "description": "Times out a member for a set duration. They can't send messages, join voice, or react until the timeout expires. Reason is logged.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/timeout @user 10m Calm down",
+      "/timeout @user 1h Repeated violations"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "lock",
+    "displayName": "Lock",
+    "category": "Moderation",
+    "summary": "Lock the current channel so only mods can post.",
+    "description": "Removes the Send Messages permission for @everyone in the current channel. Use /unlock to reverse.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/lock",
+      "/lock #announcements"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "unlock",
+    "displayName": "Unlock",
+    "category": "Moderation",
+    "summary": "Restore posting access to a locked channel.",
+    "description": "Re-grants Send Messages to @everyone in the channel. Pair with /lock for quick channel control during incidents.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/unlock"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "softban",
+    "displayName": "Softban",
+    "category": "Moderation",
+    "summary": "Kick a member and delete their recent messages.",
+    "description": "Bans and immediately unbans a member, which removes their recent messages without a permanent ban. Useful for cleaning up spam without a long-term action.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/softban @spammer Spam cleanup"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "unban",
+    "displayName": "Unban",
+    "category": "Moderation",
+    "summary": "Lift a ban by user ID.",
+    "description": "Unbans a previously banned user by their Discord ID. The user can rejoin the server once unbanned.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/unban 123456789012345678"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "warnings",
+    "displayName": "Warnings",
+    "category": "Moderation",
+    "summary": "See all active warnings for a member.",
+    "description": "Lists every warning on record for the specified member, including the moderator who issued it and the reason.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/warnings @user"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "clearwarns",
+    "displayName": "Clear Warnings",
+    "category": "Moderation",
+    "summary": "Remove all warnings from a member's record.",
+    "description": "Wipes the warning history for a member. Useful after a cooling-off period or when warnings were issued in error.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/clearwarns @user"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "nick",
+    "displayName": "Nickname",
+    "category": "Moderation",
+    "summary": "Set or clear a member's server nickname.",
+    "description": "Sets a custom display name for a member within the server. Leave the nickname blank to reset to their account username.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/nick @user CoolName",
+      "/nick @user (clears nickname)"
+    ],
+    "tags": [
+      "moderation"
+    ]
+  },
+  {
+    "name": "role",
+    "displayName": "Role",
+    "category": "Moderation",
+    "summary": "Add or remove a role from a member.",
+    "description": "Assigns or removes a specified role from a member. Supports bulk operations and logs the change if mod logging is configured.",
+    "subcommands": [
+      "add",
+      "remove"
+    ],
+    "permissions": "Moderator",
+    "examples": [
+      "/role add @user VIP",
+      "/role remove @user Muted"
+    ],
+    "tags": [
+      "moderation",
+      "automation"
+    ]
+  },
+  {
+    "name": "slowmode",
+    "displayName": "Slowmode",
+    "category": "Moderation",
+    "summary": "Rate-limit messages in a channel.",
+    "description": "Sets a per-user cooldown on sending messages. Use 0 to disable. Helpful during active events or when a channel gets spammy.",
+    "subcommands": [],
+    "permissions": "Moderator",
+    "examples": [
+      "/slowmode 5",
+      "/slowmode 0"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "modlogs",
+    "displayName": "Mod Logs",
+    "category": "Moderation",
+    "summary": "Configure where mod actions get logged.",
+    "description": "Sets the channel where bans, kicks, warns, timeouts, and other mod actions are posted. Keeps your moderation auditable.",
+    "subcommands": [
+      "set",
+      "disable"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/modlogs set #mod-log"
+    ],
+    "tags": [
+      "protection",
+      "moderation"
+    ]
+  },
+  {
+    "name": "balance",
+    "displayName": "Balance",
+    "category": "Economy",
+    "summary": "Check your wallet and bank balance.",
+    "description": "Displays your current credit balance split between your wallet (spendable) and bank (stored). Credits are earned through daily claims, working, quests, and other activities.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/balance",
+      "/balance @friend"
+    ],
+    "tags": [
+      "economy"
+    ]
+  },
+  {
+    "name": "daily",
+    "displayName": "Daily",
+    "category": "Economy",
+    "summary": "Claim your daily credit reward.",
+    "description": "Awards a credit bonus once every 24 hours. Streak bonuses apply the longer you claim consecutively.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/daily"
+    ],
+    "tags": [
+      "economy"
+    ]
+  },
+  {
+    "name": "work",
+    "displayName": "Work",
+    "category": "Economy",
+    "summary": "Do a job shift to earn credits (30 min cooldown).",
+    "description": "Runs a random work scenario and pays out credits. Has a 30 minute cooldown per use.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/work"
+    ],
+    "tags": [
+      "economy"
+    ]
+  },
+  {
+    "name": "pay",
+    "displayName": "Pay",
+    "category": "Economy",
+    "summary": "Transfer credits to another member.",
+    "description": "Sends credits from your wallet to another member's wallet. The amount must be in your current wallet balance.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/pay @friend 500"
+    ],
+    "tags": [
+      "economy"
+    ]
+  },
+  {
+    "name": "bank",
+    "displayName": "Bank",
+    "category": "Economy",
+    "summary": "Deposit or withdraw credits from your bank.",
+    "description": "Move credits between your wallet and bank. Banked credits are safe but can't be spent directly \u2014 withdraw first.",
+    "subcommands": [
+      "deposit",
+      "withdraw"
+    ],
+    "permissions": "Everyone",
+    "examples": [
+      "/bank deposit 1000",
+      "/bank withdraw 250"
+    ],
+    "tags": [
+      "economy"
+    ]
+  },
+  {
+    "name": "shop",
+    "displayName": "Shop",
+    "category": "Economy",
+    "summary": "Buy tools and consumables with credits.",
+    "description": "Displays the server shop. Purchase tools for gathering runs, consumables, or special items. Prices are set per server.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/shop",
+      "/shop buy basic_scanner"
+    ],
+    "tags": [
+      "economy"
+    ]
+  },
+  {
+    "name": "inventory",
+    "displayName": "Inventory",
+    "category": "Economy",
+    "summary": "View everything you own.",
+    "description": "Lists all items in your inventory with quantities. Items are acquired through gathering, crafting, purchases, and drops.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/inventory"
+    ],
+    "tags": [
+      "economy"
+    ]
+  },
+  {
+    "name": "leaderboard",
+    "displayName": "Leaderboard",
+    "category": "Economy",
+    "summary": "See who's on top across credits, XP, and more.",
+    "description": "Shows server-wide rankings for credits, XP, collection completeness, and other stats. Competitive bragging rights.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/leaderboard",
+      "/leaderboard xp"
+    ],
+    "tags": [
+      "economy",
+      "games"
+    ]
+  },
+  {
+    "name": "8ball",
+    "displayName": "8-Ball",
+    "category": "Fun & Games",
+    "summary": "Ask the magic 8-ball anything.",
+    "description": "Pose a yes/no question and get an appropriately ambiguous answer. Pure chaos.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/8ball Will I win today?"
+    ],
+    "tags": [
+      "games"
+    ]
+  },
+  {
+    "name": "coinflip",
+    "displayName": "Coin Flip",
+    "category": "Fun & Games",
+    "summary": "Heads or tails.",
+    "description": "Flips a coin. That's it.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/coinflip"
+    ],
+    "tags": [
+      "games"
+    ]
+  },
+  {
+    "name": "roll",
+    "displayName": "Roll",
+    "category": "Fun & Games",
+    "summary": "Roll a die with any number of sides.",
+    "description": "Rolls a die and returns the result. Default is d6. Supports any polyhedral (e.g., d20, d100).",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/roll",
+      "/roll 20"
+    ],
+    "tags": [
+      "games"
+    ]
+  },
+  {
+    "name": "choose",
+    "displayName": "Choose",
+    "category": "Fun & Games",
+    "summary": "Can't decide? Pick from a list.",
+    "description": "Randomly picks one item from the options you provide. Useful for settling debates or making decisions nobody wants to make.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/choose pizza, tacos, ramen"
+    ],
+    "tags": [
+      "games"
+    ]
+  },
+  {
+    "name": "trivia",
+    "displayName": "Trivia",
+    "category": "Fun & Games",
+    "summary": "Play trivia solo, versus others, or against agents.",
+    "description": "Multiplayer trivia with categories, solo play, and competitive modes. Challenge an AI agent from the pool for a head-to-head match, or enter your server's pool agents into cross-server competitions. Earning credits for wins ties directly into the economy system.",
+    "subcommands": [
+      "start",
+      "category",
+      "vs-agent"
+    ],
+    "permissions": "Everyone",
+    "examples": [
+      "/trivia start category:Science",
+      "/trivia vs-agent difficulty:hard",
+      "/trivia start multiplayer:true"
+    ],
+    "tags": [
+      "games",
+      "agents"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "start",
+        "desc": "Start a trivia session in the channel (solo or multiplayer)"
+      },
+      {
+        "name": "category",
+        "desc": "Filter by topic: Science, History, Gaming, Sports, and more"
+      },
+      {
+        "name": "vs-agent",
+        "desc": "Challenge an AI agent from the pool to a competitive trivia match"
+      }
+    ]
+  },
+  {
+    "name": "fight",
+    "displayName": "Fight",
+    "category": "Fun & Games",
+    "summary": "Battle encounters for XP, credits, and loot (10 min cooldown).",
+    "description": "Starts a combat encounter at your chosen difficulty. Win to earn XP, credits, and item drops. Lose and walk away empty. 10 minute cooldown.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/fight easy",
+      "/fight hard"
+    ],
+    "tags": [
+      "games",
+      "economy"
+    ]
+  },
+  {
+    "name": "gather",
+    "displayName": "Gather",
+    "category": "Fun & Games",
+    "summary": "Run a gather mission to find collectible loot (5 min cooldown).",
+    "description": "Sends you on a gathering run. Better tools from the shop increase your haul. Items collected go into your inventory and count toward your collection.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/gather",
+      "/gather --tool advanced_scanner"
+    ],
+    "tags": [
+      "games",
+      "economy"
+    ]
+  },
+  {
+    "name": "craft",
+    "displayName": "Craft",
+    "category": "Fun & Games",
+    "summary": "Craft new items from your inventory.",
+    "description": "Opens an interactive crafting panel. Select a recipe, confirm you have the ingredients, and craft the item. Recipes are discovered as you collect materials.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/craft"
+    ],
+    "tags": [
+      "games",
+      "economy"
+    ]
+  },
+  {
+    "name": "quests",
+    "displayName": "Quests",
+    "category": "Fun & Games",
+    "summary": "View and complete daily quests for bonus rewards.",
+    "description": "Shows your active daily quests with progress. Complete them before reset to claim XP and credit bonuses. Quests rotate every 24 hours.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/quests"
+    ],
+    "tags": [
+      "games",
+      "economy"
+    ]
+  },
+  {
+    "name": "fun",
+    "displayName": "Fun",
+    "category": "Fun & Games",
+    "summary": "200+ random fun interactions.",
+    "description": "Runs a random fun action \u2014 slap, hug, highfive, and hundreds more. Unpredictable, occasionally chaotic, always harmless.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/fun",
+      "/fun hug @friend"
+    ],
+    "tags": [
+      "games"
+    ]
+  },
+  {
+    "name": "giveaway",
+    "displayName": "Giveaway",
+    "category": "Fun & Games",
+    "summary": "Run a simple giveaway in any channel.",
+    "description": "Starts a timed giveaway. Members react to enter. When time's up, a winner is picked at random and announced.",
+    "subcommands": [
+      "start",
+      "end",
+      "reroll"
+    ],
+    "permissions": "Moderator",
+    "examples": [
+      "/giveaway start --prize Nitro --duration 24h"
+    ],
+    "tags": [
+      "games",
+      "automation"
+    ]
+  },
+  {
+    "name": "collection",
+    "displayName": "Collection",
+    "category": "Fun & Games",
+    "summary": "Browse everything you've gathered and collected.",
+    "description": "Shows your full collection organized by rarity. Track what you have, what you're missing, and how close you are to completing sets.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/collection",
+      "/collection --rarity mythic"
+    ],
+    "tags": [
+      "games",
+      "economy"
+    ]
+  },
+  {
+    "name": "vault",
+    "displayName": "Vault",
+    "category": "Fun & Games",
+    "summary": "Show off your rarest finds.",
+    "description": "Displays a curated showcase of your rarest collected items. A flex command.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/vault"
+    ],
+    "tags": [
+      "games",
+      "economy"
+    ]
+  },
+  {
+    "name": "setup",
+    "displayName": "Setup",
+    "category": "Automation",
+    "summary": "Guided wizard to configure key bot modules.",
+    "description": "The master configuration command for your server. Controls mod log channel, mod roles, agent pool configuration, economy settings, raid/nuke protection thresholds, dynamic voice channel creation, welcome messages, and auto-roles. Run /setup once when you add Chopsticks \u2014 everything else flows from here.",
+    "subcommands": [
+      "modlog",
+      "modrole",
+      "agent-pool",
+      "economy",
+      "welcome",
+      "autorole",
+      "protection",
+      "voicechannel"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/setup protection raid-threshold:10 action:lockdown",
+      "/setup voicechannel enable:true",
+      "/setup agent-pool credits:500 actions:music,trivia"
+    ],
+    "tags": [
+      "automation",
+      "protection",
+      "agents"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "modlog",
+        "desc": "Set the channel for moderation action logs"
+      },
+      {
+        "name": "modrole",
+        "desc": "Designate one or more moderator roles"
+      },
+      {
+        "name": "agent-pool",
+        "desc": "Configure agent pool access, costs, and allowed actions"
+      },
+      {
+        "name": "economy",
+        "desc": "Enable/disable economy and set starting balance"
+      },
+      {
+        "name": "welcome",
+        "desc": "Configure the welcome message and channel"
+      },
+      {
+        "name": "autorole",
+        "desc": "Set roles granted automatically on join"
+      },
+      {
+        "name": "protection",
+        "desc": "Configure raid/nuke detection thresholds and auto-response"
+      },
+      {
+        "name": "voicechannel",
+        "desc": "Configure dynamic VC creation for members"
+      }
+    ]
+  },
+  {
+    "name": "automations",
+    "displayName": "Automations",
+    "category": "Automation",
+    "summary": "Trigger scripts automatically on server events.",
+    "description": "Configure event-triggered automations \u2014 run a sequence when someone joins, leaves, boosts, reaches a level, or any other server event. Automations can call scripts, assign roles, send messages, update economy values, or dispatch agents. Build complex server logic without writing code.",
+    "subcommands": [
+      "add",
+      "list",
+      "remove"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/automations add trigger:member-join action:script:welcome-dm",
+      "/automations list"
+    ],
+    "tags": [
+      "automation"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "add",
+        "desc": "Create a new trigger \u2192 action automation"
+      },
+      {
+        "name": "list",
+        "desc": "View all configured automations"
+      },
+      {
+        "name": "remove",
+        "desc": "Delete an automation by ID"
+      }
+    ]
+  },
+  {
+    "name": "autorole",
+    "displayName": "Autorole",
+    "category": "Automation",
+    "summary": "Automatically assign roles when members join.",
+    "description": "Sets one or more roles that are automatically given to every new member. Works immediately on join, no manual review needed.",
+    "subcommands": [
+      "set",
+      "remove",
+      "list"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/autorole set @Member"
+    ],
+    "tags": [
+      "automation"
+    ]
+  },
+  {
+    "name": "reactionroles",
+    "displayName": "Reaction Roles",
+    "category": "Automation",
+    "summary": "Let members self-assign roles with emoji reactions.",
+    "description": "Configure a message where members react with an emoji to gain a role and unreact to remove it. Supports exclusive (pick-one) and multi-select modes.",
+    "subcommands": [
+      "add",
+      "remove",
+      "panel"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/reactionroles panel #roles-channel"
+    ],
+    "tags": [
+      "automation"
+    ]
+  },
+  {
+    "name": "tickets",
+    "displayName": "Tickets",
+    "category": "Automation",
+    "summary": "Private support ticket system with transcripts.",
+    "description": "Sends a ticket panel to a channel. Members click to open a private channel with staff. Tickets are auto-archived and a full transcript is saved on close.",
+    "subcommands": [
+      "panel",
+      "close",
+      "add",
+      "remove"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/tickets panel #support"
+    ],
+    "tags": [
+      "automation"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "panel",
+        "desc": "Post the ticket creation panel to a channel"
+      },
+      {
+        "name": "close",
+        "desc": "Close and archive the current ticket"
+      },
+      {
+        "name": "add",
+        "desc": "Add a member to the current ticket channel"
+      },
+      {
+        "name": "remove",
+        "desc": "Remove a member from the current ticket channel"
+      }
+    ]
+  },
+  {
+    "name": "poll",
+    "displayName": "Poll",
+    "category": "Automation",
+    "summary": "Create a quick poll with multiple options.",
+    "description": "Posts an embedded poll that members vote on with reactions. Supports up to 10 options. Results show in real time.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/poll \"Best language?\" TypeScript Python Rust Go"
+    ],
+    "tags": [
+      "automation"
+    ]
+  },
+  {
+    "name": "remind",
+    "displayName": "Remind",
+    "category": "Automation",
+    "summary": "Set a personal reminder.",
+    "description": "Sends you a DM or channel ping after the specified duration. Useful for anything you don't want to forget mid-conversation.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/remind 30m Check on the giveaway",
+      "/remind 2h Update patch notes"
+    ],
+    "tags": [
+      "automation",
+      "utility"
+    ]
+  },
+  {
+    "name": "levels",
+    "displayName": "Levels",
+    "category": "Automation",
+    "summary": "Configure XP level rewards and progression.",
+    "description": "Set up roles or messages that are automatically granted when a member reaches a certain XP level. Rewards active participation.",
+    "subcommands": [
+      "set",
+      "list",
+      "remove"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/levels set 10 @ActiveMember"
+    ],
+    "tags": [
+      "automation",
+      "economy"
+    ]
+  },
+  {
+    "name": "custom",
+    "displayName": "Custom Commands",
+    "category": "Automation",
+    "summary": "Create server-specific slash commands.",
+    "description": "Build your own commands with custom names and responses. Supports static text responses and scripted actions.",
+    "subcommands": [
+      "add",
+      "remove",
+      "list"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/custom add !rules Show our server rules"
+    ],
+    "tags": [
+      "automation"
+    ]
+  },
+  {
+    "name": "starboard",
+    "displayName": "Starboard",
+    "category": "Automation",
+    "summary": "Highlight your best messages automatically.",
+    "description": "When a message gets enough star reactions, Chopsticks reposts it in your designated starboard channel. Configure the threshold and which channel to post to.",
+    "subcommands": [
+      "set",
+      "threshold"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/starboard set #highlights --threshold 5"
+    ],
+    "tags": [
+      "automation"
+    ]
+  },
+  {
+    "name": "welcome",
+    "displayName": "Welcome",
+    "category": "Automation",
+    "summary": "Customize your new-member welcome message.",
+    "description": "Configure a rich welcome message that fires when someone joins. Supports custom text, embeds, and variable substitution (member name, server name, etc.).",
+    "subcommands": [
+      "set",
+      "test"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/welcome set #welcome Welcome {user} to {server}!"
+    ],
+    "tags": [
+      "automation"
+    ]
+  },
+  {
+    "name": "scripts",
+    "displayName": "Scripts",
+    "category": "Automation",
+    "summary": "Write and run safe automation scripts.",
+    "description": "Build fully programmable server automations with named scripts. Scripts can chain commands, reference variables, trigger conditionally, and be called by other automations or custom commands. The most powerful programmability tool in Chopsticks \u2014 turns the bot into a configurable server platform.",
+    "subcommands": [
+      "create",
+      "run",
+      "list",
+      "delete"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/scripts create name:welcome-dm",
+      "/scripts run name:daily-bonus",
+      "/scripts list"
+    ],
+    "tags": [
+      "automation"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "create",
+        "desc": "Write a reusable script with commands and logic"
+      },
+      {
+        "name": "run",
+        "desc": "Execute a named script manually"
+      },
+      {
+        "name": "list",
+        "desc": "List all scripts configured for this server"
+      },
+      {
+        "name": "delete",
+        "desc": "Delete a script by name"
+      }
+    ]
+  },
+  {
+    "name": "macro",
+    "displayName": "Macro",
+    "category": "Automation",
+    "summary": "Create shorthand command aliases.",
+    "description": "Defines a short text alias that expands to a longer command when typed. Saves repetitive input for common actions.",
+    "subcommands": [
+      "add",
+      "remove",
+      "list"
+    ],
+    "permissions": "Admin",
+    "examples": [
+      "/macro add !kick kick {user} Breaking rules"
+    ],
+    "tags": [
+      "automation"
+    ]
+  },
+  {
+    "name": "agent",
+    "displayName": "Agent",
+    "category": "AI",
+    "summary": "Chat with a deployed AI agent.",
+    "description": "Deploy a worker from the community Agent Pool to your server. Agents are near-human configurable actors \u2014 give them a persona, assign them to a voice channel, have them read documents aloud, compete in trivia against your members, join cross-server pool competitions, or bind them permanently to a channel as a support bot, lobby host, or greeter. Funded by server credits.",
+    "subcommands": [
+      "join",
+      "leave",
+      "chat",
+      "style",
+      "public",
+      "read",
+      "voice",
+      "assign"
+    ],
+    "permissions": "Everyone",
+    "examples": [
+      "/agent join",
+      "/agent style persona:friendly tone:casual",
+      "/agent read text:\"Chapter 1...\"",
+      "/agent assign channel:#support role:support-bot"
+    ],
+    "tags": [
+      "agents",
+      "ai",
+      "voice"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "join",
+        "desc": "Deploy an agent from the pool to your voice channel"
+      },
+      {
+        "name": "leave",
+        "desc": "Dismiss the active agent and end the session"
+      },
+      {
+        "name": "chat",
+        "desc": "Open a conversation with the active agent"
+      },
+      {
+        "name": "style",
+        "desc": "Configure the agent's persona, tone, and behavior"
+      },
+      {
+        "name": "public",
+        "desc": "Register your agent for cross-server pool competitions"
+      },
+      {
+        "name": "read",
+        "desc": "Have the agent read a document, story, or text aloud in VC"
+      },
+      {
+        "name": "voice",
+        "desc": "Configure voice type, accent, and speech style for TTS"
+      },
+      {
+        "name": "assign",
+        "desc": "Permanently assign an agent role to a channel"
+      }
+    ]
+  },
+  {
+    "name": "assistant",
+    "displayName": "Assistant",
+    "category": "AI",
+    "summary": "Voice assistant for active agent sessions.",
+    "description": "Activates voice assistant mode for an agent in a voice channel. The agent listens and responds in real time. Use /assistant bind to permanently assign an agent to a channel \u2014 for customer support, lobby music, onboarding, or any always-on role. Sessions are funded by server credits.",
+    "subcommands": [
+      "start",
+      "stop",
+      "bind"
+    ],
+    "permissions": "Everyone",
+    "examples": [
+      "/assistant bind channel:#lobby role:lobby-music",
+      "/assistant start",
+      "/assistant stop"
+    ],
+    "tags": [
+      "agents",
+      "ai",
+      "voice"
+    ],
+    "subcommandsRich": [
+      {
+        "name": "start",
+        "desc": "Activate voice assistant mode in the current channel"
+      },
+      {
+        "name": "stop",
+        "desc": "Deactivate the voice assistant and end the session"
+      },
+      {
+        "name": "bind",
+        "desc": "Permanently bind an AI agent to a channel (support, lobby music, greeter)"
+      }
+    ]
+  },
+  {
+    "name": "ping",
+    "displayName": "Ping",
+    "category": "Utility",
+    "summary": "Check bot latency.",
+    "description": "Returns current API and WebSocket latency. Useful for diagnosing response delays.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/ping"
+    ],
+    "tags": [
+      "utility"
+    ]
+  },
+  {
+    "name": "help",
+    "displayName": "Help",
+    "category": "Utility",
+    "summary": "Open the Chopsticks help center.",
+    "description": "Shows an overview of available command categories and links to the full documentation. Good starting point for new members.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/help"
+    ],
+    "tags": [
+      "utility"
+    ]
+  },
+  {
+    "name": "avatar",
+    "displayName": "Avatar",
+    "category": "Utility",
+    "summary": "Pull up any member's avatar.",
+    "description": "Displays the full-size avatar for a member, including their guild-specific avatar if set.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/avatar @user"
+    ],
+    "tags": [
+      "utility"
+    ]
+  },
+  {
+    "name": "serverinfo",
+    "displayName": "Server Info",
+    "category": "Utility",
+    "summary": "Server stats at a glance.",
+    "description": "Displays the server name, member count, owner, creation date, boost level, and other useful server metadata.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/serverinfo"
+    ],
+    "tags": [
+      "utility"
+    ]
+  },
+  {
+    "name": "roleinfo",
+    "displayName": "Role Info",
+    "category": "Utility",
+    "summary": "Details about a specific role.",
+    "description": "Shows a role's color, ID, member count, permissions, and whether it's mentionable or hoisted.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/roleinfo @Moderator"
+    ],
+    "tags": [
+      "utility"
+    ]
+  },
+  {
+    "name": "userinfo",
+    "displayName": "User Info",
+    "category": "Utility",
+    "summary": "Profile and account details for any member.",
+    "description": "Displays a member's account creation date, server join date, roles, and current status.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/userinfo @user"
+    ],
+    "tags": [
+      "utility"
+    ]
+  },
+  {
+    "name": "profile",
+    "displayName": "Profile",
+    "category": "Utility",
+    "summary": "View your server profile and stats.",
+    "description": "Shows your level, XP, credit balance, equipped items, and privacy settings. Manage what others can see about your profile.",
+    "subcommands": [
+      "view",
+      "privacy"
+    ],
+    "permissions": "Everyone",
+    "examples": [
+      "/profile",
+      "/profile privacy xp off"
+    ],
+    "tags": [
+      "utility",
+      "economy"
+    ]
+  },
+  {
+    "name": "invite",
+    "displayName": "Invite",
+    "category": "Utility",
+    "summary": "Get a link to add Chopsticks to a server.",
+    "description": "Returns the bot invite link with the required permissions pre-filled.",
+    "subcommands": [],
+    "permissions": "Everyone",
+    "examples": [
+      "/invite"
+    ],
+    "tags": [
+      "utility"
+    ]
+  }
+]
