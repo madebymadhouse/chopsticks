@@ -74,3 +74,24 @@ export async function delCache(key) {
     return false;
   }
 }
+
+/**
+ * Atomic SET key NX EX — sets the key only if it does not already exist.
+ * Returns true if the key was set (lock acquired), false if already existed.
+ * Used for race-free cooldown enforcement.
+ */
+export async function setCacheNX(key, value, ttlSeconds) {
+  const client = await getRedisClient();
+  if (!client?.isOpen) {
+    botLogger.error({ key }, "[redis:setnx] client not open");
+    return false;
+  }
+  try {
+    const data = JSON.stringify(value);
+    const result = await client.set(key, data, { EX: ttlSeconds, NX: true });
+    return result === "OK";
+  } catch (err) {
+    botLogger.error({ err, key }, "[redis:setnx] error");
+    return false;
+  }
+}

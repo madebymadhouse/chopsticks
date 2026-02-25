@@ -1,7 +1,7 @@
 // src/economy/cooldowns.js
 // Cooldown management using Redis
 
-import { getCache, setCache } from "../utils/redis.js";
+import { getCache, setCache, setCacheNX } from "../utils/redis.js";
 
 const COOLDOWNS = {
   daily: 24 * 60 * 60 * 1000, // 24 hours
@@ -45,4 +45,37 @@ export function formatCooldown(ms) {
   if (hours > 0) return `${hours}h ${minutes % 60}m`;
   if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
   return `${seconds}s`;
+}
+
+/**
+ * Atomically try to start a cooldown using Redis SET NX EX.
+ * Returns { ok: true } if the cooldown was set (user can proceed),
+ * or { ok: false, remaining } if a cooldown was already active.
+ *
+ * This replaces the non-atomic getCooldown → work → setCooldown pattern
+ * and prevents double-reward races when two requests arrive simultaneously.
+ */
+export async function atomicCooldown(userId, command, durationMs = null) {
+  const duration = durationMs ?? COOLDOWNS[command] ?? 60000;
+  const ttlSeconds = Math.ceil(duration / 1000);
+  const expiresAt = Date.now() + duration;
+  const key = `cooldown:${userId}:${command}`;
+
+  // Check for an existing cooldown first (to return remaining time on failure)
+  const existing = await getCache(key);
+  if (existing) {
+    const remaining = existing.expiresAt - Date.now();
+    if (remaining > 0) return { ok: false, remaining };
+  }
+
+  // Atomically set the cooldown — only succeeds if key doesn't exist
+  const acquired = await setCacheNX(key, { expiresAt }, ttlSeconds);
+  if (!acquired) {
+    // Another request beat us — fetch the now-set key for remaining time
+    const fresh = await getCache(key);
+    const remaining = fresh ? Math.max(0, fresh.expiresAt - Date.now()) : duration;
+    return { ok: false, remaining };
+  }
+
+  return { ok: true, expiresAt };
 }

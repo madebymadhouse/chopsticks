@@ -15,7 +15,7 @@ import { getCache, setCache } from "../utils/redis.js";
 import { getWallet, depositToBank, withdrawFromBank, upgradeBankCapacity, removeCredits, addCredits } from "../economy/wallet.js";
 import { getGameProfile, addGameXp } from "../game/profile.js";
 import { progressToNextLevel } from "../game/progression.js";
-import { getCooldown, setCooldown, formatCooldown } from "../economy/cooldowns.js";
+import { getCooldown, setCooldown, formatCooldown, atomicCooldown } from "../economy/cooldowns.js";
 import { performGather, addToCollection } from "../economy/collections.js";
 import { hasItem, addItem } from "../economy/inventory.js";
 import { listShopItems, findShopItem } from "../economy/shop.js";
@@ -491,8 +491,12 @@ async function renderPanelUpdate(interaction, state, panelId, method = "update")
 async function runWorkAction(userId, jobId) {
   const job = JOBS.find(j => j.id === jobId) || JOBS[0];
 
-  const cd = await getCooldown(userId, "work");
-  if (cd && cd.ok === false) {
+  // Use atomic cooldown check-and-set to prevent double-reward race conditions
+  const xpMult = await getMultiplier(userId, "xp:mult", 1);
+  const cdMult = await getMultiplier(userId, "cd:work", 1);
+  const effectiveCooldown = Math.max(60 * 1000, Math.trunc(WORK_COOLDOWN * cdMult));
+  const cd = await atomicCooldown(userId, "work", effectiveCooldown);
+  if (!cd.ok) {
     return { ok: false, title: "On Break", description: `Come back in **${formatCooldown(cd.remaining)}**.` };
   }
 
@@ -500,13 +504,8 @@ async function runWorkAction(userId, jobId) {
   const reward = Math.max(50, job.baseReward + variance);
   await addCredits(userId, reward, `Work: ${job.name}`);
 
-  const xpMult = await getMultiplier(userId, "xp:mult", 1);
-  const cdMult = await getMultiplier(userId, "cd:work", 1);
   const xpBase = Math.max(10, Math.trunc(reward / 12));
   const xpRes = await addGameXp(userId, xpBase, { reason: `work:${job.id}`, multiplier: xpMult });
-
-  const effectiveCooldown = Math.max(60 * 1000, Math.trunc(WORK_COOLDOWN * cdMult));
-  await setCooldown(userId, "work", effectiveCooldown);
 
   let itemDropped = null;
   if (Math.random() < job.itemChance) {

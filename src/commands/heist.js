@@ -137,9 +137,13 @@ export async function execute(interaction) {
 
           for (const uid of current.participants) {
             if (outcome.success) {
-              await addCredits(uid, outcome.prizeEach, 'heist:win').catch(() => {});
+              await addCredits(uid, outcome.prizeEach, 'heist:win').catch((err) => {
+                botLogger.error({ err, uid }, '[heist] addCredits failed for winner');
+              });
             } else {
-              await removeCredits(uid, outcome.lossEach, 'heist:loss').catch(() => {});
+              await removeCredits(uid, outcome.lossEach, 'heist:loss').catch((err) => {
+                botLogger.error({ err, uid }, '[heist] removeCredits failed for loser');
+              });
             }
             resultLines.push(`<@${uid}>`);
           }
