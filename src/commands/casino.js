@@ -64,7 +64,7 @@ export function calcSlotsPayout(symbols, bet) {
  * @returns {boolean}
  */
 export function validateBet(amount, min, max) {
-  return Number.isInteger(amount) && amount >= min && amount <= max;
+  return Number.isFinite(amount) && Number.isInteger(amount) && amount >= min && amount <= max;
 }
 
 export function isValidCoinSide(side) {

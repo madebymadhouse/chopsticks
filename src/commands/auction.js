@@ -46,7 +46,7 @@ export function canCreateAuction(auctions) {
 }
 
 export function isBidValid(auction, amount) {
-  return Number.isInteger(amount) && amount > auction.current_bid;
+  return Number.isFinite(amount) && Number.isInteger(amount) && amount > auction.current_bid;
 }
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
