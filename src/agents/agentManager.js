@@ -190,6 +190,8 @@ export class AgentManager {
     ws.__helloTimer.unref?.();
 
     // When an agent connects, it will send a "hello" message containing its agentId
+    ws.__msgCount = 0;
+    ws.__msgWindowStart = Date.now();
     ws.on("message", data => this.handleMessage(ws, data));
     // A2: Update lastSeen when agent responds to a WS-level ping frame
     ws.on("pong", () => {
@@ -228,6 +230,26 @@ export class AgentManager {
   }
 
   handleMessage(ws, data) {
+    // Flood guard: reject frames > 64 KB
+    const byteLen = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
+    if (byteLen > 65536) {
+      logger.warn('[AgentManager] Oversized WS frame rejected', { byteLen, agentId: ws.__agentId });
+      try { ws.send(JSON.stringify({ type: "error", error: "Frame too large" })); } catch {}
+      return;
+    }
+
+    // Flood guard: max 100 messages per second per connection
+    const now_ms = Date.now();
+    if (now_ms - ws.__msgWindowStart > 1000) {
+      ws.__msgCount = 0;
+      ws.__msgWindowStart = now_ms;
+    }
+    ws.__msgCount++;
+    if (ws.__msgCount > 100) {
+      logger.warn('[AgentManager] WS flood detected — dropping frame', { agentId: ws.__agentId, count: ws.__msgCount });
+      return;
+    }
+
     let msg;
     try {
       logger.debug({ raw: String(data) }, '[AgentManager:RAW]');
@@ -244,6 +266,9 @@ export class AgentManager {
     if (msg?.type === "guilds") return void this.handleGuilds(ws, msg);
     if (msg?.type === "event") return void this.handleEvent(ws, msg);
     if (msg?.type === "resp") return void this.handleResponse(ws, msg);
+
+    // Log unknown message types rather than silently ignoring
+    logger.warn('[AgentManager] Unknown WS message type', { type: msg?.type, agentId: ws.__agentId });
   }
 
   handleHello(ws, msg) { // Now directly from an agent
