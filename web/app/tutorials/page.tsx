@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { ArrowRightIcon, ShieldIcon, CoinIcon, RadioIcon, ServerIcon, PaletteIcon, BookOpenIcon } from '../icons';
 import React from 'react';
 
@@ -13,13 +14,14 @@ const BOT_INVITE = 'https://discord.com/api/oauth2/authorize?client_id=146638287
 
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 type Step = { heading: string; body: React.ReactNode };
-type Tutorial = { slug: string; icon: React.FC<{size?: number}>; title: string; desc: string; difficulty: Difficulty; time: string; steps: Step[] };
+type Tutorial = { slug: string; icon: React.FC<{size?: number}>; title: string; desc: string; difficulty: Difficulty; time: string; preview?: string; steps: Step[] };
 
 const TUTORIALS: Tutorial[] = [
   {
     slug: 'getting-started',
     icon: BookOpenIcon,
     title: 'Getting Started',
+    preview: '/images/preview-setup.png',
     desc: 'Add Chopsticks to your server, grant the right permissions, and run your first commands. Five minutes from zero to working.',
     difficulty: 'beginner',
     time: '5 min',
@@ -35,6 +37,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'moderation',
     icon: ShieldIcon,
     title: 'Moderation Setup',
+    preview: '/images/preview-moderation.png',
     desc: 'Configure mod roles, a dedicated log channel, and test every action — ban, kick, mute, warn, and purge.',
     difficulty: 'beginner',
     time: '10 min',
@@ -50,6 +53,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'economy',
     icon: CoinIcon,
     title: 'Economy Setup',
+    preview: '/images/preview-economy.png',
     desc: 'Set up the credits system, configure daily rewards, build a shop, and keep your community engaged with leaderboards.',
     difficulty: 'beginner',
     time: '15 min',
@@ -65,6 +69,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'agent-pool',
     icon: RadioIcon,
     title: 'Using the Agent Pool',
+    preview: '/images/preview-agents.png',
     desc: 'Understand how the community Agent Pool works, configure it for your server, and deploy an agent to a voice channel.',
     difficulty: 'intermediate',
     time: '20 min',
@@ -97,6 +102,7 @@ const TUTORIALS: Tutorial[] = [
     slug: 'self-host',
     icon: ServerIcon,
     title: 'Self-hosting with Docker',
+    preview: '/images/preview-setup.png',
     desc: 'Run your own Chopsticks instance. Full stack: PostgreSQL, Redis, Lavalink. From clone to online in under 15 minutes.',
     difficulty: 'advanced',
     time: '30 min',
@@ -139,6 +145,11 @@ export default function TutorialsPage() {
           <div className="tutorial-grid" style={{ marginBottom: '4rem' }}>
             {TUTORIALS.map(t => (
               <a key={t.slug} href={`#${t.slug}`} className="tutorial-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                {t.preview && (
+                  <div style={{ margin: '-1.25rem -1.25rem 1rem', borderRadius: '0.5rem 0.5rem 0 0', overflow: 'hidden', height: 120, position: 'relative' }}>
+                    <Image src={t.preview} alt={t.title} fill style={{ objectFit: 'cover', objectPosition: 'top left' }} sizes="400px" />
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
                   <div className="tutorial-card-icon">
                     <t.icon size={18} />
@@ -158,6 +169,11 @@ export default function TutorialsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4rem' }}>
             {TUTORIALS.map((t, ti) => (
               <article key={t.slug} id={t.slug} style={{ scrollMarginTop: '5rem' }}>
+                {t.preview && (
+                  <div style={{ marginBottom: '2rem', borderRadius: '0.75rem', overflow: 'hidden', position: 'relative', height: 220, border: '1px solid var(--border)' }}>
+                    <Image src={t.preview} alt={`${t.title} preview`} fill style={{ objectFit: 'cover', objectPosition: 'top left' }} sizes="(max-width:900px) 100vw, 900px" />
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
                   <div className="tutorial-card-icon" style={{ marginBottom: 0, flexShrink: 0 }}>
                     <t.icon size={20} />
