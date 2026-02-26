@@ -1,6 +1,8 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, ActionRowBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } from "discord.js";
 import jwt from "jsonwebtoken";
 import { createHash } from "node:crypto";
+import { Colors } from "../utils/discordOutput.js";
+import { progressBar } from "../utils/embedComponents.js";
 
 const CONSOLE_TOKEN_TTL = 10 * 60; // 10 minutes
 
@@ -43,11 +45,31 @@ function getJwtSecret() {
   throw new Error("DISCORD_TOKEN is not set — cannot derive console secret.");
 }
 
+/**
+ * Builds the live server health snapshot for the dashboard reply.
+ * Gathers agent pool stats and uptime info without blocking.
+ */
+function buildHealthSnapshot(guildId) {
+  const mgr = global.agentManager;
+  if (!mgr) return null;
+
+  const allAgents = Array.from(mgr.liveAgents?.values?.() ?? []);
+  const guildAgents = allAgents.filter(a => a.guildIds?.has?.(guildId));
+  const active  = guildAgents.filter(a => a.ready && !a.busyKey).length;
+  const busy    = guildAgents.filter(a => a.busyKey).length;
+  const total   = guildAgents.length;
+  const capacity = 49;
+
+  const warmStatus = mgr.getWarmStatus ? mgr.getWarmStatus(guildId) : null;
+
+  return { total, active, busy, capacity, warmStatus };
+}
+
 export const meta = { category: "admin", deployGlobal: false };
 
 export const data = new SlashCommandBuilder()
   .setName("dashboard")
-  .setDescription("Open your server's Chopsticks dashboard in a browser")
+  .setDescription("Open your server's Chopsticks dashboard — ephemeral single-use link")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
@@ -65,6 +87,7 @@ export async function execute(interaction) {
 
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
+  const guildName = interaction.guild?.name ?? "this server";
   const tokenId = `${userId}-${guildId}-${Date.now()}`;
 
   const token = jwt.sign(
@@ -81,6 +104,34 @@ export async function execute(interaction) {
 
   const consoleUrl = `${baseUrl}/console-auth?token=${encodeURIComponent(token)}`;
 
+  // Build rich embed
+  const embed = new EmbedBuilder()
+    .setTitle("📊 Chopsticks Dashboard")
+    .setDescription(`Your management dashboard for **${guildName}** is ready.\nClick the button below to open it in your browser.`)
+    .setColor(Colors.Info)
+    .addFields(
+      { name: "🔒 Session", value: `Expires in **10 minutes** · Single-use · Only you`, inline: false },
+    );
+
+  // Add live agent pool stats if available
+  const health = buildHealthSnapshot(guildId);
+  if (health) {
+    const bar = progressBar(health.total, health.capacity);
+    const statusLine = health.total === 0
+      ? "_No agents in this server_"
+      : `🟢 Active: **${health.active}**  🔴 Busy: **${health.busy}**  Total: **${health.total}**\n${bar}`;
+    embed.addFields({ name: "🤖 Agent Pool", value: statusLine, inline: false });
+    if (health.warmStatus?.needsWarmup) {
+      embed.addFields({
+        name: "⚡ Warm-pool",
+        value: `Only **${health.warmStatus.idleAgents}** idle agents (target: **${health.warmStatus.warmCount}**). Consider deploying more.`,
+        inline: false,
+      });
+    }
+  }
+
+  embed.setFooter({ text: `${interaction.user.username} · ${new Date().toUTCString()}` });
+
   const button = new ButtonBuilder()
     .setLabel("Open Dashboard")
     .setStyle(ButtonStyle.Link)
@@ -90,10 +141,7 @@ export async function execute(interaction) {
   const row = new ActionRowBuilder().addComponents(button);
 
   return interaction.reply({
-    content:
-      `### 📊 Chopsticks Dashboard\nYour dashboard for **${interaction.guild?.name ?? "this server"}** is ready.\n` +
-      `> ⏱️ This link expires in **10 minutes** and can only be used once.\n` +
-      `> 🔒 Only you can access this session.`,
+    embeds: [embed],
     components: [row],
     ephemeral: true,
   });
