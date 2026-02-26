@@ -8,6 +8,7 @@ import { getGlobalCommandUsage, getInventorySummary, getRecentEconomyActivity, g
 import { getUserProfilePrivacy, updateUserProfilePrivacy } from "../profile/privacy.js";
 import { getUserAchievements } from "../utils/storage_pg.js";
 import { botLogger } from "../utils/modernLogger.js";
+import { progressBar, inventoryGrid } from "../utils/embedComponents.js";
 import { withTimeout } from "../utils/interactionTimeout.js";
 
 function bar(pct, len = 12) {
@@ -188,10 +189,11 @@ export default {
 
         if (allowEconomy) {
           const wallet = data.wallet;
+          const walletBar = progressBar(wallet.balance, wallet.balance + wallet.bank || 1);
           embed.addFields(
-            { name: "Wallet", value: `${wallet.balance.toLocaleString()} Credits`, inline: true },
-            { name: "Bank", value: `${wallet.bank.toLocaleString()} / ${wallet.bank_capacity.toLocaleString()}`, inline: true },
-            { name: "Net Worth", value: `${(wallet.balance + wallet.bank).toLocaleString()} Credits`, inline: true }
+            { name: "👛 Wallet", value: `**${wallet.balance.toLocaleString()}** Credits\n${walletBar}`, inline: false },
+            { name: "🏦 Bank", value: `${wallet.bank.toLocaleString()} / ${wallet.bank_capacity.toLocaleString()}`, inline: true },
+            { name: "📊 Net Worth", value: `**${(wallet.balance + wallet.bank).toLocaleString()}** Credits`, inline: true }
           );
         } else {
           embed.addFields({ name: "Economy", value: "Hidden by user preference.", inline: false });

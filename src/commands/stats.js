@@ -13,6 +13,7 @@ import { getGuildStats, getUserAchievements, getGuildLeaderboard, getGuildXpLead
 import { FIELD_LABELS, LEADERBOARD_FIELDS } from '../game/activityStats.js';
 import { ACHIEVEMENT_DEFS, ensureAchievementsSeed } from '../game/achievements.js';
 import { withTimeout } from '../utils/interactionTimeout.js';
+import { progressBar } from '../utils/embedComponents.js';
 
 export const meta = {
   deployGlobal: true,
@@ -92,7 +93,9 @@ export async function execute(interaction) {
         .setColor(Colors.Blurple);
 
       if (guildXp) {
-        embed.addFields({ name: '⚡ Guild Level', value: `Level **${guildXp.level}** (${Number(guildXp.xp).toLocaleString()} XP)`, inline: false });
+        const xpInLevel = Number(guildXp.xp) % 1000;
+        const xpBar = progressBar(xpInLevel, 1000);
+        embed.addFields({ name: '⚡ Guild Level', value: `Level **${guildXp.level}** — ${Number(guildXp.xp).toLocaleString()} XP\n${xpBar}`, inline: false });
       }
 
       if (stats) {
