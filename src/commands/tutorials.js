@@ -19,7 +19,7 @@ import { buildCustomVcPanelMessage } from "../tools/voice/customVcsUi.js";
 import { fetchPool, getGuildSelectedPool } from "../utils/storage.js";
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   guildOnly: false,
   userPerms: [],
   category: "info"

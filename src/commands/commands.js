@@ -12,7 +12,7 @@ import { Colors } from "../utils/discordOutput.js";
 const UI_PREFIX = "cmdui";
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   category: "info",
   guildOnly: true,
 };

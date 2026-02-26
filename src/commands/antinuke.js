@@ -8,9 +8,9 @@ import {
 import { getAntinukeConfig, saveAntinukeConfig } from "../tools/antinuke/engine.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "antinuke",
   category: "safety",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

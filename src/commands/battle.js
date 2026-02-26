@@ -9,7 +9,7 @@ import { addGameXp, getGameProfile } from '../game/profile.js';
 import { recordQuestEvent } from '../game/quests.js';
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'battle',
   description: 'PvP battle between two users',
   category: "game",

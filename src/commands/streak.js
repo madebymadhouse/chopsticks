@@ -3,7 +3,7 @@ import { loadGuildData, saveGuildData } from "../utils/storage.js";
 import { Colors, replyEmbed, replySuccess, replyError } from "../utils/discordOutput.js";
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   category: "social",
   guildOnly: true
 };

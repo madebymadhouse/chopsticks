@@ -13,9 +13,9 @@ import {
 } from "discord.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "emoji",
   category: "tools",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

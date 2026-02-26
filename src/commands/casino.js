@@ -6,7 +6,7 @@ import { checkRateLimit } from '../utils/ratelimit.js';
 import { botLogger } from "../utils/modernLogger.js";
 
 export const meta = {
-  deployGlobal: true, category: 'economy', guildOnly: true };
+  deployGlobal: false, category: 'economy', guildOnly: true };
 
 export const data = new SlashCommandBuilder()
   .setName('casino')

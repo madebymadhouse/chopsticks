@@ -4,7 +4,7 @@ import { replyEmbed, replyEmbedWithJson } from "../utils/discordOutput.js";
 import { normalizeAliasName } from "../prefix/hardening.js";
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   guildOnly: true,
   userPerms: [PermissionFlagsBits.ManageGuild],
   category: "utility"

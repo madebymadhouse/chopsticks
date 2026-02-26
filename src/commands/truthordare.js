@@ -5,7 +5,7 @@ import { SlashCommandBuilder, EmbedBuilder, Colors } from 'discord.js';
 import { withTimeout } from '../utils/interactionTimeout.js';
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'truthordare',
   description: 'Truth or dare prompt',
   category: "entertainment",

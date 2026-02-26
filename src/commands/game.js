@@ -702,9 +702,9 @@ async function showActionResult(interaction, result) {
 }
 
 export const meta = {
+  deployGlobal: false,
   category: "game",
   guildOnly: true,
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

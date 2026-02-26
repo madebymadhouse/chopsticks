@@ -9,9 +9,9 @@ import {
 import { loadGuildData, saveGuildData } from "../utils/storage.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "threads",
   category: "tools",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

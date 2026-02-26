@@ -13,9 +13,9 @@ import {
 } from "discord.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "snipe",
   category: "utility",
-  deployGlobal: true,
 };
 
 // In-memory caches: Map<channelId, { content, author, createdAt, attachmentUrl? }>

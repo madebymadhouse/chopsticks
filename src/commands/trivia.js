@@ -1513,7 +1513,7 @@ async function acquireTriviaAgents(mgr, { guildId, channelId, userId, requestedO
 }
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   category: "entertainment",
   guildOnly: true,
 };

@@ -17,9 +17,9 @@ import {
 import { loadGuildData, saveGuildData } from "../utils/storage.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "boosterperks",
   category: "admin",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

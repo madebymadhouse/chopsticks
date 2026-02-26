@@ -9,9 +9,9 @@ import { setCustomCmd, deleteCustomCmd, getCustomCmd, listCustomCmds } from "../
 import { sanitizeString } from "../utils/validation.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "customcmd",
   category: "tools",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

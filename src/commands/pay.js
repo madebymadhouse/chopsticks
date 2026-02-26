@@ -5,7 +5,7 @@ import { transferCredits } from "../economy/wallet.js";
 import { botLogger } from "../utils/modernLogger.js";
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   category: "economy",
   guildOnly: true,
 };

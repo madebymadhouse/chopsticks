@@ -19,9 +19,9 @@ import { sanitizeString } from "../utils/validation.js";
 import crypto from "node:crypto";
 
 export const meta = {
+  deployGlobal: false,
   name: "confessions",
   category: "social",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

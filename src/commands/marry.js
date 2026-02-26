@@ -16,9 +16,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const meta = {
+  deployGlobal: false,
   name: "marry",
   category: "social",
-  deployGlobal: true,
 };
 
 const DB_PATH = path.join(process.cwd(), "data", "marriages.json");

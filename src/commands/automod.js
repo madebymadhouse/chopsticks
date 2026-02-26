@@ -20,9 +20,9 @@ const RULE_LABELS = {
 };
 
 export const meta = {
+  deployGlobal: false,
   name: "automod",
   category: "safety",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

@@ -10,7 +10,7 @@ import {
 import { withTimeout } from '../utils/interactionTimeout.js';
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'xp',
   description: 'Configure per-guild XP and leveling system',
   category: "social",

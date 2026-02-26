@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const WYR_QUESTIONS = require('../fun/wyr.json');
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'wouldyourather',
   description: 'Would you rather question',
   category: "entertainment",

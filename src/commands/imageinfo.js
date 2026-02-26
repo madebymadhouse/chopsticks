@@ -18,9 +18,9 @@ import {
 } from "discord.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "avatar",
   category: "media",
-  deployGlobal: true,
 };
 
 function boostBar(tier, count) {

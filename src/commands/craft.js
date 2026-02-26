@@ -89,7 +89,7 @@ function selectedFromMessage(interaction) {
 }
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   category: "game",
   guildOnly: true,
 };

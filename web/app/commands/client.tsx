@@ -20,7 +20,18 @@ type CommandData = {
   tags?: string[];
 };
 
+type PrefixCommand = {
+  name: string;
+  aliases: string[];
+  category: string;
+  usage: string;
+  description: string;
+  examples: string[];
+  permissions: string;
+};
+
 const CATEGORY_ORDER = ['Music', 'Moderation', 'Economy', 'Fun & Games', 'Automation', 'AI', 'Utility'];
+const PREFIX_CAT_ORDER = ['Meta', 'Moderation', 'Server', 'Utility', 'Economy', 'Fun', 'Entertainment', 'Minigames', 'Social', 'Voice', 'Media', 'Animals', 'Knowledge', 'Info'];
 
 const CAT_COLORS: Record<string, string> = {
   Music:          '#f472b6',
@@ -61,7 +72,9 @@ const SPOTLIGHT_TAGLINES: Record<string, string> = {
 };
 
 export default function CommandsClient() {
+  const [tab, setTab] = useState<'slash' | 'prefix'>('slash');
   const [commands, setCommands] = useState<CommandData[]>([]);
+  const [prefixCmds, setPrefixCmds] = useState<PrefixCommand[]>([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeUseCase, setActiveUseCase] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -71,7 +84,6 @@ export default function CommandsClient() {
     fetch('/data/chopsticks-commands.json')
       .then(r => r.json())
       .then((d: unknown) => {
-        // Validate: must be an array of objects with required string fields
         if (!Array.isArray(d)) return;
         const valid = (d as CommandData[]).filter(
           c => c && typeof c === 'object' &&
@@ -80,6 +92,13 @@ export default function CommandsClient() {
                typeof c.summary === 'string'
         );
         setCommands(valid);
+      })
+      .catch(() => {});
+    fetch('/data/prefix-commands.json')
+      .then(r => r.json())
+      .then((d: unknown) => {
+        if (!Array.isArray(d)) return;
+        setPrefixCmds(d as PrefixCommand[]);
       })
       .catch(() => {});
   }, []);
@@ -131,8 +150,8 @@ export default function CommandsClient() {
           {/* Stats bar */}
           <div className="cmd-stats-bar">
             {[
-              { val: '101',    label: 'Commands' },
-              { val: '7',      label: 'Categories' },
+              { val: '101',    label: 'Slash commands' },
+              { val: '137',    label: 'Prefix commands' },
               { val: '49',     label: 'Concurrent sessions' },
               { val: 'Agents', label: 'Near-human actors' },
               { val: 'MIT',    label: 'Licensed' },
@@ -143,11 +162,28 @@ export default function CommandsClient() {
               </div>
             ))}
           </div>
+
+          {/* Tab switcher */}
+          <div style={{ display: 'flex', gap: '0.375rem', marginTop: '1.5rem' }}>
+            {(['slash', 'prefix'] as const).map(t => (
+              <button key={t} onClick={() => { setTab(t); setActiveCategory('All'); setSearch(''); setActiveUseCase(null); }}
+                style={{
+                  padding: '0.45rem 1.1rem', borderRadius: '0.4rem', fontSize: '0.8rem', fontWeight: 700,
+                  fontFamily: 'var(--font-heading)', cursor: 'pointer', letterSpacing: '0.03em',
+                  border: `1px solid ${tab === t ? 'var(--accent)60' : 'var(--border)'}`,
+                  background: tab === t ? 'var(--accent)14' : 'transparent',
+                  color: tab === t ? 'var(--accent)' : 'var(--text-faint)',
+                  transition: 'all 0.15s',
+                }}>
+                {t === 'slash' ? '/ Slash' : '! Prefix'}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── Spotlights ────────────────────────────────── */}
-      {spotlights.length > 0 && (
+      {tab === 'slash' && spotlights.length > 0 && (
         <section style={{ padding: '3rem 0', borderBottom: '1px solid var(--border)' }}>
           <div className="container">
             <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-faint)', fontFamily: 'var(--font-heading)', marginBottom: '1.25rem' }}>
@@ -198,7 +234,7 @@ export default function CommandsClient() {
       )}
 
       {/* ── Filters ───────────────────────────────────── */}
-      <div style={{ position: 'sticky', top: 58, zIndex: 50, background: 'rgba(8,9,10,0.92)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border)' }}>
+      {tab === 'slash' && <div style={{ position: 'sticky', top: 58, zIndex: 50, background: 'rgba(8,9,10,0.92)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border)' }}>
         <div className="container" style={{ padding: '0.875rem 1.5rem' }}>
           {/* Search */}
           <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
@@ -261,10 +297,71 @@ export default function CommandsClient() {
             {totalShowing} command{totalShowing !== 1 ? 's' : ''} shown
           </p>
         </div>
-      </div>
+      </div>}
+
+      {/* ── Prefix command browser ────────────────────── */}
+      {tab === 'prefix' && (
+        <div className="container" style={{ padding: '2rem 1.5rem 4rem' }}>
+          <div style={{ marginBottom: '1.5rem', padding: '0.875rem 1.125rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.625rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <code style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem', color: 'var(--accent)', flexShrink: 0 }}>!</code>
+            <div>
+              <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-heading)', marginBottom: '0.2rem' }}>Prefix command surface</p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                Default prefix is <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.06)', padding: '0.1em 0.3em', borderRadius: '0.2rem', color: 'var(--accent)' }}>!</code>.
+                Change it per-server with <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.06)', padding: '0.1em 0.3em', borderRadius: '0.2rem', color: 'var(--accent)' }}>/setup prefix</code> or{' '}
+                <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.06)', padding: '0.1em 0.3em', borderRadius: '0.2rem', color: 'var(--accent)' }}>!prefix set &lt;char&gt;</code>.
+                {' '}137 commands across 14 categories.
+              </p>
+            </div>
+          </div>
+          {PREFIX_CAT_ORDER.map(cat => {
+            const catCmds = prefixCmds.filter(c => c.category === cat);
+            if (catCmds.length === 0) return null;
+            return (
+              <div key={cat} style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', fontFamily: 'var(--font-heading)' }}>{cat}</span>
+                  <span style={{ fontSize: '0.62rem', color: 'var(--text-faint)', background: 'var(--surface-raised)', border: '1px solid var(--border)', borderRadius: '999px', padding: '0.1rem 0.45rem', fontFamily: 'var(--font-heading)' }}>{catCmds.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  {catCmds.map(cmd => (
+                    <div key={cmd.name} onClick={() => setExpanded(expanded === `p-${cmd.name}` ? null : `p-${cmd.name}`)}
+                      style={{ background: 'var(--surface)', border: `1px solid ${expanded === `p-${cmd.name}` ? 'var(--accent)40' : 'var(--border)'}`, borderRadius: '0.5rem', cursor: 'pointer', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', padding: '0.7rem 1rem', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                          <div style={{ width: 3, height: 16, borderRadius: 2, background: 'var(--accent)', flexShrink: 0 }} />
+                          <code style={{ fontSize: '0.85rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)', flexShrink: 0 }}>!{cmd.name}</code>
+                          {cmd.aliases.length > 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{cmd.aliases.map(a => `!${a}`).join(', ')}</span>}
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cmd.description}</span>
+                        </div>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ color: 'var(--text-faint)', transform: expanded === `p-${cmd.name}` ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+                          <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                      </div>
+                      {expanded === `p-${cmd.name}` && (
+                        <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid var(--accent)20' }}>
+                          <code style={{ display: 'block', marginTop: '0.75rem', marginBottom: '0.75rem', fontSize: '0.82rem', fontFamily: 'var(--font-mono)', color: 'var(--accent)', background: 'rgba(0,0,0,0.3)', padding: '0.4rem 0.75rem', borderRadius: '0.3rem', border: '1px solid var(--accent)20' }}>{cmd.usage}</code>
+                          {cmd.examples.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                              {cmd.examples.map(ex => (
+                                <code key={ex} style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', padding: '0.3rem 0.625rem', borderRadius: '0.25rem', display: 'block' }}>{ex}</code>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Command list ──────────────────────────────── */}
-      <div className="container" style={{ padding: '0.5rem 1.5rem 4rem' }}>
+      {tab === 'slash' && <div className="container" style={{ padding: '0.5rem 1.5rem 4rem' }}>
         {filtered.length === 0 && commands.length > 0 && (
           <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-faint)' }}>
             <p style={{ fontSize: '0.9rem' }}>No commands match your current filters.</p>
@@ -412,7 +509,7 @@ export default function CommandsClient() {
             View all features <ArrowRightIcon size={13} />
           </a>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

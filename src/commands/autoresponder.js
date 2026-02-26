@@ -14,9 +14,9 @@ import { loadGuildData, saveGuildData } from "../utils/storage.js";
 import { sanitizeString } from "../utils/validation.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "autoresponder",
   category: "tools",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

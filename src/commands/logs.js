@@ -5,10 +5,10 @@ import { loadGuildData, saveGuildData } from "../utils/storage.js";
 import { AUDIT_EVENT_TYPES } from "../tools/auditLog/dispatcher.js";
 
 export const meta = {
+  deployGlobal: false,
   guildOnly: true,
   userPerms: [PermissionFlagsBits.ManageGuild],
   category: "mod",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()

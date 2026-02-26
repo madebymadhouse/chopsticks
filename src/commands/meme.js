@@ -6,7 +6,7 @@ import { withTimeout } from '../utils/interactionTimeout.js';
 import { checkRateLimit } from '../utils/ratelimit.js';
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'meme',
   description: 'Random meme',
   category: "media",

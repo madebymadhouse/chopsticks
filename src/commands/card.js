@@ -11,7 +11,7 @@ import { fetchAvatar, roundRect, drawCircleImage, drawWrappedText, drawProgressB
 import { withTimeout } from '../utils/interactionTimeout.js';
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'card',
   description: 'Generate stylized image cards',
   category: "social",

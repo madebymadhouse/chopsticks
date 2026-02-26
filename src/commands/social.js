@@ -39,7 +39,7 @@ const COMPLIMENT_PROMPTS = {
 };
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   category: "social",
   guildOnly: false,
 };

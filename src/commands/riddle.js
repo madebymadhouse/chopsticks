@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const RIDDLES = require('../fun/riddles.json');
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'riddle',
   description: 'Get a random riddle',
   category: "entertainment",

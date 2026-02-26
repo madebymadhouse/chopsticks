@@ -5,7 +5,7 @@ import { SlashCommandBuilder, EmbedBuilder, Colors } from 'discord.js';
 import { withTimeout } from '../utils/interactionTimeout.js';
 
 export const meta = {
-  deployGlobal: true,
+  deployGlobal: false,
   name: 'ship',
   description: 'Ship two users and get a compatibility score',
   category: 'fun',

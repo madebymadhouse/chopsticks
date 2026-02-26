@@ -20,9 +20,9 @@ import {
 } from "../tools/modcases/escalation.js";
 
 export const meta = {
+  deployGlobal: false,
   name: "cases",
   category: "mod",
-  deployGlobal: true,
 };
 
 export const data = new SlashCommandBuilder()
