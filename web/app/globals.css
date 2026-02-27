@@ -1663,6 +1663,14 @@ footer {
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
 
 /* ── Responsive ───────────────────────── */
+
+/* Wide desktop — 3-column features + tighter bento */
+@media (min-width: 1200px) {
+  .features-grid   { grid-template-columns: repeat(3, 1fr); }
+  .bento           { grid-template-columns: repeat(4, 1fr) !important; }
+  .container       { padding: 0 2rem; }
+}
+
 @media (max-width: 900px) {
   .hero-grid       { grid-template-columns: 1fr; gap: 2.5rem; }
   .agent-pool-grid { grid-template-columns: 1fr; gap: 2rem; }
@@ -1680,4 +1688,14 @@ footer {
   .star-strip      { flex-direction: column; align-items: flex-start; }
   .star-strip > div:last-child { margin-left: 0; }
   .agent-roles-grid { grid-template-columns: 1fr 1fr; }
+  .container       { padding: 0 1rem; }
+}
+
+/* Extra small phones */
+@media (max-width: 400px) {
+  .bento           { grid-template-columns: 1fr !important; }
+  .agent-roles-grid { grid-template-columns: 1fr; }
+  .footer-grid     { grid-template-columns: 1fr; }
+  .features-grid   { grid-template-columns: 1fr; }
+  .container       { padding: 0 0.875rem; }
 }
