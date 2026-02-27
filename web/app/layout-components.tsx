@@ -8,15 +8,7 @@ const GITHUB = 'https://github.com/WokSpec/Chopsticks';
 
 type DropItem = { label: string; href: string; Icon: React.FC<{size?:number}>; desc: string; external?: boolean };
 
-const FEATURES_DROP: DropItem[] = [
-  { label: 'Voice & Music',  href: '/features#music',      Icon: MusicIcon,    desc: 'Playlists, audiobooks, VC' },
-  { label: 'Agents',         href: '/features#agents',     Icon: RadioIcon,    desc: 'Configurable actors' },
-  { label: 'Economy',        href: '/features#economy',    Icon: CoinIcon,     desc: 'Credits, shop, quests' },
-  { label: 'Moderation',     href: '/features#moderation', Icon: ShieldIcon,   desc: 'Raid, ban, antinuke' },
-  { label: 'AI',             href: '/features#ai',         Icon: SparkleIcon,  desc: 'Chat, image, voice' },
-  { label: 'Automation',     href: '/features#automation', Icon: ZapIcon,      desc: 'Reaction roles, scripts' },
-  { label: 'Fun & Games',    href: '/features#games',      Icon: GamepadIcon,  desc: 'Trivia, battles, casino' },
-];
+
 
 const DOCS_DROP: DropItem[] = [
   { label: 'Quickstart',     href: '/docs#hosted',         Icon: BookOpenIcon, desc: 'Add & configure in 5 min' },
@@ -75,7 +67,7 @@ export function Header() {
 
         {/* Desktop nav */}
         <nav className="desktop-nav">
-          <NavDropdown label="Features"  items={FEATURES_DROP} />
+          <Link href="/features"  className="nav-link">Features</Link>
           <Link href="/commands"  className="nav-link">Commands</Link>
           <Link href="/tutorials" className="nav-link">Tutorials</Link>
           <NavDropdown label="Docs"      items={DOCS_DROP} />

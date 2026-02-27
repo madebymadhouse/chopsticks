@@ -186,7 +186,7 @@ export default function FeaturesPage() {
               What Chopsticks<br />actually does.
             </h1>
             <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: 1.75, maxWidth: 520, marginBottom: '2rem' }}>
-              One bot. Six capability pillars. Personal playlist channels. AI audiobook narration. Near-human agents. A full gamification platform. Raid protection. Fully programmable automation. All open source.
+              One bot. Six capability pillars. Personal playlist channels. AI audiobook narration. Near-human agents. A full gamification platform. Raid protection. Fully programmable automation.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <a href={BOT_INVITE} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', fontSize: '0.88rem' }}>
@@ -272,10 +272,10 @@ export default function FeaturesPage() {
           ))}
 
           <div style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: '0.875rem', padding: '1.5rem', maxWidth: 620, marginTop: '1rem' }}>
-            <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-heading)', marginBottom: '0.4rem' }}>This is where you come in.</p>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.7 }}>The agent system is one of the most exciting parts of Chopsticks — and one of the most unfinished. You can self-host your own instance or fork the code and experiment. But we&apos;d love for you to build with us. PRs are welcome, ideas are welcome, and the Discord is always open.</p>
-            <a href="https://github.com/WokSpec/Chopsticks/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: '#a78bfa', marginTop: '0.75rem' }}>
-              How to contribute <ArrowRightIcon size={12} />
+            <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-heading)', marginBottom: '0.4rem' }}>Constantly evolving.</p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.7 }}>The agent system is one of the most exciting parts of Chopsticks and is actively being developed. New behaviours, new roles, and new deployment patterns — watch the changelog or jump on Discord to see what&apos;s coming.</p>
+            <a href="https://discord.gg/QbS47HDdpf" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: '#a78bfa', marginTop: '0.75rem' }}>
+              Join the Discord <ArrowRightIcon size={12} />
             </a>
           </div>
         </div>
@@ -312,7 +312,7 @@ export default function FeaturesPage() {
             All of this. Free.
           </h2>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.75, marginBottom: '2rem' }}>
-            Add the hosted instance, run it yourself, or contribute. Everything here works out of the box.
+            Add the hosted instance or run it yourself. Everything here works out of the box.
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href={BOT_INVITE} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ padding: '0.875rem 2rem', fontSize: '0.9rem' }}>
