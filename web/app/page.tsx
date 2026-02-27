@@ -34,47 +34,261 @@ function useCounter(target: number, duration = 1600): number {
 }
 
 // ─── Animated Discord mockup ──────────────────────────────────────────────
-const MESSAGES = [
-  { user: 'Wokspec', avatar: '🎧', content: '!play never gonna give you up', type: 'command' },
-  { user: 'Chopsticks', avatar: '🤖', content: '🎵 Now playing: **Never Gonna Give You Up** · Rick Astley\n02:47 ─────────────── 03:32', type: 'bot' },
-  { user: 'Kira', avatar: '⚡', content: '!balance', type: 'command' },
-  { user: 'Chopsticks', avatar: '🤖', content: '💰 Balance: **4,280 coins**\n🏦 Bank: **12,500 coins** · Rank #3', type: 'bot' },
-  { user: 'Nova', avatar: '🔮', content: '!ask What is the meaning of life?', type: 'command' },
-  { user: 'Chopsticks', avatar: '🤖', content: '🧠 **AI Response** · GPT-4o\n> 42. But also: connection, purpose, and good music.', type: 'bot' },
+const CHANNELS = ['general', 'music', 'commands', 'bot-log'];
+const MSGS: Array<{
+  user: string; avatar: string; color: string; type: 'user' | 'bot';
+  content?: string; embed?: { color: string; title: string; fields: { k: string; v: string }[] };
+}> = [
+  { user: 'Euxine',     avatar: '/images/avatar-hellokitty.png',  color: '#f472b6', type: 'user', content: '!play never gonna give you up' },
+  { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#5865f2', title: '🎵 Now Playing', fields: [{ k: 'Track', v: 'Never Gonna Give You Up — Rick Astley' }, { k: 'Duration', v: '3:32' }] } },
+  { user: 'Mikel',      avatar: '/images/avatar-mousememe.jpg',   color: '#22d3ee', type: 'user', content: '!balance' },
+  { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#4ade80', title: '💰 Balance', fields: [{ k: 'Wallet', v: '4,280 coins' }, { k: 'Bank', v: '12,500 coins · Rank #3' }] } },
+  { user: 'Nakari',     avatar: '/images/avatar-patrickstar.jpg', color: '#a78bfa', type: 'user', content: '!ask What is the meaning of life?' },
+  { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#22d3ee', title: '🧠 AI Response', fields: [{ k: 'Answer', v: '42. But also: connection, purpose, and really good music.' }] } },
 ];
+
+function Avatar({ src, size = 36, bot = false }: { src: string; size?: number; bot?: boolean }) {
+  return (
+    <div style={{ position: 'relative', flexShrink: 0, width: size, height: size }}>
+      <img src={src} alt="" width={size} height={size}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', display: 'block',
+          border: bot ? '1px solid rgba(88,101,242,0.5)' : '1px solid rgba(255,255,255,0.08)' }} />
+      {bot && (
+        <div style={{ position: 'absolute', bottom: -2, right: -2, background: '#5865f2', borderRadius: 4,
+          fontSize: '0.48rem', fontWeight: 800, color: '#fff', padding: '1px 3px', lineHeight: 1.2, letterSpacing: '0.03em',
+          border: '1.5px solid #1e1f22', fontFamily: 'var(--font-heading)' }}>APP</div>
+      )}
+    </div>
+  );
+}
+
+function EmbedCard({ embed }: { embed: { color: string; title: string; fields: { k: string; v: string }[] } }) {
+  return (
+    <div style={{ borderLeft: `3px solid ${embed.color}`, background: 'rgba(255,255,255,0.04)',
+      borderRadius: '0 6px 6px 0', padding: '0.55rem 0.75rem', marginTop: '0.3rem', maxWidth: 300 }}>
+      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', marginBottom: '0.35rem',
+        fontFamily: 'var(--font-heading)' }}>{embed.title}</div>
+      {embed.fields.map(f => (
+        <div key={f.k} style={{ marginBottom: '0.2rem' }}>
+          <div style={{ fontSize: '0.67rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'var(--font-heading)' }}>{f.k}</div>
+          <div style={{ fontSize: '0.77rem', color: 'rgba(255,255,255,0.87)', lineHeight: 1.45 }}>{f.v}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function DiscordMockup() {
   const [visible, setVisible] = useState<number[]>([]);
+  const [activeChannel, setActiveChannel] = useState(0);
+  const messagesRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    MESSAGES.forEach((_, i) => {
-      setTimeout(() => setVisible(v => [...v, i]), i * 900 + 400);
+    setVisible([]);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    MSGS.forEach((_, i) => {
+      timers.push(setTimeout(() => setVisible(v => [...v, i]), i * 1100 + 300));
     });
-  }, []);
+    return () => timers.forEach(clearTimeout);
+  }, [activeChannel]);
+
+  useEffect(() => {
+    if (messagesRef.current) messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+  }, [visible]);
+
   return (
-    <div style={{ background: '#23272a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', width: '100%', maxWidth: 460, fontFamily: 'var(--font-body)' }}>
-      {/* Title bar */}
-      <div style={{ background: '#1e2124', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57', display: 'inline-block' }}/>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e', display: 'inline-block' }}/>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840', display: 'inline-block' }}/>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-heading)' }}>#general · Chopsticks Demo</span>
+    <div style={{ background: '#313338', borderRadius: '0.875rem', overflow: 'hidden',
+      boxShadow: '0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)',
+      width: '100%', maxWidth: 520, fontFamily: "'gg sans', 'Noto Sans', sans-serif",
+      display: 'flex', flexDirection: 'column' }}>
+
+      {/* macOS chrome bar */}
+      <div style={{ background: '#1e1f22', padding: '0.55rem 0.875rem', display: 'flex',
+        alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57', display: 'inline-block' }}/>
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e', display: 'inline-block' }}/>
+        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840', display: 'inline-block' }}/>
+        <span style={{ flex: 1, textAlign: 'center', fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)',
+          fontFamily: 'var(--font-heading)', letterSpacing: '0.02em' }}>discord.com / Egg Fried Rice</span>
+        <span style={{ width: 40 }} />
       </div>
-      {/* Messages */}
-      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: 280 }}>
-        {MESSAGES.map((m, i) => (
-          <div key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start', opacity: visible.includes(i) ? 1 : 0, transform: visible.includes(i) ? 'translateY(0)' : 'translateY(8px)', transition: 'opacity 0.4s ease, transform 0.4s ease' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: m.type === 'bot' ? 'rgba(88,101,242,0.15)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0, border: m.type === 'bot' ? '1px solid rgba(88,101,242,0.4)' : '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-              {m.type === 'bot'
-                ? <img src="/images/chopsticks.png" alt="Chopsticks" width={22} height={22} style={{ objectFit: 'contain', display: 'block' }} />
-                : m.avatar}
+
+      {/* App body */}
+      <div style={{ display: 'flex', height: 360 }}>
+
+        {/* Server rail */}
+        <div style={{ width: 72, background: '#1e1f22', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', padding: '0.75rem 0', gap: '0.5rem', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+          {/* Server icon */}
+          <div style={{ position: 'relative' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '30%', overflow: 'hidden', cursor: 'pointer',
+              border: '2px solid rgba(88,101,242,0.6)', boxSizing: 'border-box' }}>
+              <img src="/images/fried_egg_fried_rice.gif" alt="Egg Fried Rice" width={44} height={44}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             </div>
-            <div>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: m.type === 'bot' ? '#7289da' : '#ffffff', fontFamily: 'var(--font-heading)' }}>{m.user}</span>
-              {m.type === 'command' && <span style={{ fontSize: '0.65rem', background: 'rgba(88,101,242,0.2)', color: '#a5b4fc', border: '1px solid rgba(88,101,242,0.3)', borderRadius: 3, padding: '0 0.3rem', marginLeft: '0.4rem', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>prefix</span>}
-              <div style={{ fontSize: '0.825rem', color: m.type === 'command' ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.88)', marginTop: '0.15rem', whiteSpace: 'pre-line', lineHeight: 1.55 }}>{m.content}</div>
+            {/* active indicator */}
+            <div style={{ position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)',
+              width: 4, height: 28, background: '#fff', borderRadius: '0 4px 4px 0' }} />
+          </div>
+          <div style={{ width: 32, height: 1, background: 'rgba(255,255,255,0.08)', margin: '0.25rem 0' }} />
+          {/* DM icon */}
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.06)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+            </svg>
+          </div>
+          {/* Add server */}
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(67,181,129,0.1)',
+            border: '2px dashed rgba(67,181,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginTop: 'auto' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(67,181,129,0.7)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          </div>
+        </div>
+
+        {/* Channel sidebar */}
+        <div style={{ width: 220, background: '#2b2d31', display: 'flex', flexDirection: 'column',
+          borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+          {/* Server header */}
+          <div style={{ padding: '0 0.875rem', height: 48, display: 'flex', alignItems: 'center',
+            borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', flexShrink: 0 }}>
+            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#f2f3f5',
+              fontFamily: 'var(--font-heading)', flex: 1 }}>Egg Fried Rice</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)"><path d="M7 10l5 5 5-5z"/></svg>
+          </div>
+          {/* Channel list */}
+          <div style={{ padding: '0.625rem 0.5rem', flex: 1, overflowY: 'hidden' }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+              textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 0.375rem 0.35rem',
+              display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+              Text Channels
+            </div>
+            {CHANNELS.map((ch, i) => (
+              <div key={ch} onClick={() => setActiveChannel(i)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.28rem 0.5rem',
+                  borderRadius: 4, cursor: 'pointer', marginBottom: 1,
+                  background: activeChannel === i ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: activeChannel === i ? '#f2f3f5' : 'rgba(255,255,255,0.4)',
+                  fontSize: '0.82rem', fontWeight: activeChannel === i ? 500 : 400,
+                  transition: 'background 0.15s, color 0.15s' }}
+                onMouseEnter={e => { if (activeChannel !== i) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLDivElement).style.color = 'rgba(255,255,255,0.7)'; }}
+                onMouseLeave={e => { if (activeChannel !== i) { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; (e.currentTarget as HTMLDivElement).style.color = 'rgba(255,255,255,0.4)'; } }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.6 }}>
+                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                </svg>
+                {ch}
+              </div>
+            ))}
+            <div style={{ marginTop: '0.75rem' }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 0.375rem 0.35rem',
+                display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                Voice Channels
+              </div>
+              {['Lounge', 'Gaming'].map(vc => (
+                <div key={vc} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.28rem 0.5rem',
+                  borderRadius: 4, color: 'rgba(255,255,255,0.35)', fontSize: '0.82rem', cursor: 'pointer' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.6 }}>
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                  </svg>
+                  {vc}
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+          {/* User panel */}
+          <div style={{ padding: '0.5rem 0.625rem', background: '#232428', display: 'flex',
+            alignItems: 'center', gap: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ position: 'relative' }}>
+              <img src="/images/avatar-pixelart.png" alt="Admin" width={28} height={28}
+                style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+              <div style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
+                background: '#23a559', borderRadius: '50%', border: '2px solid #232428' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f2f3f5', lineHeight: 1.1,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Admin</div>
+              <div style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.1 }}>#0001</div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              {['M','H','⚙'].map(icon => (
+                <div key={icon} style={{ width: 26, height: 26, borderRadius: 4, background: 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', cursor: 'pointer' }}>{icon}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Main chat */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {/* Channel header */}
+          <div style={{ height: 48, padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem',
+            borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#f2f3f5',
+              fontFamily: 'var(--font-heading)' }}>{CHANNELS[activeChannel]}</span>
+            <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.12)', margin: '0 0.25rem' }} />
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>Chopsticks Demo</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+              {[
+                <svg key="s" width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>,
+                <svg key="b" width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.35)"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>,
+              ]}
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div ref={messagesRef} style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0.875rem',
+            display: 'flex', flexDirection: 'column', gap: '0.5rem',
+            scrollbarWidth: 'none' }}>
+            {MSGS.map((m, i) => (
+              <div key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start',
+                opacity: visible.includes(i) ? 1 : 0,
+                transform: visible.includes(i) ? 'translateY(0)' : 'translateY(6px)',
+                transition: 'opacity 0.35s ease, transform 0.35s ease' }}>
+                <Avatar src={m.avatar} size={34} bot={m.type === 'bot'} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginBottom: '0.1rem' }}>
+                    <span style={{ fontSize: '0.825rem', fontWeight: 700, color: m.color,
+                      fontFamily: 'var(--font-heading)', lineHeight: 1 }}>{m.user}</span>
+                    {m.type === 'bot' && (
+                      <span style={{ fontSize: '0.58rem', background: '#5865f2', color: '#fff',
+                        borderRadius: 3, padding: '1px 4px', fontWeight: 700, lineHeight: 1.3,
+                        fontFamily: 'var(--font-heading)', letterSpacing: '0.02em' }}>BOT</span>
+                    )}
+                    <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.28)' }}>Today at 4:20 PM</span>
+                  </div>
+                  {m.content && (
+                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>{m.content}</div>
+                  )}
+                  {m.embed && <EmbedCard embed={m.embed} />}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Input bar */}
+          <div style={{ padding: '0 0.875rem 0.875rem' }}>
+            <div style={{ background: '#383a40', borderRadius: 8, display: 'flex', alignItems: 'center',
+              padding: '0.55rem 0.75rem', gap: '0.5rem' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.3)" style={{ flexShrink: 0 }}>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+              </svg>
+              <span style={{ flex: 1, fontSize: '0.82rem', color: 'rgba(255,255,255,0.28)',
+                fontFamily: 'var(--font-body)' }}>Message #{CHANNELS[activeChannel]}</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {[
+                  <svg key="g" width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.3)"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg>,
+                  <svg key="e" width="18" height="18" viewBox="0 0 36 36" fill="rgba(255,255,255,0.3)"><path d="M18 2a16 16 0 1 0 16 16A16 16 0 0 0 18 2zm8 22H10v-2h16zm-2-6a2 2 0 1 1 2-2 2 2 0 0 1-2 2zm-12 0a2 2 0 1 1 2-2 2 2 0 0 1-2 2z"/></svg>,
+                ]}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
