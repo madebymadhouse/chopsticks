@@ -1,78 +1,72 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="'DM Sans',system-ui,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,-apple-system,sans-serif">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1e1f22"/><stop offset="100%" stop-color="#0d0f12"/>
-    </linearGradient>
-    <radialGradient id="g1" cx="15%" cy="20%" r="55%">
-      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="g2" cx="85%" cy="80%" r="50%">
-      <stop offset="0%" stop-color="#f97316" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="sh"><feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000" flood-opacity="0.6"/></filter>
-    <filter id="sh2"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.5"/></filter>
-    <clipPath id="win"><rect width="800" height="450" rx="0"/></clipPath>
-  </defs>
-  <rect width="800" height="450" fill="url(#bg)"/>
-  <rect width="800" height="450" fill="url(#g1)"/>
-  <rect width="800" height="450" fill="url(#g2)"/>
-  <rect x="0" y="0" width="180" height="450" fill="#2b2d31"/>
-  <rect x="0" y="0" width="180" height="48" fill="#232428"/>
-  <text x="14" y="30" font-size="13" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">🍜 WokSpec</text>
-  <line x1="0" y1="48" x2="180" y2="48" stroke="#1e1f22" stroke-width="1"/>
-  <text x="14" y="74" font-size="10" font-weight="600" fill="#8d8f92" font-family="system-ui,sans-serif" letter-spacing="0.08em">TEXT CHANNELS</text>
-  <text x="18" y="90" font-size="13" fill="#8d8f92" font-family="system-ui,sans-serif"># general</text>
-  <text x="18" y="116" font-size="13" fill="#8d8f92" font-family="system-ui,sans-serif"># games</text>
-  <rect x="4" y="128" width="172" height="22" fill="#404249" rx="4"/>
-  <text x="18" y="142" font-size="13" fill="#dde1e7" font-family="system-ui,sans-serif"># trivia</text>
-  <text x="18" y="168" font-size="13" fill="#8d8f92" font-family="system-ui,sans-serif"># leaderboard</text>
-  <rect x="180" y="0" width="620" height="48" fill="#313338"/>
-  <line x1="180" y1="48" x2="800" y2="48" stroke="#1e1f22" stroke-width="1"/>
-  <text x="194" y="18" font-size="10" fill="#8d8f92" font-family="system-ui,sans-serif">#</text>
-  <text x="206" y="18" font-size="13" font-weight="600" fill="#fff" font-family="system-ui,sans-serif">trivia</text>
-  <!-- Trivia embed -->
-  <rect x="220" y="60" width="450" height="168" fill="#2b2d31" rx="6" filter="url(#sh2)"/>
-  <rect x="220" y="60" width="4" height="168" fill="#22d3ee" rx="2"/>
-  <text x="234" y="80" font-size="11" font-weight="700" fill="#22d3ee" font-family="system-ui,sans-serif">🎮  MUSIC TRIVIA  —  Question 3 / 5</text>
-  <text x="234" y="102" font-size="14" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">Which band released the album "Dark Side</text>
-  <text x="234" y="120" font-size="14" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">of the Moon" in 1973?</text>
-  <!-- Answer buttons 2x2 -->
-  <rect x="234" y="132" width="196" height="28" fill="#383a40" rx="4" stroke="#4e5058" stroke-width="1"/>
-  <text x="332" y="150" text-anchor="middle" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">A.  Led Zeppelin</text>
-  <rect x="440" y="132" width="196" height="28" fill="#57f287" rx="4"/>
-  <text x="538" y="150" text-anchor="middle" font-size="12" fill="#fff" font-weight="600" font-family="system-ui,sans-serif">B.  Pink Floyd ✓</text>
-  <rect x="234" y="168" width="196" height="28" fill="#383a40" rx="4" stroke="#4e5058" stroke-width="1"/>
-  <text x="332" y="186" text-anchor="middle" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">C.  The Beatles</text>
-  <rect x="440" y="168" width="196" height="28" fill="#383a40" rx="4" stroke="#4e5058" stroke-width="1"/>
-  <text x="538" y="186" text-anchor="middle" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">D.  The Doors</text>
-  <!-- Progress bar -->
-  <rect x="234" y="204" width="420" height="4" fill="#383a40" rx="2"/>
-  <rect x="234" y="204" width="252" height="4" fill="#22d3ee" rx="2"/>
-  <text x="234" y="222" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">3 / 5 questions  ·  ⏱️ 12s left  ·  +100 XP correct</text>
-  <!-- Scores -->
-  <rect x="220" y="240" width="450" height="80" fill="#232428" rx="4"/>
-  <text x="234" y="258" font-size="11" font-weight="700" fill="#8d8f92" font-family="system-ui,sans-serif">🏆  LIVE SCORES</text>
-  <text x="244" y="276" font-size="12" fill="#faa61a" font-family="system-ui,sans-serif">CoolUser</text>
-  <rect x="320" y="265" width="200" height="8" fill="#383a40" rx="4"/>
-  <rect x="320" y="265" width="160" height="8" fill="#faa61a" rx="4"/>
-  <text x="534" y="275" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">300 pts</text>
-  <text x="244" y="298" font-size="12" fill="#b5bac1" font-family="system-ui,sans-serif">Alice</text>
-  <rect x="320" y="287" width="200" height="8" fill="#383a40" rx="4"/>
-  <rect x="320" y="287" width="120" height="8" fill="#5865f2" rx="4"/>
-  <text x="534" y="297" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">200 pts</text>
-  <!-- Other game chips -->
-  <rect x="220" y="332" width="450" height="56" fill="#2b2d31" rx="4"/>
-  <text x="234" y="350" font-size="11" font-weight="700" fill="#8d8f92" font-family="system-ui,sans-serif">MORE GAMES</text>
-  <rect x="234" y="356" width="72" height="22" fill="#383a40" rx="4"/>
-  <text x="270" y="371" text-anchor="middle" font-size="11" fill="#f97316" font-family="system-ui,sans-serif">!blackjack</text>
-  <rect x="316" y="356" width="60" height="22" fill="#383a40" rx="4"/>
-  <text x="346" y="371" text-anchor="middle" font-size="11" fill="#22d3ee" font-family="system-ui,sans-serif">!trivia</text>
-  <rect x="386" y="356" width="56" height="22" fill="#383a40" rx="4"/>
-  <text x="414" y="371" text-anchor="middle" font-size="11" fill="#a78bfa" font-family="system-ui,sans-serif">!slots</text>
-  <rect x="452" y="356" width="66" height="22" fill="#383a40" rx="4"/>
-  <text x="485" y="371" text-anchor="middle" font-size="11" fill="#faa61a" font-family="system-ui,sans-serif">!coinflip</text>
-  <rect x="188" y="398" width="490" height="32" fill="#383a40" rx="8"/>
-  <text x="204" y="419" font-size="13" fill="#4e5058" font-family="system-ui,sans-serif">Message #trivia</text>
+  <radialGradient id="ga" cx="15%" cy="25%" r="60%">
+    <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.13"/>
+    <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="gb" cx="85%" cy="80%" r="55%">
+    <stop offset="0%" stop-color="#f97316" stop-opacity="0.10"/>
+    <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="sh" x="-5%" y="-5%" width="110%" height="110%">
+    <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#000" flood-opacity="0.55"/>
+  </filter>
+  <clipPath id="av"><circle cx="16" cy="16" r="16"/></clipPath>
+  <clipPath id="av2"><circle cx="14" cy="14" r="14"/></clipPath>
+  <clipPath id="srv"><rect width="28" height="28" rx="8"/></clipPath>
+</defs>
+  <rect width="800" height="450" fill="#1e1f22"/>
+<rect width="800" height="450" fill="url(#ga)"/>
+<rect width="800" height="450" fill="url(#gb)"/>
+  <rect x="0" y="0" width="158" height="450" fill="#2b2d31"/>
+<rect x="0" y="0" width="158" height="46" fill="#232428"/>
+<g transform="translate(10,9)"><clipPath id="srv_cp"><rect width="28" height="28" rx="8"/></clipPath>
+<image href="/images/chopsticks.png" x="0" y="0" width="28" height="28" clip-path="url(#srv_cp)"/></g>
+<text x="46" y="28" font-size="12" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">Example Server</text>
+<line x1="0" y1="46" x2="158" y2="46" stroke="#1e1f22" stroke-width="1"/>
+<text x="12" y="68" font-size="9" font-weight="700" fill="#8d8f92" font-family="system-ui,sans-serif" letter-spacing="0.07em">TEXT CHANNELS</text>
+<text x="14" y="82" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif"># general</text>
+<text x="14" y="106" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif"># games</text>
+<rect x="4" y="117" width="150" height="22" fill="#404249" rx="4"/>
+<text x="14" y="130" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif"># trivia</text>
+<text x="14" y="154" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif"># leaderboard</text>
+<rect x="158" y="0" width="642" height="46" fill="#313338"/>
+<line x1="158" y1="46" x2="800" y2="46" stroke="#1e1f22" stroke-width="1"/>
+<text x="172" y="20" font-size="11" fill="#72767d" font-family="system-ui,sans-serif">#</text>
+<text x="182" y="20" font-size="13" font-weight="600" fill="#ffffff" font-family="system-ui,sans-serif">trivia</text>
+<text x="172" y="37" font-size="11" fill="#72767d" font-family="system-ui,sans-serif">Chopsticks bot commands &amp; status</text>
+<g transform="translate(170,66)"><image href="/images/chopsticks.png" x="0" y="0" width="32" height="32" clip-path="url(#av)"/></g>
+<text x="210" y="78" font-size="13" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">Chopsticks</text>
+<rect x="286" y="69" width="26" height="12" fill="#5865f2" rx="3"/>
+<text x="299" y="79" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">BOT</text>
+<text x="318" y="78" font-size="11" fill="#72767d" font-family="system-ui,sans-serif">Today at 3:42 PM</text>
+<text x="210" y="94" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">!trivia music  ↳  Starting round 3 of 5…</text>
+<rect x="172" y="112" width="614" height="224" fill="#2b2d31" rx="4" filter="url(#sh)"/>
+<rect x="172" y="112" width="4" height="224" fill="#22d3ee" rx="2"/>
+<text x="186" y="130" font-size="10" font-weight="700" fill="#22d3ee" font-family="system-ui,sans-serif" letter-spacing="0.08em">🎮  MUSIC TRIVIA — QUESTION 3 / 5</text>
+<text x="186" y="149" font-size="13" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">Which band released "Dark Side of the Moon"</text>
+<text x="186" y="165" font-size="13" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">in 1973?</text>
+<rect x="186" y="174" width="289" height="26" fill="#383a40" rx="4"/>
+<text x="330" y="191" text-anchor="middle" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">A.  Led Zeppelin</text>
+<rect x="483" y="174" width="289" height="26" fill="#57f287" rx="4"/>
+<text x="627" y="191" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">B.  Pink Floyd  ✓</text>
+<rect x="186" y="208" width="289" height="26" fill="#383a40" rx="4"/>
+<text x="330" y="225" text-anchor="middle" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">C.  The Beatles</text>
+<rect x="483" y="208" width="289" height="26" fill="#383a40" rx="4"/>
+<text x="627" y="225" text-anchor="middle" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">D.  The Doors</text>
+<rect x="186" y="244" width="586" height="4" fill="#3a3c40" rx="2"/>
+<rect x="186" y="244" width="351" height="4" fill="#22d3ee" rx="2"/>
+<text x="186" y="260" font-size="10" fill="#8d8f92" font-family="system-ui,sans-serif">3 / 5 questions  ·  ⏱  12s remaining  ·  +100 XP for correct answer</text>
+<line x1="186" y1="270" x2="772" y2="270" stroke="#3a3c40" stroke-width="1"/>
+<text x="186" y="284" font-size="10" font-weight="700" fill="#8d8f92" font-family="system-ui,sans-serif" letter-spacing="0.06em">SCORES</text>
+<text x="186" y="302" font-size="12" fill="#faa61a" font-family="system-ui,sans-serif">ExampleUser</text>
+<rect x="272" y="291" width="200" height="8" fill="#3a3c40" rx="3"/>
+<rect x="272" y="291" width="160" height="8" fill="#faa61a" rx="3"/>
+<text x="772" y="302" text-anchor="end" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">300 pts</text>
+<text x="186" y="320" font-size="12" fill="#b5bac1" font-family="system-ui,sans-serif">Alice</text>
+<rect x="272" y="309" width="200" height="8" fill="#3a3c40" rx="3"/>
+<rect x="272" y="309" width="110" height="8" fill="#5865f2" rx="3"/>
+<text x="772" y="320" text-anchor="end" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">200 pts</text>
+<rect x="170" y="408" width="618" height="32" fill="#383a40" rx="8"/>
+<text x="184" y="429" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">Message #trivia</text>
 </svg>

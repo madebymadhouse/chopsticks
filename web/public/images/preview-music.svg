@@ -1,70 +1,105 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="'DM Sans',system-ui,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,-apple-system,sans-serif">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1e1f22"/><stop offset="100%" stop-color="#0d0f12"/>
-    </linearGradient>
-    <radialGradient id="g1" cx="15%" cy="20%" r="55%">
-      <stop offset="0%" stop-color="#f472b6" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="g2" cx="85%" cy="80%" r="50%">
-      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="sh"><feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000" flood-opacity="0.6"/></filter>
-    <filter id="sh2"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.5"/></filter>
-    <clipPath id="win"><rect width="800" height="450" rx="0"/></clipPath>
-  </defs>
-  <rect width="800" height="450" fill="url(#bg)"/>
-  <rect width="800" height="450" fill="url(#g1)"/>
-  <rect width="800" height="450" fill="url(#g2)"/>
-  <rect x="0" y="0" width="180" height="450" fill="#2b2d31"/>
-  <rect x="0" y="0" width="180" height="48" fill="#232428"/>
-  <text x="14" y="30" font-size="13" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">🍜 WokSpec</text>
-  <line x1="0" y1="48" x2="180" y2="48" stroke="#1e1f22" stroke-width="1"/>
-  <text x="14" y="74" font-size="10" font-weight="600" fill="#8d8f92" font-family="system-ui,sans-serif" letter-spacing="0.08em">TEXT CHANNELS</text>
-  <text x="18" y="90" font-size="13" fill="#8d8f92" font-family="system-ui,sans-serif"># general</text>
-  <rect x="4" y="102" width="172" height="22" fill="#404249" rx="4"/>
-  <text x="18" y="116" font-size="13" fill="#dde1e7" font-family="system-ui,sans-serif"># music</text>
-  <text x="18" y="142" font-size="13" fill="#8d8f92" font-family="system-ui,sans-serif"># requests</text>
-  <text x="18" y="168" font-size="13" fill="#8d8f92" font-family="system-ui,sans-serif"># dj-log</text>
-  <rect x="180" y="0" width="620" height="48" fill="#313338"/>
-  <line x1="180" y1="48" x2="800" y2="48" stroke="#1e1f22" stroke-width="1"/>
-  <text x="194" y="18" font-size="10" fill="#8d8f92" font-family="system-ui,sans-serif">#</text>
-  <text x="206" y="18" font-size="13" font-weight="600" fill="#fff" font-family="system-ui,sans-serif">music</text>
-  <!-- Now playing embed -->
-  <rect x="220" y="62" width="450" height="180" fill="#2b2d31" rx="6" filter="url(#sh2)"/>
-  <rect x="220" y="62" width="4" height="180" fill="#f472b6" rx="2"/>
-  <text x="234" y="82" font-size="11" font-weight="700" fill="#f472b6" font-family="system-ui,sans-serif">NOW PLAYING</text>
-  <text x="234" y="102" font-size="16" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">Lofi Hip Hop — Sleepy Vibes</text>
-  <text x="234" y="118" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">Artist: ChillBeats Studio · Album: Study Playlist Vol. 3</text>
-  <!-- Progress bar -->
-  <rect x="234" y="130" width="420" height="6" fill="#383a40" rx="3"/>
-  <rect x="234" y="130" width="168" height="6" fill="#f472b6" rx="3"/>
-  <circle cx="402" cy="133" r="7" fill="#fff"/>
-  <text x="234" y="152" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">1:24</text>
-  <text x="634" y="152" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">3:32</text>
-  <!-- Waveform -->
-  <g opacity="0.7">
-  <rect x="234" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.5"/><rect x="245" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.6"/><rect x="256" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.7"/><rect x="267" y="176" width="7" height="4" fill="#f472b6" rx="2" opacity="0.8"/><rect x="278" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.9"/><rect x="289" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.5"/><rect x="300" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.6"/><rect x="311" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.7"/><rect x="322" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.8"/><rect x="333" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.9"/><rect x="344" y="176" width="7" height="4" fill="#f472b6" rx="2" opacity="0.5"/><rect x="355" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.6"/><rect x="366" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.7"/><rect x="377" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.8"/><rect x="388" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.9"/><rect x="399" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.5"/><rect x="410" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.6"/><rect x="421" y="176" width="7" height="4" fill="#f472b6" rx="2" opacity="0.7"/><rect x="432" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.8"/><rect x="443" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.9"/><rect x="454" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.5"/><rect x="465" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.6"/><rect x="476" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.7"/><rect x="487" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.8"/><rect x="498" y="176" width="7" height="4" fill="#f472b6" rx="2" opacity="0.9"/><rect x="509" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.5"/><rect x="520" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.6"/><rect x="531" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.7"/><rect x="542" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.8"/><rect x="553" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.9"/><rect x="564" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.5"/><rect x="575" y="176" width="7" height="4" fill="#f472b6" rx="2" opacity="0.6"/><rect x="586" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.7"/><rect x="597" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.8"/><rect x="608" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.9"/><rect x="619" y="152" width="7" height="28" fill="#f472b6" rx="2" opacity="0.5"/><rect x="630" y="160" width="7" height="20" fill="#f472b6" rx="2" opacity="0.6"/><rect x="641" y="168" width="7" height="12" fill="#f472b6" rx="2" opacity="0.7"/>
-  </g>
-  <!-- Volume/queue controls -->
-  <rect x="220" y="256" width="450" height="34" fill="#232428" rx="4"/>
-  <text x="236" y="278" font-size="20" fill="#fff" font-family="system-ui,sans-serif">⏮</text>
-  <text x="268" y="278" font-size="20" fill="#f472b6" font-family="system-ui,sans-serif">⏸</text>
-  <text x="300" y="278" font-size="20" fill="#fff" font-family="system-ui,sans-serif">⏭</text>
-  <text x="336" y="278" font-size="20" fill="#fff" font-family="system-ui,sans-serif">🔀</text>
-  <text x="368" y="278" font-size="20" fill="#fff" font-family="system-ui,sans-serif">🔁</text>
-  <text x="420" y="274" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">Volume</text>
-  <rect x="464" y="268" width="100" height="6" fill="#383a40" rx="3"/>
-  <rect x="464" y="268" width="70" height="6" fill="#f472b6" rx="3"/>
-  <circle cx="534" cy="271" r="5" fill="#fff"/>
-  <!-- Queue -->
-  <rect x="220" y="300" width="450" height="112" fill="#232428" rx="4"/>
-  <text x="234" y="318" font-size="11" font-weight="700" fill="#8d8f92" font-family="system-ui,sans-serif">UP NEXT  —  3 tracks in queue</text>
-  <text x="244" y="338" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">1.  Jazz Night — Miles &amp; Co.                              3:18</text>
-  <text x="244" y="356" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">2.  Chill Wave — Ambient Dreams                          4:02</text>
-  <text x="244" y="374" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">3.  Lo-Fi Rain — Study Session                             5:11</text>
-  <rect x="188" y="422" width="490" height="22" fill="#383a40" rx="8"/>
-  <text x="204" y="437" font-size="12" fill="#4e5058" font-family="system-ui,sans-serif">Message #music</text>
+  <radialGradient id="ga" cx="15%" cy="25%" r="60%">
+    <stop offset="0%" stop-color="#f472b6" stop-opacity="0.13"/>
+    <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="gb" cx="85%" cy="80%" r="55%">
+    <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.10"/>
+    <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="sh" x="-5%" y="-5%" width="110%" height="110%">
+    <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#000" flood-opacity="0.55"/>
+  </filter>
+  <clipPath id="av"><circle cx="16" cy="16" r="16"/></clipPath>
+  <clipPath id="av2"><circle cx="14" cy="14" r="14"/></clipPath>
+  <clipPath id="srv"><rect width="28" height="28" rx="8"/></clipPath>
+</defs>
+  <rect width="800" height="450" fill="#1e1f22"/>
+<rect width="800" height="450" fill="url(#ga)"/>
+<rect width="800" height="450" fill="url(#gb)"/>
+  <rect x="0" y="0" width="158" height="450" fill="#2b2d31"/>
+<rect x="0" y="0" width="158" height="46" fill="#232428"/>
+<g transform="translate(10,9)"><clipPath id="srv_cp"><rect width="28" height="28" rx="8"/></clipPath>
+<image href="/images/chopsticks.png" x="0" y="0" width="28" height="28" clip-path="url(#srv_cp)"/></g>
+<text x="46" y="28" font-size="12" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">Example Server</text>
+<line x1="0" y1="46" x2="158" y2="46" stroke="#1e1f22" stroke-width="1"/>
+<text x="12" y="68" font-size="9" font-weight="700" fill="#8d8f92" font-family="system-ui,sans-serif" letter-spacing="0.07em">TEXT CHANNELS</text>
+<text x="14" y="82" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif"># general</text>
+<rect x="4" y="93" width="150" height="22" fill="#404249" rx="4"/>
+<text x="14" y="106" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif"># music</text>
+<text x="14" y="130" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif"># requests</text>
+<text x="14" y="154" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">🔊 General</text>
+<rect x="158" y="0" width="642" height="46" fill="#313338"/>
+<line x1="158" y1="46" x2="800" y2="46" stroke="#1e1f22" stroke-width="1"/>
+<text x="172" y="20" font-size="11" fill="#72767d" font-family="system-ui,sans-serif">#</text>
+<text x="182" y="20" font-size="13" font-weight="600" fill="#ffffff" font-family="system-ui,sans-serif">music</text>
+<text x="172" y="37" font-size="11" fill="#72767d" font-family="system-ui,sans-serif">Chopsticks bot commands &amp; status</text>
+<g transform="translate(170,66)"><image href="/images/chopsticks.png" x="0" y="0" width="32" height="32" clip-path="url(#av)"/></g>
+<text x="210" y="78" font-size="13" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">Chopsticks</text>
+<rect x="286" y="69" width="26" height="12" fill="#5865f2" rx="3"/>
+<text x="299" y="79" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">BOT</text>
+<text x="318" y="78" font-size="11" fill="#72767d" font-family="system-ui,sans-serif">Today at 3:42 PM</text>
+<text x="210" y="94" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">!play lofi hip hop  ↳  Queuing track…</text>
+<rect x="172" y="112" width="614" height="228" fill="#2b2d31" rx="4" filter="url(#sh)"/>
+<rect x="172" y="112" width="4" height="228" fill="#f472b6" rx="2"/>
+<text x="186" y="130" font-size="10" font-weight="700" fill="#f472b6" font-family="system-ui,sans-serif" letter-spacing="0.08em">NOW PLAYING</text>
+<text x="186" y="150" font-size="14" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">Lofi Hip Hop — Sleepy Vibes</text>
+<text x="186" y="167" font-size="11" fill="#8d8f92" font-family="system-ui,sans-serif">ChillBeats Studio · Study Playlist Vol. 3 · 3:32</text>
+<rect x="186" y="178" width="586" height="5" fill="#3a3c40" rx="2"/>
+<rect x="186" y="178" width="234" height="5" fill="#f472b6" rx="2"/>
+<circle cx="420" cy="180" r="6" fill="#fff"/>
+<text x="186" y="196" font-size="10" fill="#8d8f92" font-family="system-ui,sans-serif">1:24</text>
+<text x="772" y="196" text-anchor="end" font-size="10" fill="#8d8f92" font-family="system-ui,sans-serif">3:32</text>
+<rect x="186" y="226" width="9" height="6" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="198" y="222" width="9" height="10" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="210" y="218" width="9" height="14" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="222" y="212" width="9" height="20" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="234" y="216" width="9" height="16" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="246" y="222" width="9" height="10" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="258" y="225" width="9" height="7" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="270" y="220" width="9" height="12" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="282" y="214" width="9" height="18" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="294" y="210" width="9" height="22" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="306" y="218" width="9" height="14" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="318" y="224" width="9" height="8" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="330" y="222" width="9" height="10" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="342" y="216" width="9" height="16" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="354" y="210" width="9" height="22" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="366" y="214" width="9" height="18" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="378" y="220" width="9" height="12" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="390" y="224" width="9" height="8" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="402" y="226" width="9" height="6" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="414" y="222" width="9" height="10" fill="#f472b6" rx="2" opacity="0.85"/>
+<rect x="426" y="218" width="9" height="14" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="438" y="214" width="9" height="18" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="450" y="218" width="9" height="14" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="462" y="222" width="9" height="10" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="474" y="225" width="9" height="7" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="486" y="223" width="9" height="9" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="498" y="218" width="9" height="14" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="510" y="212" width="9" height="20" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="522" y="216" width="9" height="16" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="534" y="222" width="9" height="10" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="546" y="224" width="9" height="8" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="558" y="220" width="9" height="12" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="570" y="216" width="9" height="16" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="582" y="220" width="9" height="12" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="594" y="223" width="9" height="9" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="606" y="225" width="9" height="7" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="618" y="222" width="9" height="10" fill="#3a3c40" rx="2" opacity="0.85"/>
+<rect x="630" y="218" width="9" height="14" fill="#3a3c40" rx="2" opacity="0.85"/>
+<text x="186" y="256" font-size="17" fill="#ffffff" font-family="system-ui,sans-serif">⏮</text>
+<text x="220" y="256" font-size="17" fill="#ffffff" font-family="system-ui,sans-serif">⏸</text>
+<text x="254" y="256" font-size="17" fill="#ffffff" font-family="system-ui,sans-serif">⏭</text>
+<text x="288" y="256" font-size="17" fill="#ffffff" font-family="system-ui,sans-serif">🔀</text>
+<text x="322" y="256" font-size="17" fill="#ffffff" font-family="system-ui,sans-serif">🔁</text>
+<line x1="186" y1="268" x2="772" y2="268" stroke="#3a3c40" stroke-width="1"/>
+<text x="186" y="282" font-size="10" font-weight="700" fill="#8d8f92" font-family="system-ui,sans-serif" letter-spacing="0.06em">QUEUE — 2 MORE TRACKS</text>
+<text x="186" y="296" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">1.  Jazz Night — Miles & Co.</text>
+<text x="772" y="296" text-anchor="end" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">3:18</text>
+<text x="186" y="313" font-size="12" fill="#dbdee1" font-family="system-ui,sans-serif">2.  Chill Wave — Ambient Dreams</text>
+<text x="772" y="313" text-anchor="end" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">4:02</text>
+<rect x="170" y="408" width="618" height="32" fill="#383a40" rx="8"/>
+<text x="184" y="429" font-size="12" fill="#8d8f92" font-family="system-ui,sans-serif">Message #music</text>
 </svg>
