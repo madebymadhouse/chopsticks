@@ -40,16 +40,26 @@ const SLASH_CAT_META: Record<string, { color: string; Icon: React.FC<{size?:numb
   AI:         { color: '#38bdf8', Icon: SparkleIcon },
   Utility:    { color: '#94a3b8', Icon: WrenchIcon },
 };
-const PERM_STYLE: Record<string, { bg: string; color: string }> = {
-  Everyone:  { bg: 'rgba(56,189,248,0.1)',  color: '#38bdf8' },
-  Moderator: { bg: 'rgba(251,191,36,0.1)',  color: '#fbbf24' },
-  Admin:     { bg: 'rgba(239,68,68,0.1)',   color: '#f87171' },
+// Discord permission display — maps exact perm names to badge colour + icon
+const PERM_META: Record<string, { bg: string; color: string; icon: string }> = {
+  '@everyone':        { bg: 'rgba(148,163,184,0.1)', color: '#94a3b8', icon: '👥' },
+  'Manage Messages':  { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24', icon: '✏️' },
+  'Manage Channels':  { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24', icon: '📋' },
+  'Manage Nicknames': { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24', icon: '🏷️' },
+  'Manage Roles':     { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24', icon: '🎭' },
+  'Manage Server':    { bg: 'rgba(251,146,60,0.12)', color: '#fb923c', icon: '⚙️' },
+  'Kick Members':     { bg: 'rgba(248,113,113,0.12)', color: '#f87171', icon: '👢' },
+  'Ban Members':      { bg: 'rgba(239,68,68,0.13)',  color: '#ef4444', icon: '🔨' },
+  'Moderate Members': { bg: 'rgba(248,113,113,0.12)', color: '#f87171', icon: '🔇' },
+  'Administrator':    { bg: 'rgba(239,68,68,0.15)',  color: '#ef4444', icon: '🛡️' },
+  'Voice Room Owner': { bg: 'rgba(192,132,252,0.12)', color: '#c084fc', icon: '🎤' },
 };
 
 function PermBadge({ perm }: { perm: string }) {
-  const s = PERM_STYLE[perm] ?? PERM_STYLE.Everyone;
+  const s = PERM_META[perm] ?? PERM_META['@everyone'];
   return (
-    <span style={{ fontSize: '0.68rem', fontWeight: 700, fontFamily: 'var(--font-heading)', padding: '0.15rem 0.5rem', borderRadius: 999, background: s.bg, color: s.color, border: `1px solid ${s.color}22`, flexShrink: 0 }}>
+    <span title={perm} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.68rem', fontWeight: 700, fontFamily: 'var(--font-heading)', padding: '0.15rem 0.5rem 0.15rem 0.35rem', borderRadius: 999, background: s.bg, color: s.color, border: `1px solid ${s.color}28`, flexShrink: 0, whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: '0.7rem', lineHeight: 1 }}>{s.icon}</span>
       {perm}
     </span>
   );
@@ -294,12 +304,17 @@ export default function CommandsClient() {
           <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-faint)' }}>Loading commands…</div>
         ) : tab === 'prefix' ? (
           <>
-            {/* prefix note */}
-            <div style={{ background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '0.625rem', padding: '0.75rem 1rem', marginBottom: '2rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+            {/* prefix note + permission legend */}
+            <div style={{ background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '0.625rem', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '1rem', flexShrink: 0 }}>💡</span>
               <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
                 Default prefix is <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>!</code>. Change it with <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>/prefix</code> or <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>!prefix &lt;new&gt;</code>. Aliases shown in grey — any alias works exactly like the main command.
               </p>
+            </div>
+            {/* Permission legend */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '2rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontFamily: 'var(--font-heading)', fontWeight: 600, marginRight: '0.25rem' }}>Required permission:</span>
+              {Object.entries(PERM_META).map(([p]) => <PermBadge key={p} perm={p} />)}
             </div>
             {Object.keys(prefixGrouped).length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-faint)' }}>No commands match your search.</div>

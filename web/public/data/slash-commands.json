@@ -3,7 +3,7 @@
     "name": "setup",
     "category": "Config",
     "summary": "Interactive server setup wizard",
-    "description": "Opens the full server configuration wizard. Walks you through mod log channel, welcome messages, economy settings, DJ roles, leveling, tickets, and the Agent Pool — all in one place. Run once on a fresh install or whenever you need to reconfigure.",
+    "description": "Opens the full server configuration wizard. Walks you through mod log channel, welcome messages, economy settings, DJ roles, leveling, tickets, and the Agent Pool \u2014 all in one place. Run once on a fresh install or whenever you need to reconfigure.",
     "subcommandsRich": [
       {
         "name": "wizard",
@@ -18,7 +18,7 @@
         "desc": "Configure XP, level-up messages and role rewards"
       }
     ],
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/setup wizard",
       "/setup status"
@@ -29,7 +29,7 @@
     "category": "Config",
     "summary": "Live server dashboard with interactive controls",
     "description": "Displays a real-time dashboard embed showing bot health, active agent sessions, economy stats, and quick-action buttons for common mod tasks. Only admins can trigger actions; everyone can view.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/dashboard"
     ]
@@ -38,8 +38,8 @@
     "name": "prefix",
     "category": "Config",
     "summary": "View or change the command prefix",
-    "description": "With no argument, shows the current prefix. Pass a value (1–4 characters) to change it. Anyone can view; only members with Manage Server can change it.",
-    "permissions": "Admin",
+    "description": "With no argument, shows the current prefix. Pass a value (1\u20134 characters) to change it. Anyone can view; only members with Manage Server can change it.",
+    "permissions": "Manage Server",
     "examples": [
       "/prefix",
       "/prefix value:!",
@@ -51,7 +51,7 @@
     "category": "Config",
     "summary": "Fine-grained per-module configuration",
     "description": "Per-module settings not covered by /setup. Covers AI provider selection, economy multipliers, XP rates, announcement channels, and timezone.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/config",
       "/config module:economy"
@@ -80,7 +80,7 @@
         "desc": "List all prefix commands for a category"
       }
     ],
-    "permissions": "Everyone",
+    "permissions": "@everyone",
     "examples": [
       "/help browse",
       "/help search query:ban",
@@ -92,7 +92,7 @@
     "category": "Config",
     "summary": "Configure automatic moderation rules",
     "description": "Set up spam detection, bad-word filters, mention limits, link blocking, and raid-detection thresholds. Each rule has an action (warn, mute, kick, ban) and can be scoped to channels or roles.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/automod",
       "/automod rule:spam action:timeout"
@@ -103,7 +103,7 @@
     "category": "Config",
     "summary": "Set up welcome and farewell messages",
     "description": "Configure the welcome channel, embed message, and farewell message. Supports {user}, {server}, {membercount} placeholders. Can also assign a welcome role on join.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/welcome",
       "/welcome channel:#welcome"
@@ -114,7 +114,7 @@
     "category": "Config",
     "summary": "Roles automatically assigned on member join",
     "description": "Add or remove roles from the autorole list. Members receive all autorole roles the moment they join the server.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/autorole",
       "/autorole add role:@Member"
@@ -125,7 +125,7 @@
     "category": "Config",
     "summary": "Reaction roles and self-assignable role menus",
     "description": "Create role menus with dropdown selects or reaction-based assignment. Useful for colour roles, pronoun roles, or notification opt-ins.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/roles",
       "/roles create type:dropdown"
@@ -136,7 +136,7 @@
     "category": "Config",
     "summary": "Ticket system configuration",
     "description": "Set up support ticket channels: create panel, define staff roles, configure transcript channel, and set ticket naming format. Members open tickets with a button.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/tickets setup",
       "/tickets panel channel:#support"
@@ -145,7 +145,7 @@
   {
     "name": "mod",
     "category": "Moderation",
-    "summary": "Slash-based moderation (ban, kick, warn…)",
+    "summary": "Slash-based moderation (ban, kick, warn\u2026)",
     "description": "Slash command equivalents of the prefix moderation commands. Useful when you want the Discord context-menu integration or ephemeral responses. Prefix equivalents also exist for every subcommand.",
     "subcommandsRich": [
       {
@@ -173,7 +173,7 @@
         "desc": "Look up a moderation case"
       }
     ],
-    "permissions": "Moderator",
+    "permissions": "Moderate Members",
     "examples": [
       "/mod ban user:@user reason:spam",
       "/mod purge amount:50"
@@ -184,7 +184,7 @@
     "category": "Utility",
     "summary": "XP and leveling configuration",
     "description": "Configure the leveling system: enable/disable, set XP per message, configure level-up announcement channel, and manage level role rewards.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/levels",
       "/levels preset:active"
@@ -198,7 +198,7 @@
     "subcommandsRich": [
       {
         "name": "play",
-        "desc": "Play or queue a track — search or URL"
+        "desc": "Play or queue a track \u2014 search or URL"
       },
       {
         "name": "skip",
@@ -217,7 +217,7 @@
         "desc": "Stop and disconnect"
       }
     ],
-    "permissions": "Everyone",
+    "permissions": "@everyone",
     "examples": [
       "/music play query:lofi hip hop",
       "/music skip"
@@ -246,7 +246,7 @@
         "desc": "Set the persona and tone for the session"
       }
     ],
-    "permissions": "Everyone",
+    "permissions": "@everyone",
     "examples": [
       "/agents join",
       "/agents list",
@@ -258,7 +258,7 @@
     "category": "AI",
     "summary": "AI chat with slash command interface",
     "description": "Chat with an AI model directly from a slash command. Creates a contextual conversation. Most users prefer !ask for quick messages; /ai is better for structured back-and-forth.",
-    "permissions": "Everyone",
+    "permissions": "@everyone",
     "examples": [
       "/ai chat message:Explain quantum entanglement"
     ]
@@ -268,7 +268,7 @@
     "category": "Config",
     "summary": "Member verification gate",
     "description": "Configure a verification step new members must complete before gaining access to the server. Supports button click, reaction, or CAPTCHA-style text entry.",
-    "permissions": "Admin",
+    "permissions": "Manage Server",
     "examples": [
       "/verify setup",
       "/verify channel:#verify"
@@ -279,7 +279,7 @@
     "category": "Utility",
     "summary": "Create rich interactive polls",
     "description": "Create polls with up to 10 options, set a duration, and optionally restrict voting to specific roles. Results posted when poll ends.",
-    "permissions": "Everyone",
+    "permissions": "@everyone",
     "examples": [
       "/poll question:Best bot? options:Chopsticks,Other"
     ]
@@ -289,7 +289,7 @@
     "category": "Utility",
     "summary": "Launch and manage giveaways",
     "description": "Start a timed giveaway, set winners count, require a role to enter, and re-roll if needed. Results are announced automatically.",
-    "permissions": "Moderator",
+    "permissions": "Moderate Members",
     "examples": [
       "/giveaway start prize:Nitro duration:24h winners:1"
     ]
@@ -299,7 +299,7 @@
     "category": "Utility",
     "summary": "Set personal or channel reminders",
     "description": "Schedule a reminder for yourself or a channel. Supports natural-language time parsing (e.g. 'in 2 hours', 'tomorrow at 9am').",
-    "permissions": "Everyone",
+    "permissions": "@everyone",
     "examples": [
       "/remind time:in 2 hours message:Check the queue"
     ]
@@ -308,8 +308,8 @@
     "name": "embed",
     "category": "Utility",
     "summary": "Build and send custom embeds",
-    "description": "Interactive embed builder — set title, description, color, fields, image, footer, and author. Send to any channel you have permission for.",
-    "permissions": "Moderator",
+    "description": "Interactive embed builder \u2014 set title, description, color, fields, image, footer, and author. Send to any channel you have permission for.",
+    "permissions": "Moderate Members",
     "examples": [
       "/embed"
     ]

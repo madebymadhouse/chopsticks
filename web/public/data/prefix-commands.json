@@ -7,8 +7,8 @@
     ],
     "category": "AI",
     "usage": "!aimodel",
-    "description": "Show your active AI model — !aimodel",
-    "permissions": "Everyone"
+    "description": "Show your active AI model and provider — !aimodel",
+    "permissions": "@everyone"
   },
   {
     "name": "ask",
@@ -19,8 +19,8 @@
     ],
     "category": "AI",
     "usage": "!ask",
-    "description": "Chat with AI (rolling context) — !ask <message>",
-    "permissions": "Everyone"
+    "description": "Chat with AI (rolling conversation context) — !ask <message>",
+    "permissions": "@everyone"
   },
   {
     "name": "summarize",
@@ -31,7 +31,7 @@
     "category": "AI",
     "usage": "!summarize",
     "description": "Summarize a block of text with AI — !summarize <text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "translate",
@@ -42,7 +42,7 @@
     "category": "AI",
     "usage": "!translate",
     "description": "Translate text to another language — !translate <lang> <text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "autorole",
@@ -50,7 +50,7 @@
     "category": "Automation",
     "usage": "!autorole",
     "description": "Configure roles auto-assigned on join — !autorole [add/remove] [@role]",
-    "permissions": "Admin"
+    "permissions": "Manage Server"
   },
   {
     "name": "giveaway",
@@ -58,7 +58,7 @@
     "category": "Automation",
     "usage": "!giveaway",
     "description": "Start a giveaway — !giveaway <duration> <prize>",
-    "permissions": "Moderator"
+    "permissions": "Manage Server"
   },
   {
     "name": "poll",
@@ -66,15 +66,15 @@
     "category": "Automation",
     "usage": "!poll",
     "description": "Create a quick poll — !poll <question> | option1 | option2",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "prefix",
     "aliases": [],
     "category": "Automation",
     "usage": "!prefix",
-    "description": "View or set the command prefix — !prefix [newprefix]",
-    "permissions": "Admin"
+    "description": "View or change the command prefix — !prefix [newprefix]",
+    "permissions": "Manage Server"
   },
   {
     "name": "remind",
@@ -82,7 +82,7 @@
     "category": "Automation",
     "usage": "!remind",
     "description": "Set a reminder — !remind <time> <message>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "welcome",
@@ -90,7 +90,7 @@
     "category": "Automation",
     "usage": "!welcome",
     "description": "Configure welcome messages — !welcome [channel] [message]",
-    "permissions": "Admin"
+    "permissions": "Manage Server"
   },
   {
     "name": "balance",
@@ -101,7 +101,7 @@
     "category": "Economy",
     "usage": "!balance",
     "description": "Check your credit balance — !balance [@user]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "compliment",
@@ -109,7 +109,7 @@
     "category": "Economy",
     "usage": "!compliment",
     "description": "!compliment",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "craft",
@@ -117,7 +117,7 @@
     "category": "Economy",
     "usage": "!craft",
     "description": "Craft items from your inventory — !craft",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "daily",
@@ -128,7 +128,7 @@
     "category": "Economy",
     "usage": "!daily",
     "description": "Claim your daily credits — !daily",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "inventory",
@@ -140,7 +140,7 @@
     "category": "Economy",
     "usage": "!inventory",
     "description": "View your inventory — !inventory",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "leaderboard",
@@ -151,7 +151,7 @@
     "category": "Economy",
     "usage": "!leaderboard",
     "description": "Credits leaderboard — !leaderboard",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "open",
@@ -163,7 +163,7 @@
     "category": "Economy",
     "usage": "!open",
     "description": "Open a loot crate — !open [crate name]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "prestige",
@@ -174,7 +174,7 @@
     "category": "Economy",
     "usage": "!prestige",
     "description": "Prestige — reset to level 1 for exclusive perks",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "profile",
@@ -184,7 +184,7 @@
     "category": "Economy",
     "usage": "!profile",
     "description": "View your server profile card — !profile [@user]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "quests",
@@ -192,15 +192,15 @@
     "category": "Economy",
     "usage": "!quests",
     "description": "View and track your active quests — !quests",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "riddle",
     "aliases": [],
     "category": "Economy",
     "usage": "!riddle",
-    "description": "Get a riddle for credits — !riddle",
-    "permissions": "Everyone"
+    "description": "Solve a riddle for credits — !riddle",
+    "permissions": "@everyone"
   },
   {
     "name": "shop",
@@ -211,15 +211,15 @@
     "category": "Economy",
     "usage": "!shop",
     "description": "Browse the server shop — !shop",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "trivia",
     "aliases": [],
     "category": "Economy",
     "usage": "!trivia",
-    "description": "Start a trivia question for credits — !trivia",
-    "permissions": "Everyone"
+    "description": "Answer a trivia question for credits — !trivia",
+    "permissions": "@everyone"
   },
   {
     "name": "work",
@@ -230,7 +230,7 @@
     "category": "Economy",
     "usage": "!work",
     "description": "Earn credits by working — !work",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "xp",
@@ -243,7 +243,7 @@
     "category": "Economy",
     "usage": "!xp",
     "description": "Check XP and level progress — !xp [@user]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "8ball",
@@ -255,7 +255,7 @@
     "category": "Fun",
     "usage": "!8ball",
     "description": "Ask the magic 8-ball — !8ball <question>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "advice",
@@ -266,7 +266,7 @@
     "category": "Fun",
     "usage": "!advice",
     "description": "Random advice — !advice",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "anime",
@@ -277,7 +277,7 @@
     "category": "Fun",
     "usage": "!anime",
     "description": "Anime info — !anime <title>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "apod",
@@ -289,7 +289,7 @@
     "category": "Fun",
     "usage": "!apod",
     "description": "NASA Astronomy Picture of the Day",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "bible",
@@ -300,7 +300,7 @@
     "category": "Fun",
     "usage": "!bible",
     "description": "Bible verse lookup — !bible <book chapter:verse>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "book",
@@ -312,7 +312,7 @@
     "category": "Fun",
     "usage": "!book",
     "description": "Book info — !book <title or author>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "bored",
@@ -323,7 +323,7 @@
     "category": "Fun",
     "usage": "!bored",
     "description": "Random activity suggestion — !bored",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "chuck",
@@ -334,7 +334,7 @@
     "category": "Fun",
     "usage": "!chuck",
     "description": "Random Chuck Norris fact — !chuck",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "cocktail",
@@ -345,7 +345,7 @@
     "category": "Fun",
     "usage": "!cocktail",
     "description": "Random cocktail recipe — !cocktail [name]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "coinflip",
@@ -357,7 +357,7 @@
     "category": "Fun",
     "usage": "!coinflip",
     "description": "Flip a coin — !coinflip",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "color",
@@ -369,7 +369,7 @@
     "category": "Fun",
     "usage": "!color",
     "description": "Color info from hex code. Usage: !color <#hex>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "country",
@@ -380,7 +380,7 @@
     "category": "Fun",
     "usage": "!country",
     "description": "Country info — !country <name>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "dadjoke",
@@ -392,7 +392,7 @@
     "category": "Fun",
     "usage": "!dadjoke",
     "description": "Random dad joke — !dadjoke",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "define",
@@ -404,7 +404,7 @@
     "category": "Fun",
     "usage": "!define",
     "description": "Dictionary definition — !define <word>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "fact",
@@ -415,7 +415,7 @@
     "category": "Fun",
     "usage": "!fact",
     "description": "Random interesting fact — !fact",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "fun",
@@ -423,7 +423,7 @@
     "category": "Fun",
     "usage": "!fun",
     "description": "Run fun variants (220 total)",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "github",
@@ -434,7 +434,7 @@
     "category": "Fun",
     "usage": "!github",
     "description": "GitHub profile info. Usage: !github <username>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "imagine",
@@ -442,7 +442,7 @@
     "category": "Fun",
     "usage": "!imagine",
     "description": "AI image generation — !imagine <prompt>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "iss",
@@ -453,7 +453,7 @@
     "category": "Fun",
     "usage": "!iss",
     "description": "ISS current location — !iss",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "joke",
@@ -464,7 +464,7 @@
     "category": "Fun",
     "usage": "!joke",
     "description": "Random joke — !joke [category]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "kanye",
@@ -475,7 +475,7 @@
     "category": "Fun",
     "usage": "!kanye",
     "description": "Random Kanye West quote — !kanye",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "meal",
@@ -486,7 +486,7 @@
     "category": "Fun",
     "usage": "!meal",
     "description": "Random meal recipe — !meal [name]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "meme",
@@ -496,7 +496,7 @@
     "category": "Fun",
     "usage": "!meme",
     "description": "Random meme — !meme [subreddit]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "number",
@@ -507,7 +507,7 @@
     "category": "Fun",
     "usage": "!number",
     "description": "Interesting fact about a number — !number <n>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "pokemon",
@@ -518,7 +518,7 @@
     "category": "Fun",
     "usage": "!pokemon",
     "description": "Pokémon info — !pokemon <name|id>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "qr",
@@ -528,7 +528,7 @@
     "category": "Fun",
     "usage": "!qr",
     "description": "Generate a QR code — !qr <url or text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "quote",
@@ -539,7 +539,7 @@
     "category": "Fun",
     "usage": "!quote",
     "description": "Random quote — !quote [funny|programming]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "rickmorty",
@@ -550,15 +550,15 @@
     "category": "Fun",
     "usage": "!rickmorty",
     "description": "Rick & Morty character — !rickmorty <name>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "roast",
     "aliases": [],
     "category": "Fun",
     "usage": "!roast",
-    "description": "Roast a user — !roast [@user]",
-    "permissions": "Everyone"
+    "description": "Roast a user with AI — !roast [@user]",
+    "permissions": "@everyone"
   },
   {
     "name": "roll",
@@ -568,8 +568,8 @@
     ],
     "category": "Fun",
     "usage": "!roll",
-    "description": "Roll a die — !roll [sides]",
-    "permissions": "Everyone"
+    "description": "Roll a die — !roll [sides]  e.g. !roll 20",
+    "permissions": "@everyone"
   },
   {
     "name": "ship",
@@ -579,8 +579,8 @@
     ],
     "category": "Fun",
     "usage": "!ship",
-    "description": "Ship two users together — !ship @user1 [@user2]",
-    "permissions": "Everyone"
+    "description": "Ship two users — !ship @user1 [@user2]",
+    "permissions": "@everyone"
   },
   {
     "name": "shorten",
@@ -591,7 +591,7 @@
     "category": "Fun",
     "usage": "!shorten",
     "description": "Shorten a URL — !shorten <url>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "show",
@@ -602,7 +602,7 @@
     "category": "Fun",
     "usage": "!show",
     "description": "TV show info — !show <title>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "spacex",
@@ -613,7 +613,7 @@
     "category": "Fun",
     "usage": "!spacex",
     "description": "Latest SpaceX launch info — !spacex",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "steam",
@@ -624,7 +624,7 @@
     "category": "Fun",
     "usage": "!steam",
     "description": "Steam profile lookup. Usage: !steam <vanity URL or steamid64>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "tod",
@@ -635,7 +635,7 @@
     "category": "Fun",
     "usage": "!tod",
     "description": "Truth or dare — !tod [truth|dare] [spicy]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "urban",
@@ -646,16 +646,16 @@
     ],
     "category": "Fun",
     "usage": "!urban",
-    "description": "Urban Dictionary — !urban <term>",
-    "permissions": "Everyone"
+    "description": "Urban Dictionary definition — !urban <term>",
+    "permissions": "@everyone"
   },
   {
     "name": "weather",
     "aliases": [],
     "category": "Fun",
     "usage": "!weather",
-    "description": "Current weather — !weather <city>",
-    "permissions": "Everyone"
+    "description": "Current weather for any city — !weather <city>",
+    "permissions": "@everyone"
   },
   {
     "name": "wiki",
@@ -667,7 +667,7 @@
     "category": "Fun",
     "usage": "!wiki",
     "description": "Wikipedia summary — !wiki <query>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "wyr",
@@ -678,7 +678,7 @@
     "category": "Fun",
     "usage": "!wyr",
     "description": "Would you rather — !wyr",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "blackjack",
@@ -689,7 +689,7 @@
     "category": "Games",
     "usage": "!blackjack",
     "description": "Play blackjack for credits — !blackjack [bet]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "fish",
@@ -700,7 +700,7 @@
     "category": "Games",
     "usage": "!fish",
     "description": "Go fishing for items and credits — !fish",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "guess",
@@ -711,7 +711,7 @@
     "category": "Games",
     "usage": "!guess",
     "description": "Guess a number 1–100 for credits — !guess",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "hangman",
@@ -721,7 +721,7 @@
     "category": "Games",
     "usage": "!hangman",
     "description": "Play a game of hangman — !hangman",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "hunt",
@@ -732,7 +732,7 @@
     "category": "Games",
     "usage": "!hunt",
     "description": "Hunt for bounties and credits — !hunt",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "mine",
@@ -743,7 +743,7 @@
     "category": "Games",
     "usage": "!mine",
     "description": "Mine for ore and gems — !mine",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "rank",
@@ -754,8 +754,8 @@
     ],
     "category": "Levels",
     "usage": "!rank",
-    "description": "View your XP rank card — !rank [@user]",
-    "permissions": "Everyone"
+    "description": "Show your XP rank card — !rank [@user]",
+    "permissions": "@everyone"
   },
   {
     "name": "top",
@@ -766,7 +766,7 @@
     "category": "Levels",
     "usage": "!top",
     "description": "XP leaderboard — !top [page]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "ban",
@@ -774,7 +774,7 @@
     "category": "Moderation",
     "usage": "!ban",
     "description": "Ban a member from the server — !ban @user [reason]",
-    "permissions": "Moderator"
+    "permissions": "Ban Members"
   },
   {
     "name": "clearwarns",
@@ -782,7 +782,7 @@
     "category": "Moderation",
     "usage": "!clearwarns",
     "description": "Clear all warnings for a user — !clearwarns @user",
-    "permissions": "Moderator"
+    "permissions": "Moderate Members"
   },
   {
     "name": "kick",
@@ -790,15 +790,15 @@
     "category": "Moderation",
     "usage": "!kick",
     "description": "Kick a member — !kick @user [reason]",
-    "permissions": "Moderator"
+    "permissions": "Kick Members"
   },
   {
     "name": "lock",
     "aliases": [],
     "category": "Moderation",
     "usage": "!lock",
-    "description": "Lock your voice room — !lock",
-    "permissions": "Moderator"
+    "description": "Lock a channel so no-one can send messages — !lock",
+    "permissions": "Manage Channels"
   },
   {
     "name": "nick",
@@ -806,7 +806,7 @@
     "category": "Moderation",
     "usage": "!nick",
     "description": "Change a member's nickname — !nick @user <new name>",
-    "permissions": "Moderator"
+    "permissions": "Manage Nicknames"
   },
   {
     "name": "purge",
@@ -814,7 +814,7 @@
     "category": "Moderation",
     "usage": "!purge",
     "description": "Bulk-delete messages — !purge <amount> [@user]",
-    "permissions": "Moderator"
+    "permissions": "Manage Messages"
   },
   {
     "name": "role",
@@ -822,7 +822,7 @@
     "category": "Moderation",
     "usage": "!role",
     "description": "Add or remove a role from a member — !role @user @role",
-    "permissions": "Moderator"
+    "permissions": "Manage Roles"
   },
   {
     "name": "slowmode",
@@ -830,23 +830,23 @@
     "category": "Moderation",
     "usage": "!slowmode",
     "description": "Set channel slowmode — !slowmode <seconds>",
-    "permissions": "Moderator"
+    "permissions": "Manage Channels"
   },
   {
     "name": "softban",
     "aliases": [],
     "category": "Moderation",
     "usage": "!softban",
-    "description": "Soft-ban (ban then unban) to clear messages — !softban @user",
-    "permissions": "Moderator"
+    "description": "Ban then immediately unban to clear messages — !softban @user [reason]",
+    "permissions": "Ban Members"
   },
   {
     "name": "timeout",
     "aliases": [],
     "category": "Moderation",
     "usage": "!timeout",
-    "description": "Mute a member temporarily — !timeout @user [duration] [reason]",
-    "permissions": "Moderator"
+    "description": "Temporarily mute a member — !timeout @user [duration] [reason]",
+    "permissions": "Moderate Members"
   },
   {
     "name": "unban",
@@ -854,31 +854,31 @@
     "category": "Moderation",
     "usage": "!unban",
     "description": "Unban a user by ID — !unban <user_id> [reason]",
-    "permissions": "Moderator"
+    "permissions": "Ban Members"
   },
   {
     "name": "unlock",
     "aliases": [],
     "category": "Moderation",
     "usage": "!unlock",
-    "description": "Unlock your voice room — !unlock",
-    "permissions": "Moderator"
+    "description": "Unlock a previously locked channel — !unlock",
+    "permissions": "Manage Channels"
   },
   {
     "name": "warn",
     "aliases": [],
     "category": "Moderation",
     "usage": "!warn",
-    "description": "Warn a member — !warn @user [reason]",
-    "permissions": "Moderator"
+    "description": "Issue a warning to a member — !warn @user [reason]",
+    "permissions": "Moderate Members"
   },
   {
     "name": "warnings",
     "aliases": [],
     "category": "Moderation",
     "usage": "!warnings",
-    "description": "View warnings for a user — !warnings [@user]",
-    "permissions": "Everyone"
+    "description": "View warning history for a user — !warnings [@user]",
+    "permissions": "Moderate Members"
   },
   {
     "name": "clearqueue",
@@ -889,7 +889,7 @@
     "category": "Music",
     "usage": "!clearqueue",
     "description": "Clear the entire queue — !clearqueue",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "loop",
@@ -900,7 +900,7 @@
     "category": "Music",
     "usage": "!loop",
     "description": "Set loop mode — !loop <off|track|queue>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "move",
@@ -910,7 +910,7 @@
     "category": "Music",
     "usage": "!move",
     "description": "Move a track to a new position — !move <from> <to>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "nowplaying",
@@ -921,8 +921,8 @@
     ],
     "category": "Music",
     "usage": "!nowplaying",
-    "description": "Show the current track — !np",
-    "permissions": "Everyone"
+    "description": "Show the currently playing track — !np",
+    "permissions": "@everyone"
   },
   {
     "name": "pause",
@@ -932,7 +932,7 @@
     "category": "Music",
     "usage": "!pause",
     "description": "Pause playback — !pause",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "play",
@@ -943,7 +943,7 @@
     "category": "Music",
     "usage": "!play",
     "description": "Play or queue a track — !play <search | URL>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "queue",
@@ -954,7 +954,7 @@
     "category": "Music",
     "usage": "!queue",
     "description": "Show the track queue — !queue [page]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "remove",
@@ -964,8 +964,8 @@
     ],
     "category": "Music",
     "usage": "!remove",
-    "description": "Remove a track by position — !remove <#>",
-    "permissions": "Everyone"
+    "description": "Remove a track by queue position — !remove <#>",
+    "permissions": "@everyone"
   },
   {
     "name": "resume",
@@ -976,7 +976,7 @@
     "category": "Music",
     "usage": "!resume",
     "description": "Resume playback — !resume",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "search",
@@ -986,7 +986,7 @@
     "category": "Music",
     "usage": "!search",
     "description": "Search for tracks — !search <query>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "shuffle",
@@ -996,7 +996,7 @@
     "category": "Music",
     "usage": "!shuffle",
     "description": "Shuffle the queue — !shuffle",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "skip",
@@ -1007,7 +1007,7 @@
     "category": "Music",
     "usage": "!skip",
     "description": "Skip the current track — !skip",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "stop",
@@ -1019,7 +1019,7 @@
     "category": "Music",
     "usage": "!stop",
     "description": "Stop playback and disconnect — !stop",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "volume",
@@ -1030,7 +1030,7 @@
     "category": "Music",
     "usage": "!volume",
     "description": "Set playback volume 0–200 — !volume <n>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "battle",
@@ -1042,7 +1042,7 @@
     "category": "Social",
     "usage": "!battle",
     "description": "PvP battle another member — !battle @user [wager]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "bio",
@@ -1053,7 +1053,7 @@
     "category": "Social",
     "usage": "!bio",
     "description": "Set or view your bio — !bio [text] | !bio @user",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "checkrep",
@@ -1064,7 +1064,7 @@
     "category": "Social",
     "usage": "!checkrep",
     "description": "Check a member's reputation — !checkrep @user",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "divorce",
@@ -1075,7 +1075,7 @@
     "category": "Social",
     "usage": "!divorce",
     "description": "End your in-bot marriage — !divorce",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "marry",
@@ -1086,7 +1086,7 @@
     "category": "Social",
     "usage": "!marry",
     "description": "Propose marriage — !marry @user",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "rep",
@@ -1097,7 +1097,7 @@
     "category": "Social",
     "usage": "!rep",
     "description": "Give reputation to a member — !rep @user",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "socialprofile",
@@ -1108,7 +1108,7 @@
     "category": "Social",
     "usage": "!socialprofile",
     "description": "View your full social profile — !socialprofile [@user]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "spouse",
@@ -1119,23 +1119,23 @@
     "category": "Social",
     "usage": "!spouse",
     "description": "See who you're married to — !spouse",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "agents",
     "aliases": [],
     "category": "Utility",
     "usage": "!agents",
-    "description": "!agents",
-    "permissions": "Everyone"
+    "description": "View and manage Agent Pool status — !agents",
+    "permissions": "Manage Server"
   },
   {
     "name": "aliases",
     "aliases": [],
     "category": "Utility",
     "usage": "!aliases",
-    "description": "!aliases",
-    "permissions": "Everyone"
+    "description": "Manage command aliases for this server — !aliases",
+    "permissions": "Manage Server"
   },
   {
     "name": "ascii",
@@ -1146,7 +1146,7 @@
     "category": "Utility",
     "usage": "!ascii",
     "description": "Big ASCII banner — !ascii <text> (max 10 chars)",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "avatar",
@@ -1158,7 +1158,7 @@
     "category": "Utility",
     "usage": "!avatar",
     "description": "Get a user's avatar — !avatar [@user]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "botinfo",
@@ -1168,8 +1168,8 @@
     ],
     "category": "Utility",
     "usage": "!botinfo",
-    "description": "Show Chopsticks version and stats — !botinfo",
-    "permissions": "Everyone"
+    "description": "Show Chopsticks stats and version — !botinfo",
+    "permissions": "@everyone"
   },
   {
     "name": "calc",
@@ -1180,8 +1180,8 @@
     ],
     "category": "Utility",
     "usage": "!calc",
-    "description": "Math expression evaluator — !calc <expr>",
-    "permissions": "Everyone"
+    "description": "Evaluate a math expression — !calc <expr>",
+    "permissions": "@everyone"
   },
   {
     "name": "choose",
@@ -1191,8 +1191,8 @@
     ],
     "category": "Utility",
     "usage": "!choose",
-    "description": "Pick from options — !choose a, b, c",
-    "permissions": "Everyone"
+    "description": "Pick from a list of options — !choose a, b, c",
+    "permissions": "@everyone"
   },
   {
     "name": "clap",
@@ -1202,7 +1202,7 @@
     "category": "Utility",
     "usage": "!clap",
     "description": "Add 👏 between 👏 words — !clap <text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "decode",
@@ -1213,7 +1213,7 @@
     "category": "Utility",
     "usage": "!decode",
     "description": "Base64 decode — !decode <base64>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "echo",
@@ -1223,7 +1223,7 @@
     "category": "Utility",
     "usage": "!echo",
     "description": "Echo text back",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "emojify",
@@ -1234,7 +1234,7 @@
     "category": "Utility",
     "usage": "!emojify",
     "description": "Turn text into letter emoji — !emojify <text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "encode",
@@ -1245,7 +1245,7 @@
     "category": "Utility",
     "usage": "!encode",
     "description": "Base64 encode — !encode <text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "hash",
@@ -1255,8 +1255,8 @@
     ],
     "category": "Utility",
     "usage": "!hash",
-    "description": "SHA-256 hash — !hash <text>",
-    "permissions": "Everyone"
+    "description": "SHA-256 hash of text — !hash <text>",
+    "permissions": "@everyone"
   },
   {
     "name": "help",
@@ -1268,7 +1268,7 @@
     "category": "Utility",
     "usage": "!help",
     "description": "List all prefix commands — !help [category|command]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "invite",
@@ -1279,7 +1279,7 @@
     "category": "Utility",
     "usage": "!invite",
     "description": "Get the bot invite link — !invite",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "mock",
@@ -1290,7 +1290,7 @@
     "category": "Utility",
     "usage": "!mock",
     "description": "mOcK tExT — !mock <text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "ping",
@@ -1301,7 +1301,7 @@
     "category": "Utility",
     "usage": "!ping",
     "description": "Check bot latency — !ping",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "pp",
@@ -1312,7 +1312,7 @@
     "category": "Utility",
     "usage": "!pp",
     "description": "Measure the pp — !pp [@user]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "rate",
@@ -1323,7 +1323,7 @@
     "category": "Utility",
     "usage": "!rate",
     "description": "Rate anything out of 10 — !rate <thing>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "reverse",
@@ -1334,7 +1334,7 @@
     "category": "Utility",
     "usage": "!reverse",
     "description": "Reverse text — !reverse <text>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "roleinfo",
@@ -1345,7 +1345,7 @@
     "category": "Utility",
     "usage": "!roleinfo",
     "description": "Show details about a role — !roleinfo @role",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "rps",
@@ -1356,7 +1356,7 @@
     "category": "Utility",
     "usage": "!rps",
     "description": "Rock paper scissors — !rps <rock|paper|scissors>",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "serverinfo",
@@ -1368,7 +1368,7 @@
     "category": "Utility",
     "usage": "!serverinfo",
     "description": "Show server information — !serverinfo",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "slots",
@@ -1379,7 +1379,7 @@
     "category": "Utility",
     "usage": "!slots",
     "description": "Spin the slot machine — !slots [bet]",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "timestamp",
@@ -1390,8 +1390,8 @@
     ],
     "category": "Utility",
     "usage": "!timestamp",
-    "description": "Convert date to Discord timestamps — !timestamp <date>",
-    "permissions": "Everyone"
+    "description": "Convert a date to Discord timestamps — !timestamp <date>",
+    "permissions": "@everyone"
   },
   {
     "name": "uptime",
@@ -1401,7 +1401,7 @@
     "category": "Utility",
     "usage": "!uptime",
     "description": "Show how long the bot has been online — !uptime",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "userinfo",
@@ -1413,7 +1413,7 @@
     "category": "Utility",
     "usage": "!userinfo",
     "description": "Show user information — !userinfo @user",
-    "permissions": "Everyone"
+    "permissions": "@everyone"
   },
   {
     "name": "bitrate",
@@ -1424,8 +1424,8 @@
     ],
     "category": "Voice",
     "usage": "!bitrate",
-    "description": "Set your room's bitrate — !bitrate <kbps>",
-    "permissions": "Admin"
+    "description": "Set your room's bitrate (kbps) — !bitrate <kbps>",
+    "permissions": "Manage Server"
   },
   {
     "name": "claim",
@@ -1436,7 +1436,7 @@
     "category": "Voice",
     "usage": "!claim",
     "description": "Claim an ownerless voice room you're in — !claim",
-    "permissions": "Everyone"
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "hide",
@@ -1448,7 +1448,7 @@
     "category": "Voice",
     "usage": "!hide",
     "description": "Hide your voice room from the channel list — !hide",
-    "permissions": "Everyone"
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "kick-vc",
@@ -1460,7 +1460,7 @@
     "category": "Voice",
     "usage": "!kick-vc",
     "description": "Disconnect a user from your voice room — !kick-vc @user",
-    "permissions": "Moderator"
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "limit",
@@ -1473,7 +1473,7 @@
     "category": "Voice",
     "usage": "!limit",
     "description": "Set user limit for your voice room — !limit <0-99>",
-    "permissions": "Everyone"
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "permit",
@@ -1486,7 +1486,7 @@
     "category": "Voice",
     "usage": "!permit",
     "description": "Allow a user into your locked room — !permit @user",
-    "permissions": "Everyone"
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "reject",
@@ -1498,8 +1498,8 @@
     ],
     "category": "Voice",
     "usage": "!reject",
-    "description": "Block a user from your room — !reject @user",
-    "permissions": "Everyone"
+    "description": "Block a user from joining your room — !reject @user",
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "rename",
@@ -1511,7 +1511,7 @@
     "category": "Voice",
     "usage": "!rename",
     "description": "Rename your voice room — !rename <new name>",
-    "permissions": "Everyone"
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "roominfo",
@@ -1523,8 +1523,8 @@
     ],
     "category": "Voice",
     "usage": "!roominfo",
-    "description": "Show details about your current room — !roominfo",
-    "permissions": "Everyone"
+    "description": "Show details about your current voice room — !roominfo",
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "transfer",
@@ -1535,8 +1535,8 @@
     ],
     "category": "Voice",
     "usage": "!transfer",
-    "description": "Transfer room ownership — !transfer @user",
-    "permissions": "Everyone"
+    "description": "Transfer room ownership to another member — !transfer @user",
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "unhide",
@@ -1548,7 +1548,7 @@
     "category": "Voice",
     "usage": "!unhide",
     "description": "Make your voice room visible again — !unhide",
-    "permissions": "Everyone"
+    "permissions": "Voice Room Owner"
   },
   {
     "name": "vcreset",
@@ -1558,7 +1558,7 @@
     ],
     "category": "Voice",
     "usage": "!vcreset",
-    "description": "Reset your room to default settings — !vcreset",
-    "permissions": "Moderator"
+    "description": "Reset your room to server defaults — !vcreset",
+    "permissions": "Manage Server"
   }
 ]
