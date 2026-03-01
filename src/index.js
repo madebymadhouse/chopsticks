@@ -54,6 +54,8 @@ import { handleModal as handleModelModal } from "./commands/model.js";
 import { handleAiModal } from "./commands/ai.js";
 import { registerAllCommands } from "../scripts/registerAllCommands.js";
 import { handleButton as handlePurgeButton } from "./commands/purge.js";
+import { handleButton as handleGiveawayButton } from "./commands/giveaway.js";
+import { handleButton as handleBackupButton } from "./commands/backup.js";
 import { handleButton as handleGameButton, handleSelect as handleGameSelect } from "./commands/game.js";
 import { handleButton as handleQuestsButton } from "./commands/quests.js";
 import { handleButton as handleCraftButton, handleSelect as handleCraftSelect } from "./commands/craft.js";
@@ -1216,6 +1218,8 @@ client.on(Events.InteractionCreate, async interaction => {
       if (await handleCommandsButton(interaction)) return;
       if (await handleVoiceButton(interaction)) return;
       if (await handlePurgeButton(interaction)) return;
+      if (await handleGiveawayButton(interaction)) return;
+      if (await handleBackupButton(interaction)) return;
       if (await handleTutorialsButton(interaction)) return;
       // Verification system button
       if (interaction.customId === "chopsticks:verify:button") {
