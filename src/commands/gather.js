@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from "discord.js";
 import { getCooldown, setCooldown, formatCooldown } from "../economy/cooldowns.js";
-import { hasItem, addItem } from "../economy/inventory.js";
+import { hasItem, addItem, removeItem, getInventory } from "../economy/inventory.js";
 import { performGather, addToCollection } from "../economy/collections.js";
 import { Colors, replyError } from "../utils/discordOutput.js";
 import itemsData from "../economy/items.json" with { type: "json" };
@@ -89,9 +89,28 @@ export default {
 
           // Reduce tool durability (20% chance to lose 1 durability)
           if (Math.random() < 0.2) {
-            // TODO: Implement durability system with metadata
-            // For now, just log
-            botLogger.debug(`Tool ${selectedTool} used, durability decreased`);
+            const inv = await getInventory(interaction.user.id);
+            const toolEntry = inv.find(e => e.item_id === selectedTool);
+            const maxDur = toolUsed.durability ?? 50;
+            const currentDur = toolEntry?.metadata?.durability ?? maxDur;
+            const newDur = currentDur - 1;
+
+            if (newDur <= 0) {
+              // Tool breaks — remove it entirely
+              await removeItem(interaction.user.id, selectedTool, 1);
+              toolUsed = { ...toolUsed, broken: true };
+            } else {
+              // Persist reduced durability via metadata merge (qty += 0)
+              await addItem(interaction.user.id, selectedTool, 0, { durability: newDur });
+              toolUsed = { ...toolUsed, currentDurability: newDur, maxDurability: maxDur };
+            }
+          } else {
+            // No damage this use — still read durability for footer display
+            const inv = await getInventory(interaction.user.id);
+            const toolEntry = inv.find(e => e.item_id === selectedTool);
+            const maxDur = toolUsed.durability ?? 50;
+            const currentDur = toolEntry?.metadata?.durability ?? maxDur;
+            toolUsed = { ...toolUsed, currentDurability: currentDur, maxDurability: maxDur };
           }
         }
 
@@ -180,10 +199,16 @@ export default {
           )
           .setFooter({
             text: toolUsed
-              ? `Tool: ${toolUsed.emoji} ${toolUsed.name} | Source: ${gatherSource}`
+              ? toolUsed.broken
+                ? `Tool: ${toolUsed.emoji} ${toolUsed.name} — 💥 BROKE this run! | Source: ${gatherSource}`
+                : `Tool: ${toolUsed.emoji} ${toolUsed.name} [${toolUsed.currentDurability}/${toolUsed.maxDurability} dur] | Source: ${gatherSource}`
               : `No tool equipped | Source: ${gatherSource}`
           })
           .setTimestamp();
+
+        if (toolUsed?.broken) {
+          embed.addFields({ name: "💥 Tool Destroyed", value: `Your **${toolUsed.name}** ran out of durability and broke!`, inline: false });
+        }
 
         if (xpRes.granted?.length) {
           const crates = xpRes.granted.slice(0, 3).map(g => `Lv ${g.level}: \`${g.crateId}\``).join("\n");

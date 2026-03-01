@@ -104,5 +104,4 @@ export async function execute(interaction) {
   }
 }
 
-// TODO: Future enhancement — add a scheduled job (cron/scheduler) to announce
-// birthdays automatically at midnight each day.
+// Birthdays are announced automatically by the hourly scheduler in src/index.js.
