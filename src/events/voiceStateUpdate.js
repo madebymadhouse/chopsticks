@@ -19,7 +19,7 @@ import {
 } from "../tools/voice/state.js";
 import { ownerPermissionFlags, ownerPermissionOverwrite } from "../tools/voice/ownerPerms.js";
 import { deliverVoiceRoomDashboard } from "../tools/voice/panel.js";
-import { refreshRegisteredRoomPanelsForRoom } from "../tools/voice/ui.js";
+import { refreshRegisteredRoomPanelsForRoom, registerRoomPanelRef } from "../tools/voice/ui.js";
 import { logger } from "../utils/logger.js";
 
 // VC join timestamps for time tracking: "guildId:userId" → joined_ms
@@ -172,16 +172,6 @@ export default {
                   to: successor.id
                 });
 
-                await deliverVoiceRoomDashboard({
-                  guild,
-                  member: successor,
-                  roomChannel: channel,
-                  tempRecord: { ...tempRecord, ownerId: successor.id },
-                  lobby,
-                  voice,
-                  modeOverride: null,
-                  reason: "ownership-transfer"
-                }).catch(() => {});
                 await refreshRegisteredRoomPanelsForRoom(guild, channelId, "ownership-transfer").catch(() => {});
               }
             }
@@ -200,6 +190,11 @@ export default {
       setTimeout(() => {
         cleanup().catch(err => log("cleanup failed", { channelId, error: err?.message }));
       }, 500);
+    }
+
+    /* ---------- MEMBER JOINED EXISTING TEMP CHANNEL ---------- */
+    if (newChannel && voice.tempChannels?.[newChannel.id]) {
+      await refreshRegisteredRoomPanelsForRoom(guild, newChannel.id, "member-change").catch(() => {});
     }
 
     /* ---------- JOIN LOBBY ---------- */
@@ -389,7 +384,7 @@ export default {
       await member.fetch().catch(() => null);
       if (member.voice.channelId === newChannel.id) {
         await member.voice.setChannel(channel).catch(() => {});
-        await deliverVoiceRoomDashboard({
+        const delivered = await deliverVoiceRoomDashboard({
           guild,
           member,
           roomChannel: channel,
@@ -398,7 +393,16 @@ export default {
           voice,
           modeOverride: null,
           reason: "created"
-        }).catch(() => {});
+        }).catch(() => null);
+        if (delivered?.textMessage) {
+          registerRoomPanelRef({
+            guildId: guild.id,
+            roomChannelId: channel.id,
+            textChannelId: delivered.textMessage.channelId,
+            messageId: delivered.textMessage.id
+          });
+          delivered.textMessage.pin().catch(() => {});
+        }
         await refreshRegisteredRoomPanelsForRoom(guild, channel.id, "created").catch(() => {});
       } else {
         log("user left voice during creation", { userId: member.id });

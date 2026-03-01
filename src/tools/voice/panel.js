@@ -263,6 +263,7 @@ export async function deliverVoiceRoomDashboard({
 
   let dmSent = false;
   let channelSent = false;
+  let textMessage = null;
   const errors = [];
 
   const isOwner = String(tempRecord?.ownerId || "") && String(tempRecord.ownerId) === String(member.id);
@@ -312,7 +313,8 @@ export async function deliverVoiceRoomDashboard({
             actorUserId: tempRecord?.ownerId || member.id
           });
         }
-        await textTarget.send(textPayload);
+        const sentMsg = await textTarget.send(textPayload);
+        textMessage = sentMsg;
         channelSent = true;
       } catch (err) {
         errors.push(`channel:${err?.code ?? err?.message ?? "send-failed"}`);
@@ -336,6 +338,7 @@ export async function deliverVoiceRoomDashboard({
     channelSent,
     mode,
     reason: deliveryReason,
-    errors
+    errors,
+    textMessage
   };
 }

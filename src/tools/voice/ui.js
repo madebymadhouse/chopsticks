@@ -178,7 +178,7 @@ setInterval(() => {
   pruneRoomPanelRegistry();
 }, 10 * 60 * 1000).unref?.();
 
-function registerRoomPanelRef({ guildId, roomChannelId, textChannelId, messageId }) {
+export function registerRoomPanelRef({ guildId, roomChannelId, textChannelId, messageId }) {
   const key = roomPanelKey(guildId, roomChannelId);
   const refKey = roomPanelRefKey(textChannelId, messageId);
   if (!roomPanelRegistry.has(key)) roomPanelRegistry.set(key, new Map());
