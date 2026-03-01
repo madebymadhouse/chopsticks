@@ -122,6 +122,7 @@ async function startAgent(agentConfig) {
   let ws = null; // Agent's own WebSocket to AgentManager
   let wsReady = false;
   let wsHeartbeat = null;
+  let wsReconnectDelay = 1000; // exponential backoff base ms
 
   // assistant session state
   let assistantState = {
@@ -209,6 +210,7 @@ async function startAgent(agentConfig) {
 
     ws.on("open", () => {
       wsReady = true;
+      wsReconnectDelay = 1000; // reset backoff on successful connection
       logger.info(`[agent:${agentId}] Connected to control plane at ${CONTROL_URL}`);
       sendHello();
       sendGuilds();
@@ -252,12 +254,21 @@ async function startAgent(agentConfig) {
         clearInterval(wsHeartbeat);
         wsHeartbeat = null;
       }
-      logger.info(`[agent:${agentId}] WS connection closed. Reconnecting...`);
-      setTimeout(connectAgentControl, 2000);
+      const delay = wsReconnectDelay + Math.random() * 500;
+      wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30_000);
+      logger.info(`[agent:${agentId}] WS connection closed. Reconnecting in ${Math.round(delay)}ms...`);
+      setTimeout(connectAgentControl, delay);
     });
 
     ws.on("error", (err) => {
       logger.error({ err }, `[agent:${agentId}] WS connection error`);
+      // Ensure reconnect fires even if 'close' doesn't follow 'error'
+      if (wsReady) {
+        wsReady = false;
+        const delay = wsReconnectDelay + Math.random() * 500;
+        wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30_000);
+        setTimeout(connectAgentControl, delay);
+      }
     });
   }
 
