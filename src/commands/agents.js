@@ -34,6 +34,8 @@ import {
   canManagePool,
   maskToken,
   getGuildPoolConfig,
+  incrementPoolStat,
+  evaluatePoolBadges,
 } from "../utils/storage.js";
 import {
   replyEmbed,
@@ -1549,10 +1551,9 @@ export async function execute(interaction) {
       await interaction.editReply({ embeds: [embed] });
       const deploymentFulfilled = plan.needInvites === 0 || plan.invites.length >= plan.needInvites;
       trackAgentDeployment(deploymentFulfilled);
-      // Track pool stat + evaluate badges
       if (deploymentFulfilled && selectedPoolId) {
-        storageLayer.incrementPoolStat(selectedPoolId, 'total_deployments').catch(() => {});
-        storageLayer.evaluatePoolBadges(selectedPoolId).catch(() => {});
+        incrementPoolStat(selectedPoolId, 'total_deployments').catch(() => {});
+        evaluatePoolBadges(selectedPoolId).catch(() => {});
       }
     } catch (error) {
       botLogger.error({ err: error }, "[agents:deploy] Error");
@@ -1944,7 +1945,7 @@ export async function execute(interaction) {
       await replyError(interaction, "Scaling Disabled", "AGENT_SCALE_TOKEN is not configured.");
       return;
     }
-    const any = mgr.listAgents().find(a => a.ready);
+    const any = (await mgr.listAgents()).find(a => a.ready);
     if (!any) {
       await replyError(interaction, "No Ready Agent", "No ready agent is available to process the scale request.");
       return;
@@ -1965,16 +1966,21 @@ export async function execute(interaction) {
 
   if (sub === "restart") {
     const agentId = interaction.options.getString("agent_id", true);
-    // Use the new updateAgentBotStatus to set status to 'restarting'
+    // Restart by terminating the live WS — agentRunner's close handler reconnects it.
     try {
-      await mgr.updateAgentBotStatus(agentId, 'restarting');
+      const liveAgent = mgr.liveAgents?.get(agentId);
+      if (!liveAgent) {
+        await replyError(interaction, "Restart Failed", `Agent \`${agentId}\` is not currently connected.`);
+        return;
+      }
+      try { liveAgent.ws?.terminate(); } catch {}
       await replySuccess(
         interaction,
-        "Restart Scheduled",
-        `Agent \`${agentId}\` marked for restart. AgentRunner will reconnect it.`
+        "Restart Triggered",
+        `Agent \`${agentId}\` disconnected. AgentRunner will reconnect it momentarily.`
       );
     } catch (error) {
-      botLogger.error({ err: error, agentId }, "Error marking agent for restart");
+      botLogger.error({ err: error, agentId }, "Error restarting agent");
       await replyError(interaction, "Restart Failed", error.message || "Unknown error.");
     }
     return;
