@@ -10,7 +10,8 @@ echo "=== Verifying Clean Boot ==="
 COMPOSE_FILE="docker-compose.production.yml"
 
 echo "1. Stopping all existing containers..."
-docker compose -f "$COMPOSE_FILE" down -v 2>&1 || true
+# NOTE: -v is intentionally omitted — named volumes (postgres data etc.) must be preserved
+docker compose -f "$COMPOSE_FILE" down 2>&1 || true
 
 echo "2. Removing any orphaned containers..."
 docker ps -a | grep chopsticks | awk '{print $1}' | xargs -r docker rm -f 2>&1 || true

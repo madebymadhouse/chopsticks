@@ -12,9 +12,9 @@ echo "[deploy] fetching..."
 git fetch origin
 
 echo "[deploy] checkout ${BRANCH}"
-git checkout ${BRANCH}
+git checkout -- . && git checkout "${BRANCH}"
 
-git pull --ff-only origin ${BRANCH}
+git pull --ff-only origin "${BRANCH}"
 
 echo "[deploy] docker compose up (full stack)"
 ./scripts/stack-up.sh
