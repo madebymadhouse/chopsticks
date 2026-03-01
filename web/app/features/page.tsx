@@ -217,7 +217,7 @@ export default function FeaturesPage() {
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
 
           <div className="badge" style={{ marginBottom: '1.5rem' }}>
-            <CheckIcon size={11} /> Everything included · free forever
+            <CheckIcon size={11} /> Open source · actively developed
           </div>
 
           <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.25rem)', fontWeight: 800, letterSpacing: '-0.055em',
@@ -228,7 +228,7 @@ export default function FeaturesPage() {
 
           <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: 1.8, maxWidth: 540, marginBottom: '2.5rem' }}>
             Voice &amp; media, AI agents, gamification, moderation, automation, intelligence, and server backup — fully integrated,
-            open source, free. Deploy the hosted instance in 30 seconds or self-host on your own infrastructure.
+            open source. Deploy the hosted instance in 30 seconds or self-host on your own infrastructure.
           </p>
 
           {/* Stat pills */}
@@ -389,7 +389,7 @@ export default function FeaturesPage() {
         <div className="container" style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, letterSpacing: '-0.05em',
             color: 'var(--text)', fontFamily: 'var(--font-heading)', lineHeight: 1.05, marginBottom: '1rem' }}>
-            All of this.<br /><span className="gradient-text">Free.</span>
+            All of this.<br /><span className="gradient-text">One bot.</span>
           </h2>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.8, marginBottom: '2.25rem' }}>
             Add the hosted instance or self-host on your own infrastructure. Every feature works out of the box.

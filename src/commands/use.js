@@ -7,6 +7,7 @@ import { recordQuestEvent } from "../game/quests.js";
 import { openCrateRolls } from "../game/crates.js";
 import itemsData from "../economy/items.json" with { type: "json" };
 import { addItem } from "../economy/inventory.js";
+import { getUserPets, updatePetStats, createPet } from "../utils/storage.js";
 import { botLogger } from "../utils/modernLogger.js";
 import { withTimeout } from "../utils/interactionTimeout.js";
 import { sanitizeString } from "../utils/validation.js";
@@ -149,14 +150,46 @@ async function handleConsumable(interaction, matchedItem, itemData, quantity) {
       effectDescription = `Your **/gather** luck increased by ${Math.round(Number(itemData.effectValue || 0) * 100)}% for ${formatDuration(itemData.duration)}.`;
       break;
 
-    case "companion_restore":
-      // Companion system is not yet implemented — do not consume the item.
-      return await replyError(
-        interaction,
-        "No Companion",
-        `${itemData.emoji} **${itemData.name}** requires a companion, but you don't have one yet. Companions are coming soon!`,
-        true
-      );
+    case "companion_restore": {
+      const pets = await getUserPets(interaction.user.id);
+      if (!pets.length) {
+        return await replyError(
+          interaction,
+          "No Companion",
+          `${itemData.emoji} **${itemData.name}** requires a companion. Adopt one first with \`/pet adopt\`.`,
+          true
+        );
+      }
+      const pet = pets[0];
+      const effectVal = itemData.effectValue ?? { hunger: 50, happiness: 25 };
+      const s = { ...(pet.stats ?? {}) };
+      s.hunger    = Math.min(100, (s.hunger    ?? 100) + (effectVal.hunger    ?? 50));
+      s.happiness = Math.min(100, (s.happiness ?? 100) + (effectVal.happiness ?? 25));
+      await updatePetStats(pet.id, s);
+      effectDescription = `🐾 **${pet.name ?? "Your companion"}** was fed! Hunger: **${s.hunger}/100**, Happiness: **${s.happiness}/100**.`;
+      break;
+    }
+
+    case "companion_hatch": {
+      const existing = await getUserPets(interaction.user.id);
+      if (existing.length >= 1) {
+        return await replyError(
+          interaction,
+          "Already Have a Companion",
+          `You already have a companion. Release it first with \`/pet release\` before hatching a new egg.`,
+          true
+        );
+      }
+      const petType = String(itemData.effectValue ?? "nano_drone");
+      const PET_NAMES = { nano_drone: "Nano Drone", code_fox: "Code Fox", quantum_rabbit: "Quantum Rabbit", viral_cat: "Viral Cat" };
+      const PET_EMOJI = { nano_drone: "🤖", code_fox: "🦊", quantum_rabbit: "🐰", viral_cat: "🐱" };
+      const pName = PET_NAMES[petType] ?? petType;
+      const pEmoji = PET_EMOJI[petType] ?? "🐾";
+      const newPet = await createPet(interaction.user.id, petType, pName);
+      try { await recordQuestEvent(interaction.user.id, "adopt_pet", 1); } catch {}
+      effectDescription = `${pEmoji} **${pName}** has hatched! Use \`/pet view\` to check on them, and \`/pet feed\` to keep them happy.`;
+      break;
+    }
 
     case "xp_multiplier":
       await setBuff(interaction.user.id, "xp:mult", Number(itemData.effectValue || 1), itemData.duration);

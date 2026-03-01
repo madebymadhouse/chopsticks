@@ -3,7 +3,18 @@ import { getPool } from "../utils/storage_pg.js";
 import { Colors, replyError } from "../utils/discordOutput.js";
 import { botLogger } from "../utils/modernLogger.js";
 import { withTimeout } from "../utils/interactionTimeout.js";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+
+// Lazy-load canvas — falls back gracefully if native binding is missing
+let _canvas = null;
+async function getCanvas() {
+  if (_canvas !== null) return _canvas;
+  try {
+    _canvas = await import("@napi-rs/canvas");
+  } catch {
+    _canvas = false;
+  }
+  return _canvas;
+}
 
 function rankLines(rows, fmt) {
   return rows.map((r, i) => `${i + 1}. <@${r.user_id}> ${fmt(r)}`).join("\n");
@@ -45,6 +56,9 @@ function drawRoundRect(ctx, x, y, w, h, r) {
 }
 
 async function buildLeaderboardCanvas(title, emoji, rows, valueLabel, valueFmt) {
+  const cv = await getCanvas();
+  if (!cv) return null;
+  const { createCanvas, loadImage } = cv;
   const H = HEADER_H + rows.length * ROW_H + FOOTER_H + 16;
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext("2d");

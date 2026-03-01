@@ -678,11 +678,11 @@ export default function HomePage() {
             Ready to power up<br /><span className="gradient-text">your server?</span>
           </h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem', fontSize: '1rem', maxWidth: 450, margin: '0 auto 2.5rem' }}>
-            Add Chopsticks in 30 seconds. No credit card. No setup fee. Full-featured from day one.
+            Add Chopsticks in 30 seconds. Full-featured from day one — no configuration required.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href={BOT_INVITE} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ padding: '0.9rem 2.5rem', fontSize: '1rem' }}>
-              Add to Discord — It's Free
+              Add to Discord
             </a>
             <a href="/docs" className="btn btn-secondary" style={{ padding: '0.9rem 2.5rem', fontSize: '1rem' }}>
               Read the Docs

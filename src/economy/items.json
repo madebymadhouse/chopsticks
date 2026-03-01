@@ -157,7 +157,10 @@
       "price": 150,
       "sellPrice": 75,
       "effect": "companion_restore",
-      "effectValue": { "hunger": 50, "happiness": 25 },
+      "effectValue": {
+        "hunger": 50,
+        "happiness": 25
+      },
       "emoji": "🍖"
     },
     "xp_booster": {
@@ -184,6 +187,54 @@
       "effect": "premium_unlock",
       "duration": 604800000,
       "emoji": "🔑"
+    },
+    "companion_egg_drone": {
+      "id": "companion_egg_drone",
+      "name": "Nano Drone Egg",
+      "description": "Hatch a Nano Drone companion that boosts your gather luck.",
+      "category": "consumable",
+      "rarity": "common",
+      "price": 2500,
+      "sellPrice": 1000,
+      "effect": "companion_hatch",
+      "effectValue": "nano_drone",
+      "emoji": "🥚"
+    },
+    "companion_egg_fox": {
+      "id": "companion_egg_fox",
+      "name": "Code Fox Egg",
+      "description": "Hatch a Code Fox companion that boosts credit drops from fights.",
+      "category": "consumable",
+      "rarity": "rare",
+      "price": 6000,
+      "sellPrice": 2500,
+      "effect": "companion_hatch",
+      "effectValue": "code_fox",
+      "emoji": "🥚"
+    },
+    "companion_egg_rabbit": {
+      "id": "companion_egg_rabbit",
+      "name": "Quantum Rabbit Egg",
+      "description": "Hatch a Quantum Rabbit companion that reduces your /work cooldown.",
+      "category": "consumable",
+      "rarity": "epic",
+      "price": 15000,
+      "sellPrice": 6000,
+      "effect": "companion_hatch",
+      "effectValue": "quantum_rabbit",
+      "emoji": "🥚"
+    },
+    "companion_egg_cat": {
+      "id": "companion_egg_cat",
+      "name": "Viral Cat Egg",
+      "description": "Hatch a Viral Cat companion that grants a 25% XP bonus on all activities.",
+      "category": "consumable",
+      "rarity": "legendary",
+      "price": 40000,
+      "sellPrice": 15000,
+      "effect": "companion_hatch",
+      "effectValue": "viral_cat",
+      "emoji": "🐣"
     }
   },
   "collectibles": {
