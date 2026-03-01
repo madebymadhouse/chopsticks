@@ -40,30 +40,30 @@ type Msg = {
   content?: string; embed?: { color: string; title: string; fields: { k: string; v: string }[] };
 };
 const CHANNEL_MSGS: Record<number, Msg[]> = {
-  // general
+  // general — !balance then /gather
   0: [
-    { user: 'Euxine',     avatar: '/images/avatar-hellokitty.png',  color: '#f472b6', type: 'user', content: 'anyone know the bot prefix?' },
-    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#5865f2', title: '📖 Quick Start', fields: [{ k: 'Prefix', v: '! or /' }, { k: 'Commands', v: '148 prefix · 101 slash across 11 categories' }, { k: 'Invite', v: 'discord.com/invite' }] } },
-    { user: 'Mikel',      avatar: '/images/avatar-mousememe.jpg',   color: '#22d3ee', type: 'user', content: 'just ran /gather for the first time 🔥' },
-    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#a78bfa', title: '⚡ Gather Complete', fields: [{ k: 'Items Found', v: '3' }, { k: 'Drops', v: '💎 Quantum Crystal [EPIC] · ⚪ Iron Ore ×2 [COMMON]' }, { k: 'XP', v: '+67 XP' }] } },
+    { user: 'Mikel',      avatar: '/images/avatar-mousememe.jpg',   color: '#22d3ee', type: 'user', content: '!balance' },
+    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#ffd700', title: '💰 Balance', fields: [{ k: 'Wallet', v: '1,250' }, { k: 'Bank', v: '8,900' }, { k: 'Bank Cap', v: '5,000' }] } },
+    { user: 'Nakari',     avatar: '/images/avatar-patrickstar.jpg', color: '#a78bfa', type: 'user', content: '/gather tool:basic_scanner' },
+    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#57f287', title: '⚡ Gather Run Complete', fields: [{ k: 'Items Found', v: '2' }, { k: 'Drops', v: '🔮 Quantum Crystal [EPIC] · ⚪ Iron Ore ×2 [COMMON]' }, { k: 'XP', v: '44 XP' }] } },
   ],
-  // music
+  // music — !play then !queue
   1: [
-    { user: 'Nakari',     avatar: '/images/avatar-patrickstar.jpg', color: '#a78bfa', type: 'user', content: '!play lo-fi chill beats' },
-    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#5865f2', title: '🎵 Now Playing', fields: [{ k: 'Track', v: 'Lo-Fi Chill Beats Mix · 1:02:34' }, { k: 'Added by', v: 'Nakari' }, { k: 'Queue', v: '3 tracks waiting' }] } },
-    { user: 'Euxine',     avatar: '/images/avatar-hellokitty.png',  color: '#f472b6', type: 'user', content: '!skip' },
-    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#22d3ee', title: '⏭ Skipped', fields: [{ k: 'Now Playing', v: 'Synthwave Drive · 47:22' }, { k: 'Requested by', v: 'Euxine' }, { k: 'Up Next', v: 'Study Beats Playlist' }] } },
+    { user: 'Nakari',     avatar: '/images/avatar-patrickstar.jpg', color: '#a78bfa', type: 'user', content: '!play lo-fi hip hop radio' },
+    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#1db954', title: '🎵 Now Playing', fields: [{ k: 'Duration', v: '3:45' }, { k: 'Author', v: 'ChilledCow' }, { k: 'Source', v: 'youtube' }] } },
+    { user: 'Euxine',     avatar: '/images/avatar-hellokitty.png',  color: '#f472b6', type: 'user', content: '!queue' },
+    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#1db954', title: '📋 Music Queue', fields: [{ k: 'Now', v: 'Lo-Fi Hip Hop Radio — 3:45' }, { k: 'Up Next', v: '1. Synthwave Drive — 47:22' }, { k: 'Total', v: '2 tracks' }] } },
   ],
-  // commands
+  // commands — !work then !daily (exact source output format)
   2: [
-    { user: 'Mikel',      avatar: '/images/avatar-mousememe.jpg',   color: '#22d3ee', type: 'user', content: '/work' },
-    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#f0b232', title: '💼 Work Complete', fields: [{ k: 'Job', v: 'Chef 👨‍🍳' }, { k: 'Earned', v: '248 credits' }, { k: 'Balance', v: '4,528 credits · Bank: 12,500' }] } },
-    { user: 'Nakari',     avatar: '/images/avatar-patrickstar.jpg', color: '#a78bfa', type: 'user', content: '/daily' },
-    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#23a55a', title: '🎁 Daily Reward', fields: [{ k: 'Reward', v: '+500 credits' }, { k: 'Streak', v: '7 days 🔥' }, { k: 'Bonus', v: '×1.5 streak multiplier applied' }] } },
+    { user: 'Mikel',      avatar: '/images/avatar-mousememe.jpg',   color: '#22d3ee', type: 'user', content: '!work' },
+    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#57f287', title: '💼 Work Complete', fields: [{ k: 'Result', v: 'You worked as a Chef and earned 248 credits!' }] } },
+    { user: 'Euxine',     avatar: '/images/avatar-hellokitty.png',  color: '#f472b6', type: 'user', content: '!daily' },
+    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#57f287', title: '🎁 Daily Reward', fields: [{ k: 'Result', v: 'You claimed 500 credits! Streak: 7 days' }] } },
   ],
-  // bot-log
+  // bot-log — automated bot events only
   3: [
-    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  content: '📥 New member joined', embed: { color: '#f0b232', title: 'Member Joined', fields: [{ k: 'User', v: 'spammer123#4421' }, { k: 'Account Age', v: '3 days ⚠️ New' }, { k: 'Action', v: 'Flagged for review' }] } },
+    { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#f0b232', title: 'Member Joined', fields: [{ k: 'User', v: 'spammer123#4421' }, { k: 'Account Age', v: '3 days ⚠️ New' }, { k: 'Action', v: 'Flagged for review' }] } },
     { user: 'Chopsticks', avatar: '/images/chopsticks.png',         color: '#5865f2', type: 'bot',  embed: { color: '#ed4245', title: '🔨 Member Banned', fields: [{ k: 'User', v: 'spammer123#4421' }, { k: 'Moderator', v: 'Admin' }, { k: 'Reason', v: 'Spam + raid invite links · Case #048' }] } },
   ],
 };
