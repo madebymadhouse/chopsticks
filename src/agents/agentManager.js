@@ -409,7 +409,8 @@ export class AgentManager {
 
     // Update common runtime properties
     agent.ready = Boolean(msg?.ready);
-    agent.guildIds = new Set(Array.isArray(msg?.guildIds) ? msg.guildIds : []);
+    const rawGuildIds = Array.isArray(msg?.guildIds) ? msg.guildIds.slice(0, 5000) : [];
+    agent.guildIds = new Set(rawGuildIds);
     agent.botUserId = msg?.botUserId ?? agent.botUserId;
     agent.tag = msg?.tag ?? agent.tag;
     agent.podTag = normalizePodTag(msg?.podTag ?? agent.podTag);
@@ -437,9 +438,9 @@ export class AgentManager {
     if (!agent) return;
 
     const oldGuildIds = agent.guildIds ? Array.from(agent.guildIds) : [];
-    const newGuildIds = Array.isArray(msg?.guildIds) ? msg.guildIds : [];
+    const newGuildIds = Array.isArray(msg?.guildIds) ? msg.guildIds.slice(0, 5000) : [];
     
-    agent.guildIds = new Set(newGuildIds);
+    agent.guildIds = new Set(newGuildIds.slice(0, 5000));
     agent.lastSeen = now();
     
     // Log changes for debugging
@@ -1624,6 +1625,27 @@ export class AgentManager {
       }
       // handleClose will take care of cleaning up the liveAgents map
     }
+
+    // Sweep expired preferred/assistantPreferred entries and prune stale guildCursors
+    const nowTs = now();
+    for (const [key, pref] of this.preferred.entries()) {
+      if (pref.expiresAt <= nowTs) this.preferred.delete(key);
+    }
+    for (const [key, pref] of this.assistantPreferred.entries()) {
+      if (pref.expiresAt <= nowTs) this.assistantPreferred.delete(key);
+    }
+    // Prune guildCursors for guilds that no longer have any live agents
+    const liveGuildIds = new Set();
+    for (const agent of this.liveAgents.values()) {
+      for (const gId of agent.guildIds) liveGuildIds.add(gId);
+    }
+    for (const gId of this.guildCursors.keys()) {
+      if (!liveGuildIds.has(gId)) this.guildCursors.delete(gId);
+    }
+    // Sweep stale _guildIdleReleaseCache entries
+    for (const [gId, cached] of this._guildIdleReleaseCache.entries()) {
+      if (cached.expiresAt <= nowTs) this._guildIdleReleaseCache.delete(gId);
+    }
   }
 
   // ===== RPC =====
@@ -1696,7 +1718,8 @@ export class AgentManager {
         if (!dbRecord) {
           logger.warn(`Reconciliation: Live agent ${liveAgent.agentId} is not in the database. It may need to be terminated.`, { agentId: liveAgent.agentId });
         } else if (dbRecord.status !== 'active') {
-          logger.warn(`Reconciliation: Live agent ${liveAgent.agentId} is marked as '${dbRecord.status}' in the DB but is connected.`, { agentId: liveAgent.agentId, status: dbRecord.status });
+          logger.warn(`Reconciliation: Terminating live agent ${liveAgent.agentId} marked as '${dbRecord.status}' in DB.`, { agentId: liveAgent.agentId, status: dbRecord.status });
+          try { liveAgent.ws?.terminate(); } catch {}
         }
       }
 
