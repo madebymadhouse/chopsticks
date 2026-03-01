@@ -486,7 +486,7 @@ export default function HomePage() {
         <div className="orb orb-violet" style={{ width: 500, height: 500, bottom: -200, right: -150, opacity: 0.35 }} />
         <div className="orb"            style={{ width: 300, height: 300, top: '30%', left: '55%', background: 'radial-gradient(circle, rgba(244,114,182,0.25), transparent 70%)', opacity: 0.5 }} />
 
-        <div className="container hero-grid" style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '3rem', alignItems: 'center', padding: '5rem 1.5rem' }}>
+        <div className="container hero-grid-home" style={{ position: 'relative', zIndex: 1 }}>
           {/* Left */}
           <div>
             <a href="https://wokspec.org" target="_blank" rel="noopener noreferrer" className="badge" style={{ marginBottom: '1.5rem', background: 'rgba(30,30,30,0.7)', border: '1px solid rgba(180,100,30,0.35)', color: '#c8c8c8', gap: '0.5rem', textDecoration: 'none', cursor: 'pointer' }}>

@@ -259,21 +259,21 @@ export default function FeaturesPage() {
           </div>
 
           {/* Row 1 — Voice (2/3) + Agents (1/3) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="feat-bento-r1">
             {FEATURES.slice(0, 2).map(f => (
               <FeatureCard key={f.label} f={f} />
             ))}
           </div>
 
-          {/* Row 2 — Economy, Moderation, Automation, AI (2-col each side) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+          {/* Row 2 — Economy + Moderation */}
+          <div className="feat-bento-r2">
             {FEATURES.slice(2, 4).map(f => (
               <FeatureCard key={f.label} f={f} />
             ))}
           </div>
 
           {/* Row 3 — Automation + AI */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+          <div className="feat-bento-r3">
             {FEATURES.slice(4, 6).map(f => (
               <FeatureCard key={f.label} f={f} />
             ))}
@@ -306,7 +306,7 @@ export default function FeaturesPage() {
             </a>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem' }}>
+          <div className="feat-agent-grid">
             {(['Voice', 'Text', 'Competitive', 'Admin'] as RoleCat[]).map(cat => (
               <div key={cat} style={{ background: 'var(--bg)', border: '1px solid var(--border)',
                 borderRadius: '0.875rem', overflow: 'hidden' }}>
@@ -321,9 +321,8 @@ export default function FeaturesPage() {
                 {/* Roles list */}
                 <div style={{ padding: '0.25rem 0' }}>
                   {AGENT_ROLES.filter(r => r.cat === cat).map((r, i, arr) => (
-                    <div key={r.role} style={{ padding: '0.7rem 1rem',
-                      borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
-                      display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0.75rem', alignItems: 'start' }}>
+                    <div key={r.role} className="feat-role-row"
+                      style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)',
                         fontFamily: 'var(--font-heading)' }}>{r.role}</span>
                       <span style={{ fontSize: '0.77rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>{r.desc}</span>
@@ -345,7 +344,7 @@ export default function FeaturesPage() {
             <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 700, letterSpacing: '-0.04em',
               color: 'var(--text)', fontFamily: 'var(--font-heading)' }}>What does your server need?</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div className="feat-use-grid">
             {USE_CASES.map(uc => (
               <div key={uc.label} className="glass-card" style={{ padding: '1.5rem',
                 borderTop: `3px solid ${uc.color}` }}>

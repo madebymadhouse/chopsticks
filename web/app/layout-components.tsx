@@ -75,11 +75,11 @@ export function Header() {
         </nav>
 
         <div className="header-actions">
-          <a href={GITHUB} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ padding: '0.45rem 0.875rem', fontSize: '0.8rem' }}>
+          <a href={GITHUB} target="_blank" rel="noopener noreferrer" className="btn btn-ghost header-github-btn" style={{ padding: '0.45rem 0.875rem', fontSize: '0.8rem' }}>
             <GitHubIcon size={14} />
             GitHub
           </a>
-          <a href={BOT_INVITE} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ padding: '0.5rem 1.1rem', fontSize: '0.82rem' }}>
+          <a href={BOT_INVITE} target="_blank" rel="noopener noreferrer" className="btn btn-primary header-cta-btn" style={{ padding: '0.5rem 1.1rem', fontSize: '0.82rem' }}>
             <DiscordIcon size={14} />
             Add to Discord
           </a>
