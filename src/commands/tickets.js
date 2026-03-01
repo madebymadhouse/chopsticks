@@ -35,6 +35,22 @@ import {
 
 const TYPE_KEYS = new Set(TICKET_TYPES.map(t => t.key));
 
+// Per-guild async mutex to prevent concurrent ticket creation from duplicating counter values.
+const _ticketLocks = new Map();
+async function withTicketLock(guildId, fn) {
+  const prev = _ticketLocks.get(guildId) ?? Promise.resolve();
+  let release;
+  const next = new Promise(r => { release = r; });
+  _ticketLocks.set(guildId, next);
+  try {
+    await prev;
+    return await fn();
+  } finally {
+    release();
+    if (_ticketLocks.get(guildId) === next) _ticketLocks.delete(guildId);
+  }
+}
+
 export const meta = {
   deployGlobal: true,
   guildOnly: true,
@@ -208,33 +224,38 @@ async function createTicket(interaction, guildData, { typeKey = "support", subje
     };
   }
 
-  const nextCounter = Math.max(1, Number(cfg.counter || 0) + 1);
+  // Lock the counter read + channel creation to prevent concurrent calls from
+  // producing duplicate ticket numbers.
   const normalizedType = TYPE_KEYS.has(String(typeKey || "").toLowerCase()) ? String(typeKey).toLowerCase() : "support";
-  const name = formatTicketChannelName(nextCounter, normalizedType);
-  const permissionOverwrites = buildTicketPermissionOverwrites({
-    guild,
-    ownerId: interaction.user.id,
-    supportRoleId: cfg.supportRoleId
-  });
+  const channel = await withTicketLock(guild.id, async () => {
+    const nextCounter = Math.max(1, Number(cfg.counter || 0) + 1);
+    const name = formatTicketChannelName(nextCounter, normalizedType);
+    const permissionOverwrites = buildTicketPermissionOverwrites({
+      guild,
+      ownerId: interaction.user.id,
+      supportRoleId: cfg.supportRoleId
+    });
 
-  const topic = buildTicketTopic({
-    ownerId: interaction.user.id,
-    status: "open",
-    createdAt: Date.now(),
-    type: normalizedType
-  });
+    const topic = buildTicketTopic({
+      ownerId: interaction.user.id,
+      status: "open",
+      createdAt: Date.now(),
+      type: normalizedType
+    });
 
-  const channel = await guild.channels.create({
-    name,
-    type: ChannelType.GuildText,
-    parent: cfg.categoryId,
-    topic,
-    permissionOverwrites,
-    reason: `Ticket opened by ${interaction.user.tag} via ${source}`
-  });
+    const ch = await guild.channels.create({
+      name,
+      type: ChannelType.GuildText,
+      parent: cfg.categoryId,
+      topic,
+      permissionOverwrites,
+      reason: `Ticket opened by ${interaction.user.tag} via ${source}`
+    });
 
-  cfg.counter = nextCounter;
-  await saveTicketConfig(guild.id, guildData);
+    cfg.counter = nextCounter;
+    await saveTicketConfig(guild.id, guildData);
+    return ch;
+  });
 
   const subjectValue = String(subject || "").trim();
   const introEmbed = buildTicketWelcomeEmbed({
