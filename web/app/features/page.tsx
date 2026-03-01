@@ -32,7 +32,7 @@ function CmdPreview({ cmd, output, color }: { cmd: string; output: string; color
       <div style={{ padding: '0.4rem 0.65rem', borderBottom: '1px solid rgba(255,255,255,0.05)',
         color: '#dcddde' }}>{cmd}</div>
       <div style={{ borderLeft: `3px solid ${color}`, margin: '0.4rem 0.65rem 0.5rem',
-        paddingLeft: '0.5rem', color: '#b5bac1', lineHeight: 1.5 }}>{output}</div>
+        paddingLeft: '0.5rem', color: '#b5bac1', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{output}</div>
     </div>
   );
 }
@@ -394,9 +394,9 @@ export default function FeaturesPage() {
 
 function FeatureCard({ f }: { f: typeof FEATURES[0] }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '1rem',
+    <div className="feat-feature-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '1rem',
       padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem',
-      transition: 'border-color 0.2s', minHeight: 280,
+      minHeight: 280,
       borderTop: `3px solid ${f.color}` }}>
 
       {/* Header */}

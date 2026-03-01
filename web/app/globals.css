@@ -2155,3 +2155,12 @@ main       { overflow-x: hidden; }
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.45; }
 }
+
+/* ── Features page bento card hover ─────────────────── */
+.feat-feature-card {
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.feat-feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}

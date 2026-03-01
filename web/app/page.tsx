@@ -6,33 +6,6 @@ const BOT_INVITE = 'https://discord.com/api/oauth2/authorize?client_id=146638287
 const DISCORD_SERVER = 'https://discord.gg/QbS47HDdpf';
 const GITHUB_REPO = 'https://github.com/wokspec/chopsticks';
 
-// ─── Stat counter hook ────────────────────────────────────────────────────
-function useCounter(target: number, duration = 1600): number {
-  const [val, setVal] = useState(0);
-  const started = useRef(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = (ref as any).el;
-    const io = new IntersectionObserver(([e]) => {
-      if (e?.isIntersecting && !started.current) {
-        started.current = true;
-        const start = performance.now();
-        const tick = (now: number) => {
-          const p = Math.min((now - start) / duration, 1);
-          setVal(Math.round(p * p * target));
-          if (p < 1) requestAnimationFrame(tick);
-          else setVal(target);
-        };
-        requestAnimationFrame(tick);
-        io.disconnect();
-      }
-    }, { threshold: 0.4 });
-    if (el) io.observe(el);
-    return () => io.disconnect();
-  }, [target, duration]);
-  return val;
-}
-
 // ─── Animated Discord mockup ──────────────────────────────────────────────
 const CHANNELS = ['general', 'music', 'commands', 'bot-log'];
 type Embed = { color: string; title: string; desc?: string; fields?: { k: string; v: string }[] };
@@ -578,16 +551,16 @@ export default function HomePage() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {([
-                  ['🍴', 'Fork &amp; self-host', 'Clone the repo, spin up your own instance with Docker. Full stack in under 15 minutes.'],
-                  ['🐛', 'Find &amp; fix bugs', 'Browse open issues on GitHub. No contribution is too small — docs, tests, fixes all count.'],
-                  ['✨', 'Ship new features', 'Got an idea? We actively review PRs. Agents, economy, games — there&apos;s always room to add something cool.'],
+                  ['🍴', 'Fork & self-host', 'Clone the repo, spin up your own instance with Docker. Full stack in under 15 minutes.'],
+                  ['🐛', 'Find & fix bugs', 'Browse open issues on GitHub. No contribution is too small — docs, tests, fixes all count.'],
+                  ['✨', 'Ship new features', "Got an idea? We actively review PRs. Agents, economy, games — there's always room to add something cool."],
                   ['💬', 'Join the Discord', 'Hang out, share ideas, coordinate with other contributors, and see features being built in real time.'],
-                ] as [string,string,string][]).map(([icon, title, desc]) => (
+                ] as [string, string, string][]).map(([icon, title, desc]) => (
                   <div key={title} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                     <span style={{ fontSize: '1.1rem', flexShrink: 0, marginTop: '0.05rem' }}>{icon}</span>
                     <div>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-heading)' }} dangerouslySetInnerHTML={{ __html: title }} />
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginLeft: '0.375rem' }} dangerouslySetInnerHTML={{ __html: desc }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-heading)' }}>{title}</span>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginLeft: '0.375rem' }}>{desc}</span>
                     </div>
                   </div>
                 ))}
