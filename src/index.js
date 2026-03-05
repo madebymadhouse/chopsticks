@@ -1241,7 +1241,9 @@ client.on(Events.MessageCreate, async message => {
         source: "prefix"
       });
     }
-    try { await message.reply("Command failed."); } catch {}
+    try {
+      await message.reply({ content: `❌ Something went wrong with \`${prefix}${cmd.name}\`. Please try again.`, allowedMentions: { repliedUser: false } });
+    } catch {}
   }
 });
 

@@ -878,6 +878,7 @@ export const data = new SlashCommandBuilder()
   .setName("agents")
   .setDescription("Deploy and manage Chopsticks agents")
   .addSubcommand(s => s.setName("status").setDescription("Status overview for this guild"))
+  .addSubcommand(s => s.setName("analytics").setDescription("Network-wide agent health analytics and stats"))
   .addSubcommand(s => s.setName("manifest").setDescription("List every connected agent and identity"))
   .addSubcommand(s => s.setName("diagnose").setDescription("Diagnose why an agent may not be coming online")
     .addStringOption(o => o.setName("agent_id").setDescription("Agent ID to diagnose (optional — diagnoses all if omitted)").setRequired(false)))
@@ -1229,6 +1230,61 @@ export async function execute(interaction) {
     } catch (error) {
       botLogger.error({ err: error }, "[agents:status] Error");
       await replyError(interaction, "Status Failed", `Could not fetch agent status.\n${error.message}`);
+    }
+    return;
+  }
+
+  if (sub === "analytics") {
+    try {
+      const stats = mgr.getNetworkStats();
+      const { total, ready, busyMusic, busyAssist, busyText, disconnected,
+              avgRttMs, maxRttMs, totalRequests, totalErrors, errorRate,
+              musicSessions, assistSessions, textSessions, totalSessions,
+              perAgent } = stats;
+
+      const statusColor = ready > 0 ? Colors.SUCCESS : total > 0 ? Colors.WARNING : Colors.ERROR;
+      const rttDisplay = avgRttMs != null ? `${avgRttMs}ms avg · ${maxRttMs}ms max` : "No data";
+      const errDisplay = `${totalErrors} errors / ${totalRequests} requests (${errorRate}%)`;
+
+      const embed = new EmbedBuilder()
+        .setTitle("📊 Agent Network Analytics")
+        .setColor(statusColor)
+        .addFields(
+          { name: "🤖 Agents",    value: `🟢 **${ready}** idle  ·  ⚡ **${busyMusic + busyAssist + busyText}** busy  ·  🔴 **${disconnected}** offline  ·  **${total}** total`, inline: false },
+          { name: "🎵 Sessions",  value: `Music: **${musicSessions}**  ·  Assistant: **${assistSessions}**  ·  Text: **${textSessions}**  ·  Total: **${totalSessions}**`, inline: false },
+          { name: "📡 Latency",   value: rttDisplay, inline: true },
+          { name: "❌ Error Rate", value: errDisplay, inline: true },
+        )
+        .setTimestamp()
+        .setFooter({ text: "Live snapshot · Chopsticks Agent Network" });
+
+      // Per-agent breakdown (top 15)
+      if (perAgent.length > 0) {
+        const agentLines = perAgent.slice(0, 15).map(a => {
+          const icon   = !a.ready ? "🔴" : a.busyKey ? "⚡" : "🟢";
+          const health = `H:${a.health}`;
+          const rtt    = a.rttMs != null ? `${a.rttMs}ms` : "—";
+          const errs   = a.errors > 0 ? ` ❌${a.errors}` : "";
+          const tag    = a.tag ? ` (${a.tag})` : "";
+          const busy   = a.busyKey ? ` [${a.busyKind}]` : "";
+          return `${icon} \`${a.agentId}\`${tag}${busy} · ${rtt} · ${health}${errs}`;
+        });
+        if (perAgent.length > 15) agentLines.push(`… and ${perAgent.length - 15} more`);
+        embed.addFields({ name: `🤖 Per-Agent Health (${perAgent.length})`, value: agentLines.join("\n").slice(0, 1024) });
+      } else {
+        embed.addFields({ name: "🤖 Agents", value: "No agents connected. Use `/agents deploy` to add agents." });
+      }
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`agents:analytics:refresh:${interaction.guildId}`).setLabel("🔄 Refresh").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`agentssessions:${interaction.guildId}`).setLabel("📋 Sessions").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`agentsstatus:${interaction.guildId}`).setLabel("📈 Status").setStyle(ButtonStyle.Secondary),
+      );
+
+      await replyInteraction(interaction, { embeds: [embed], components: [row] });
+    } catch (error) {
+      botLogger.error({ err: error }, "[agents:analytics] Error");
+      await replyError(interaction, "Analytics Failed", error.message);
     }
     return;
   }
@@ -2986,6 +3042,51 @@ export async function handleStatusButton(interaction) {
       { name: "5. Deploy AI-Capable Agents", value: "Register agents with `capabilities: chat,tts` via `/agents add_token` for full voice assistant support.", inline: false }
     );
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    return true;
+  }
+
+  // Analytics refresh button
+  if (cid.startsWith("agents:analytics:refresh:")) {
+    const mgr = global.agentManager;
+    if (!mgr) {
+      await interaction.reply({ embeds: [buildInfoEmbed("Offline", "Agent control is offline.", Colors.ERROR)], flags: MessageFlags.Ephemeral });
+      return true;
+    }
+    await interaction.deferUpdate().catch(() => {});
+    const stats = mgr.getNetworkStats();
+    const { total, ready, busyMusic, busyAssist, busyText, disconnected,
+            avgRttMs, maxRttMs, totalRequests, totalErrors, errorRate,
+            musicSessions, assistSessions, textSessions, totalSessions, perAgent } = stats;
+    const statusColor = ready > 0 ? Colors.SUCCESS : total > 0 ? Colors.WARNING : Colors.ERROR;
+    const embed = new EmbedBuilder()
+      .setTitle("📊 Agent Network Analytics")
+      .setColor(statusColor)
+      .addFields(
+        { name: "🤖 Agents",     value: `🟢 **${ready}** idle  ·  ⚡ **${busyMusic + busyAssist + busyText}** busy  ·  🔴 **${disconnected}** offline  ·  **${total}** total`, inline: false },
+        { name: "🎵 Sessions",   value: `Music: **${musicSessions}**  ·  Assistant: **${assistSessions}**  ·  Text: **${textSessions}**  ·  Total: **${totalSessions}**`, inline: false },
+        { name: "📡 Latency",    value: avgRttMs != null ? `${avgRttMs}ms avg · ${maxRttMs}ms max` : "No data", inline: true },
+        { name: "❌ Error Rate", value: `${totalErrors} / ${totalRequests} req (${errorRate}%)`, inline: true },
+      )
+      .setTimestamp()
+      .setFooter({ text: "Live snapshot · Chopsticks Agent Network" });
+
+    if (perAgent.length > 0) {
+      const lines = perAgent.slice(0, 15).map(a => {
+        const icon = !a.ready ? "🔴" : a.busyKey ? "⚡" : "🟢";
+        const rtt  = a.rttMs != null ? `${a.rttMs}ms` : "—";
+        const errs = a.errors > 0 ? ` ❌${a.errors}` : "";
+        const busy = a.busyKey ? ` [${a.busyKind}]` : "";
+        return `${icon} \`${a.agentId}\`${a.tag ? ` (${a.tag})` : ""}${busy} · ${rtt} · H:${a.health}${errs}`;
+      });
+      if (perAgent.length > 15) lines.push(`… and ${perAgent.length - 15} more`);
+      embed.addFields({ name: `Per-Agent (${perAgent.length})`, value: lines.join("\n").slice(0, 1024) });
+    }
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`agents:analytics:refresh:${interaction.guildId}`).setLabel("🔄 Refresh").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`agentssessions:${interaction.guildId}`).setLabel("📋 Sessions").setStyle(ButtonStyle.Secondary),
+    );
+    await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
     return true;
   }
 

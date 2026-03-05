@@ -14,6 +14,8 @@
     "start:shard": "node src/shard.js",
     "dashboard": "node src/dashboard/server.js",
     "funhub": "node src/fun/server.js",
+    "nuke:data": "INITIAL_DATA_WIPE=true node scripts/nuke_guild_data.js",
+    "nuke:all": "INITIAL_DATA_WIPE=true NUKE_USER_DATA=true node scripts/nuke_guild_data.js",
     "migrate": "node scripts/migrate.js",
     "seed:pg": "node scripts/seedFromFiles.js",
     "deploy:guild": "DEPLOY_MODE=guild node scripts/deployCommands.js",

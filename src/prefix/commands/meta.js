@@ -1,8 +1,9 @@
-import { PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
-import { reply, parseIntSafe } from "../helpers.js";
+import { PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from "discord.js";
+import { reply, replyError, replySuccess, parseIntSafe } from "../helpers.js";
 import { loadGuildData, saveGuildData } from "../../utils/storage.js";
 import { readAgentTokensFromEnv } from "../../agents/env.js";
 import { request } from "undici";
+import COLORS from "../../utils/colors.js";
 import {
   isValidAliasName,
   normalizeAliasName,
@@ -258,7 +259,100 @@ export default [
         return reply(message, out.length ? out.join("\n") : "Unable to fetch agent identities.");
       }
 
-      return reply(message, "Usage: agents <status|sessions|assign|release|scale|restart|invite>");
+      if (sub === "health" || sub === "analytics") {
+        if (!mgr) return replyError(message, "Agent manager is not running.");
+        const stats = mgr.getNetworkStats();
+        const { total, ready, busyMusic, busyAssist, busyText, disconnected,
+                avgRttMs, maxRttMs, totalRequests, totalErrors, errorRate,
+                musicSessions, assistSessions, textSessions, perAgent } = stats;
+
+        const statusColor = ready > 0 ? 0x57F287 : total > 0 ? 0xFEE75C : 0xED4245;
+
+        const embed = new EmbedBuilder()
+          .setTitle("📊 Agent Network Health")
+          .setColor(statusColor)
+          .addFields(
+            { name: "🤖 Agents",    value: `🟢 **${ready}** idle  ·  ⚡ **${busyMusic + busyAssist + busyText}** busy  ·  🔴 **${disconnected}** offline  ·  **${total}** total`, inline: false },
+            { name: "🎵 Sessions",  value: `Music: **${musicSessions}**  ·  Assist: **${assistSessions}**  ·  Text: **${textSessions}**`, inline: false },
+            { name: "📡 Avg RTT",   value: avgRttMs != null ? `\`${avgRttMs}ms\`` : "—", inline: true },
+            { name: "📡 Max RTT",   value: maxRttMs != null ? `\`${maxRttMs}ms\`` : "—", inline: true },
+            { name: "❌ Errors",    value: `${totalErrors}/${totalRequests} (${errorRate}%)`, inline: true },
+          )
+          .setTimestamp()
+          .setFooter({ text: "!agents health — Chopsticks Agent Network" });
+
+        if (perAgent.length) {
+          const lines = perAgent.slice(0, 12).map(a => {
+            const icon = !a.ready ? "🔴" : a.busyKey ? "⚡" : "🟢";
+            const rtt  = a.rttMs != null ? `${a.rttMs}ms` : "—";
+            const errs = a.errors > 0 ? ` ❌${a.errors}` : "";
+            const busy = a.busyKey ? ` [${a.busyKind}]` : "";
+            return `${icon} \`${a.agentId}\`${a.tag ? ` (${a.tag})` : ""}${busy} · ${rtt} · H:${a.health}${errs}`;
+          });
+          if (perAgent.length > 12) lines.push(`… +${perAgent.length - 12} more`);
+          embed.addFields({ name: `Per-Agent (${perAgent.length})`, value: lines.join("\n").slice(0, 1024) });
+        }
+
+        return message.reply({ embeds: [embed] });
+      }
+
+      if (sub === "debug") {
+        const agentId = args[1];
+        if (!agentId) return replyError(message, "Usage: `!agents debug <agentId>`");
+        if (!mgr) return replyError(message, "Agent manager not running.");
+        const live = mgr.liveAgents?.get(agentId);
+        if (!live) return replyError(message, `Agent \`${agentId}\` is not currently connected.`);
+
+        const guildList = live.guildIds ? Array.from(live.guildIds).slice(0, 10).join(", ") : "none";
+        const embed = new EmbedBuilder()
+          .setTitle(`🔍 Agent Debug: ${agentId}`)
+          .setColor(live.ready ? 0x57F287 : 0xED4245)
+          .addFields(
+            { name: "Status",       value: live.ready ? "🟢 Ready" : "🔴 Not Ready",       inline: true },
+            { name: "Busy",         value: live.busyKey ? `⚡ ${live.busyKind}` : "Idle",   inline: true },
+            { name: "RTT",          value: live.rttMs != null ? `${live.rttMs}ms` : "—",   inline: true },
+            { name: "Requests",     value: String(live.requestCount ?? 0),                  inline: true },
+            { name: "Errors",       value: String(live.errorCount ?? 0),                    inline: true },
+            { name: "Health Score", value: String(mgr._agentHealthScore?.(live) ?? "—"),    inline: true },
+            { name: "Guilds",       value: guildList || "none",                             inline: false },
+            { name: "Started At",   value: live.startedAt ? `<t:${Math.floor(live.startedAt/1000)}:R>` : "—", inline: true },
+            { name: "Last Seen",    value: live.lastSeen  ? `<t:${Math.floor(live.lastSeen/1000)}:R>`  : "—", inline: true },
+          )
+          .setTimestamp();
+
+        return message.reply({ embeds: [embed] });
+      }
+
+      if (sub === "failover") {
+        const voiceChannelId = args[1];
+        if (!voiceChannelId) return replyError(message, "Usage: `!agents failover <voiceChannelId>`");
+        if (!mgr) return replyError(message, "Agent manager not running.");
+
+        const current = mgr.getSessionAgent(message.guildId, voiceChannelId);
+        if (!current.ok && current.reason !== "agent-offline") {
+          return replyError(message, `No session in <#${voiceChannelId}>.`);
+        }
+
+        // Release current (if any) and pick a new agent
+        mgr.releaseSession(message.guildId, voiceChannelId);
+        const newSess = await mgr.ensureSessionAgent(message.guildId, voiceChannelId, {
+          textChannelId: message.channelId,
+          ownerUserId: message.author.id,
+        }).catch(() => ({ ok: false }));
+
+        if (!newSess.ok) return replyError(message, "No available agent for failover. Try again when more agents are online.");
+
+        await mgr.request(newSess.agent, "join", {
+          guildId: message.guildId,
+          voiceChannelId,
+          textChannelId: message.channelId,
+          actorUserId: message.author.id,
+        }).catch(() => {});
+
+        return replySuccess(message, `Failover complete — session reassigned to \`${newSess.agent.agentId}\`.`);
+      }
+
+      return replyError(message, "Usage: `!agents <status|health|sessions|assign|release|restart|failover|debug|scale|invite>`");
     }
   }
 ];

@@ -964,7 +964,55 @@ export class AgentManager {
     return count;
   }
 
-  // ===== leasing (text) =====
+  /**
+   * Returns a snapshot of the full agent network stats for dashboards/analytics.
+   */
+  getNetworkStats() {
+    const agents       = Array.from(this.liveAgents.values());
+    const total        = agents.length;
+    const ready        = agents.filter(a => a.ready && !a.busyKey).length;
+    const busyMusic    = agents.filter(a => a.ready && a.busyKey && a.busyKind === "music").length;
+    const busyAssist   = agents.filter(a => a.ready && a.busyKey && a.busyKind === "assistant").length;
+    const busyText     = agents.filter(a => a.ready && a.busyKey && a.busyKind === "text").length;
+    const disconnected = agents.filter(a => !a.ready).length;
+
+    const rtts     = agents.map(a => a.rttMs).filter(r => r != null && r > 0);
+    const avgRttMs = rtts.length ? Math.round(rtts.reduce((s, r) => s + r, 0) / rtts.length) : null;
+    const maxRttMs = rtts.length ? Math.max(...rtts) : null;
+
+    const totalRequests = agents.reduce((s, a) => s + (a.requestCount  ?? 0), 0);
+    const totalErrors   = agents.reduce((s, a) => s + (a.errorCount    ?? 0), 0);
+    const errorRate     = totalRequests > 0 ? ((totalErrors / totalRequests) * 100).toFixed(1) : "0.0";
+
+    const musicSessions    = this.sessions.size;
+    const assistSessions   = this.assistantSessions.size;
+    const textSessions     = this.textSessions.size;
+    const totalSessions    = musicSessions + assistSessions + textSessions;
+
+    const perAgent = agents.map(a => ({
+      agentId:      a.agentId,
+      tag:          a.tag ?? null,
+      ready:        a.ready,
+      busyKey:      a.busyKey ?? null,
+      busyKind:     a.busyKind ?? null,
+      rttMs:        a.rttMs ?? null,
+      requests:     a.requestCount ?? 0,
+      errors:       a.errorCount ?? 0,
+      health:       this._agentHealthScore(a),
+      lastSeen:     a.lastSeen ?? null,
+      startedAt:    a.startedAt ?? null,
+      guildCount:   a.guildIds?.size ?? 0,
+    })).sort((a, b) => b.health - a.health || a.agentId.localeCompare(b.agentId));
+
+    return {
+      total, ready, busyMusic, busyAssist, busyText, disconnected,
+      avgRttMs, maxRttMs,
+      totalRequests, totalErrors, errorRate,
+      musicSessions, assistSessions, textSessions, totalSessions,
+      perAgent,
+      ts: Date.now(),
+    };
+  }
 
   getTextSessionAgent(guildId, textChannelId, { ownerUserId, kind = "text" } = {}) {
     const k = textKey(kind, guildId, textChannelId, ownerUserId);
@@ -1510,22 +1558,32 @@ export class AgentManager {
     const agent = this.liveAgents.get(agentId);
     if (!agent) return;
 
-    const affectedSessions = [];
-    
-    // Release music sessions held by this agent
+    const affectedMusicSessions    = [];
+    const affectedAssistantSessions = [];
+
+    // Snapshot session state BEFORE cleanup for failover
+    const sessionSnapshot = new Map(); // sessionKey -> { guildId, voiceChannelId, textChannelId, ownerUserId }
     for (const [k, aId] of this.sessions.entries()) {
       if (aId === agentId) {
-        affectedSessions.push(k);
+        const [guildId, voiceChannelId] = k.split(":");
+        sessionSnapshot.set(k, {
+          guildId,
+          voiceChannelId,
+          textChannelId: agent.textChannelId ?? null,
+          ownerUserId:   agent.ownerUserId ?? null,
+        });
+        affectedMusicSessions.push(k);
         this.sessions.delete(k);
-        trackSessionRelease('music');
+        trackSessionRelease("music");
       }
     }
-    
+
     // Release assistant sessions held by this agent
     for (const [k, aId] of this.assistantSessions.entries()) {
       if (aId === agentId) {
+        affectedAssistantSessions.push(k);
         this.assistantSessions.delete(k);
-        trackSessionRelease('assistant');
+        trackSessionRelease("assistant");
       }
     }
 
@@ -1536,46 +1594,75 @@ export class AgentManager {
 
     this.liveAgents.delete(agentId);
     this._updateMetrics();
-    logger.info(`[AgentManager] Cleaned up disconnected agent ${agentId}. Affected sessions: ${affectedSessions.length}`);
-    
-    // Notify users in affected voice channels
-    if (affectedSessions.length > 0 && global.client) {
-      for (const sessionKey of affectedSessions) {
-        const [guildId, voiceChannelId] = sessionKey.split(':');
-        
-        try {
-          const guild = await global.client.guilds.fetch(guildId).catch(() => null);
-          if (!guild) continue;
-          
-          const voiceChannel = await guild.channels.fetch(voiceChannelId).catch(() => null);
-          if (!voiceChannel) continue;
-          
-          // Try to find an associated text channel
-          let textChannel = null;
-          if (voiceChannel.parent) {
-            // Look for a text channel in the same category
-            const channels = voiceChannel.parent.children.cache;
-            textChannel = channels.find(c => c.isTextBased() && c.permissionsFor(guild.members.me).has('SendMessages'));
-          }
-          
-          if (!textChannel) {
-            // Fall back to system channel or first available text channel
-            textChannel = guild.systemChannel || 
-                         guild.channels.cache.find(c => c.isTextBased() && c.permissionsFor(guild.members.me).has('SendMessages'));
-          }
-          
-          if (textChannel) {
-            await textChannel.send({
-              content: `⚠️ **Music agent disconnected** from ${voiceChannel.name}\n💡 Music playback has stopped. Use \`/music play\` to resume.`
-            }).catch(err => {
-              logger.warn(`[AgentManager] Failed to notify channel about agent disconnect: ${err?.message}`);
-            });
-          }
-        } catch (err) {
-          logger.warn(`[AgentManager] Error notifying session ${sessionKey}: ${err?.message}`);
+    logger.info(`[AgentManager] Cleaned up disconnected agent ${agentId}. Affected music sessions: ${affectedMusicSessions.length}, assistant: ${affectedAssistantSessions.length}`);
+
+    // ── Automatic session failover ─────────────────────────────────────────
+    // For each affected music session, attempt to rebind to another available agent.
+    for (const [sKey, snap] of sessionSnapshot.entries()) {
+      try {
+        const { guildId, voiceChannelId, textChannelId, ownerUserId } = snap;
+        const failoverAgent = this.findIdleAgentInGuildRoundRobin(guildId);
+        if (!failoverAgent) {
+          logger.warn(`[AgentManager] No failover agent available for session ${sKey}`);
+          await this._notifySessionChannel(guildId, voiceChannelId,
+            `⚠️ **Music agent disconnected.** No replacement available — use \`/music play\` to restart.`
+          );
+          continue;
         }
+
+        // Rebind session to the new agent
+        this.bindAgentToSession(failoverAgent, { guildId, voiceChannelId, textChannelId, ownerUserId });
+
+        // Ask the new agent to rejoin the voice channel
+        this.request(failoverAgent, "join", {
+          guildId, voiceChannelId,
+          textChannelId: textChannelId ?? null,
+          actorUserId: ownerUserId ?? null,
+        }).catch(() => {});
+
+        logger.info(`[AgentManager] Failover: session ${sKey} reassigned from ${agentId} → ${failoverAgent.agentId}`);
+        await this._notifySessionChannel(guildId, voiceChannelId,
+          `🔄 **Music agent reconnected** (${failoverAgent.agentId}). Queue may need to be restarted — use \`/music play\` or \`!play\` to resume.`
+        );
+        trackSessionAllocation("music", "failover", 0);
+        this._updateMetrics();
+      } catch (err) {
+        logger.error(`[AgentManager] Failover error for session ${sKey}: ${err?.message}`);
       }
     }
+
+    // Notify about assistant sessions (no failover — more stateful)
+    for (const sKey of affectedAssistantSessions) {
+      const [, guildId, voiceChannelId] = sKey.split(":");
+      await this._notifySessionChannel(guildId, voiceChannelId,
+        `⚠️ **Voice assistant agent disconnected.** Use \`/voice-assistant\` to reconnect.`
+      ).catch(() => {});
+    }
+  }
+
+  /** Notify users in the text channel associated with a voice session */
+  async _notifySessionChannel(guildId, voiceChannelId, content) {
+    if (!global.client) return;
+    try {
+      const guild = await global.client.guilds.fetch(guildId).catch(() => null);
+      if (!guild) return;
+
+      const voiceChannel = await guild.channels.fetch(voiceChannelId).catch(() => null);
+
+      let textChannel = null;
+      if (voiceChannel?.parent) {
+        const channels = voiceChannel.parent.children.cache;
+        textChannel = channels.find(c => c.isTextBased() && c.permissionsFor(guild.members.me)?.has("SendMessages"));
+      }
+      if (!textChannel) {
+        textChannel = guild.systemChannel
+          || guild.channels.cache.find(c => c.isTextBased() && c.permissionsFor(guild.members.me)?.has("SendMessages"));
+      }
+
+      if (textChannel) {
+        await textChannel.send({ content }).catch(() => {});
+      }
+    } catch {}
   }
 
   // Update metrics gauges (Level 2: Observability)
