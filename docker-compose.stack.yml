@@ -145,5 +145,5 @@ volumes:
 
 networks:
   woksite_wok_network:
-    external:
-      name: woksite_wok_network
+    external: true
+    name: woksite_wok_network
