@@ -1,32 +1,30 @@
 # .gitleaks.toml
 # Gitleaks configuration for Chopsticks.
 # Run: gitleaks detect --config .gitleaks.toml --source .
-# Or via pre-commit: https://pre-commit.com
 
 title = "Chopsticks Gitleaks Config"
 
 [extend]
 useDefault = true   # Inherit all default gitleaks rules
 
-# ── Allow-list (false positive exceptions) ──────────────────────────────────
-[[rules.allowlist.paths]]
-description = "Ignore test fixtures and example env files"
+# ── Global Allow-list (false positive exceptions) ──────────────────────────
+[allowlist]
+description = "Ignore test fixtures, documentation, and specific placeholders"
 paths = [
   "test/fixtures/",
   ".env.example",
   "docs/",
   "wokspec/",
+  "scripts/voice-piper-models.md"
 ]
-
-[[rules.allowlist.regexes]]
-description = "Ignore placeholder values"
 regexes = [
   "sk-YOUR[A-Z_]+HERE",
   "your[-_]api[-_]key",
   "INSERT[-_]TOKEN[-_]HERE",
   "<redacted>",
   "example\\.com",
-  "youshallnotpass",  # Known Lavalink example value — caught separately by check-env.js
+  "youshallnotpass",
+  "7C897F-20022D-E3EC39-74B5DF-A79E83-V3" # The Gitleaks license key itself
 ]
 
 # ── Custom rules ─────────────────────────────────────────────────────────────
