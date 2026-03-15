@@ -477,6 +477,6 @@ See [LICENSE](LICENSE) for the full text.
 
 <div align="center">
 
-Built by the **[WokSpec](https://github.com/wokspec)** community.
+Built with <3 by goot27. Enjoy!
 
 </div>
