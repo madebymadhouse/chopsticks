@@ -71,7 +71,7 @@
     "ioredis": "^5.9.3",
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
-    "lavalink-client": "^2.7.7",
+    "lavalink-client": "^2.9.7",
     "mammoth": "^1.11.0",
     "msedge-tts": "^2.0.4",
     "opossum": "^8.1.0",
