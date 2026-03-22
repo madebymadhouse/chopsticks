@@ -13,7 +13,7 @@
 
 </div>
 
-> **Notice — New home:** The original maintainer (goot27) had their GitHub account suspended following the [Autiladus](https://github.com/autiladus/autiladus) incident — an experimental agent swarm architecture project that was flagged and shut down during development. Chopsticks is an independent community project with no relation to that experiment. Development continues here under [ws-sam](https://github.com/ws-sam) / WokSpec. Still MIT. Still self-hostable. Contributions welcome.
+> **Status — On hold:** Chopsticks is production-stable and fully self-hostable. Active feature development is paused while [ws-sam](https://github.com/ws-sam) focuses on building [WokSpec](https://github.com/WokSpec). Community PRs are still reviewed and merged. Still MIT. Still self-hostable. Contributions welcome.
 
 ---
 
