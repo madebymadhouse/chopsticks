@@ -200,7 +200,7 @@ export default [
           { name: "🤖 Agents",     value: `**${agentCount}** online · **${sessionCount}** sessions`, inline: true },
           { name: "📦 Version",    value: `Node.js ${process.version}`, inline: true },
         )
-        .setFooter({ text: "Chopsticks by WokSpec" })
+        .setFooter({ text: "Chopsticks by Mad House" })
         .setTimestamp();
 
       await reply(message, embed);
@@ -221,7 +221,7 @@ export default [
         .setColor(COLORS.INFO)
         .setDescription(`[**Click here to invite Chopsticks**](${url})\n\nChopsticks brings music, leveling, economy, AI agents, moderation, and more to your server.`)
         .setThumbnail(message.client.user.displayAvatarURL({ size: 256 }))
-        .setFooter({ text: "Chopsticks by WokSpec" });
+        .setFooter({ text: "Chopsticks by Mad House" });
 
       await reply(message, embed);
     }

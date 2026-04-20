@@ -375,7 +375,7 @@ Chopsticks/
 │   └── deployCommands.js   Slash command deploy (guild or global)
 ├── docs/                   Architecture, deployment, and security guides
 ├── test/                   Unit and contract tests (872 tests)
-├── web/                    Public website (Next.js → chopsticks.wokspec.org)
+├── web/                    Public website (Next.js → chopsticks.madebymadhouse.org)
 ├── docker-compose.*.yml    Compose files for different environments
 ├── Dockerfile.bot          Bot container image
 ├── Dockerfile.agentrunner  Agent runner container image
@@ -405,7 +405,7 @@ Chopsticks/
 
 ## Website
 
-The [`web/`](web/) directory contains the [Next.js](https://nextjs.org) site deployed at **[chopsticks.wokspec.org](https://chopsticks.wokspec.org)** via Cloudflare Pages — developed by [WokSpec](https://wokspec.org).
+The [`web/`](web/) directory contains the [Next.js](https://nextjs.org) site deployed at **[chopsticks.madebymadhouse.org](https://chopsticks.madebymadhouse.org)** via Cloudflare Pages — developed by [Mad House](https://github.com/madebymadhouse).
 
 ### Pages
 
@@ -500,9 +500,9 @@ See the [Mad House Security Policy](https://github.com/madebymadhouse/.github/bl
 
 ## License
 
-MIT License with Commercial Attribution Clause — Copyright (c) 2026 WokSpec
+MIT License with Commercial Attribution Clause — Copyright (c) 2026 Mad House
 
-Free to self-host, fork, and white-label. **Commercial use** (paid bots, white-labeled instances, SaaS offerings) requires a visible attribution to "Powered by Chopsticks (WokSpec)" in your product's documentation, bot description, or about section.
+Free to self-host, fork, and white-label. **Commercial use** (paid bots, white-labeled instances, SaaS offerings) requires a visible attribution to "Powered by Chopsticks (Mad House)" in your product's documentation, bot description, or about section.
 
 See [LICENSE](LICENSE) for the full text.
 

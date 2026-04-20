@@ -114,7 +114,7 @@ Must use `checkSensitiveActionLimit` from `modernRateLimiter.js` (3/5min, block 
 - API keys stored encrypted (AES-256-GCM, AGENT_TOKEN_KEY)
 - Keys entered via Discord ephemeral modal only — never in plain message options
 - Keys validated before persisting (cheap health check)
-- WokSpec does NOT pay for any provider calls — all keys are admin-owned
+- Mad House does NOT pay for any provider calls — all keys are admin-owned
 - Voice responses are ephemeral or in a dedicated channel — not stored
 
 ---

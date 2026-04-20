@@ -17,7 +17,7 @@ export const Config = {
   githubRepo: 'https://github.com/ws-sam/Chopsticks',
 
   // Canonical URL for the project.
-  baseUrl: 'https://chopsticks.wokspec.org',
+  baseUrl: 'https://chopsticks.madebymadhouse.org',
   
   // Feature counts (approximate)
   stats: {

@@ -14,7 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 - Phase I: Per-user contribution limits (`max_contributions_per_user`) on pools
 - Phase I: Pool audit log route (`GET /api/pools/:id/audit`)
 - Phase I: Fix-pending admin endpoint for promoting agents to active
-- Website: Full public-ready site at [chopsticks.wokspec.org](https://chopsticks.wokspec.org) — rebuilt from scratch, developed by [WokSpec](https://wokspec.org)
+- Website: Full public-ready site at [chopsticks.madebymadhouse.org](https://chopsticks.madebymadhouse.org) — rebuilt from scratch, developed by [Mad House](https://github.com/madebymadhouse)
 - Website: Interactive tutorials page with Discord UI preview panels, step-by-step accordion guides, and sidebar navigation
 - Website: Dedicated self-hosting page (`/self-host`) with complete Docker walkthrough
 - Website: Searchable, filterable command reference page
@@ -275,9 +275,9 @@ Major architectural milestone: Prefix-First architecture, 50+ new prefix command
 - PostgreSQL + Redis persistence
 - Slash command registration system
 
-[Unreleased]: https://github.com/wokspec/Chopsticks/compare/v1.3.0...HEAD
-[1.3.0]: https://github.com/wokspec/Chopsticks/compare/v1.2.0...v1.3.0
-[1.2.0]: https://github.com/wokspec/Chopsticks/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/wokspec/Chopsticks/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/wokspec/Chopsticks/releases/tag/v1.0.0
+[Unreleased]: https://github.com/madebymadhouse/chopsticks/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/madebymadhouse/chopsticks/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/madebymadhouse/chopsticks/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/madebymadhouse/chopsticks/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/madebymadhouse/chopsticks/releases/tag/v1.0.0
 

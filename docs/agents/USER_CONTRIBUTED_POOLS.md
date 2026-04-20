@@ -33,7 +33,7 @@ USERS (Pool Owners)
   └─> Share pools with others (optional)
 
 FLOW:
-  User A creates "WokSpec's Pool"
+  User A creates "Mad House's Pool"
     → Contributes 5 bot tokens
     → Pool has 5 agents
     → Only User A's servers can use them (private)
@@ -310,7 +310,7 @@ Your encrypted token is now stored securely.
 ```
 Which pool should this agent join?
 
-⚪ WokSpec's Pool (Private)
+⚪ Mad House's Pool (Private)
    5 agents • 2 active • Your personal pool
    
 ⚪ Create New Pool
@@ -326,7 +326,7 @@ Which pool should this agent join?
 
 Agent #0006 (MyBot#1234)
 Status: Active
-Pool: WokSpec's Pool
+Pool: Mad House's Pool
 Owner: You
 
 Your agent is ready to deploy!
@@ -557,7 +557,7 @@ Chopsticks shows:
 │  Your Pools:                                                    │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────┐    │
-│  │ WokSpec's Pool (Private)                                │    │
+│  │ Mad House's Pool (Private)                                │    │
 │  │ Agents: 5 • Active: 2 (40%)                            │    │
 │  │ Served: Your servers only                               │    │
 │  │ [Manage] [Make Public]                                 │    │

@@ -154,7 +154,7 @@ export default function SelfHostPage() {
                   </div>
                 ))}
               </div>
-              <CodeBlock lang="bash">{`git clone https://github.com/WokSpec/Chopsticks
+              <CodeBlock lang="bash">{`git clone https://github.com/madebymadhouse/chopsticks
 cd Chopsticks`}</CodeBlock>
               <button className="btn btn-green" style={{ marginTop: '0.5rem' }} onClick={() => markComplete(0)}>
                 <CheckIcon size={14} /> Mark complete

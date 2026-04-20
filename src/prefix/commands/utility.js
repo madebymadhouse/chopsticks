@@ -211,7 +211,7 @@ export default [
         .setTitle("🔗 Invite Chopsticks")
         .setDescription(`[**Click here to add Chopsticks to your server**](${url})`)
         .setColor(COLORS.INFO)
-        .setFooter({ text: "Chopsticks by WokSpec" });
+        .setFooter({ text: "Chopsticks by Mad House" });
       await message.reply({ embeds: [embed] });
     }
   },

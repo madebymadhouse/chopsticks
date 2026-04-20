@@ -97,4 +97,4 @@ The web dashboard uses Discord OAuth2 with the `identify guilds` scope. The sess
 
 ## Reporting Vulnerabilities
 
-Do not open a public GitHub issue for security bugs. Email security@wokspec.org or follow the process in [SECURITY.md](../../Chopsticks/SECURITY.md).
+Do not open a public GitHub issue for security bugs. Email security@madebymadhouse.org or follow the process in [SECURITY.md](../../Chopsticks/SECURITY.md).

@@ -67,8 +67,8 @@ describe("Console URL auto-detection", () => {
   });
 
   it("detects generic PUBLIC_URL", () => {
-    const url = detectBaseUrl({ PUBLIC_URL: "https://bot.wokspec.org/" });
-    assert.equal(url, "https://bot.wokspec.org");
+    const url = detectBaseUrl({ PUBLIC_URL: "https://bot.madebymadhouse.org/" });
+    assert.equal(url, "https://bot.madebymadhouse.org");
   });
 
   it("falls back to localhost with default port", () => {

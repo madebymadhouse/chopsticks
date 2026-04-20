@@ -8,11 +8,11 @@
 
 export const Branding = {
   name:          process.env.BOT_NAME        ?? "Chopsticks",
-  tagline:       process.env.BOT_TAGLINE     ?? "A production-grade Discord bot by WokSpec",
+  tagline:       process.env.BOT_TAGLINE     ?? "A production-grade Discord bot by Mad House",
   supportServer: process.env.SUPPORT_SERVER_URL ?? "https://discord.gg/chopsticks",
   inviteUrl:     process.env.BOT_INVITE_URL  ?? "",
-  website:       process.env.BOT_WEBSITE     ?? "https://github.com/WokSpec/Chopsticks",
-  github:        process.env.BOT_GITHUB      ?? "https://github.com/WokSpec/Chopsticks",
+  website:       process.env.BOT_WEBSITE     ?? "https://github.com/madebymadhouse/chopsticks",
+  github:        process.env.BOT_GITHUB      ?? "https://github.com/madebymadhouse/chopsticks",
 
   // Default footer for all embeds. {botname} is replaced at runtime.
   footerText: process.env.BOT_FOOTER ?? "{botname}",

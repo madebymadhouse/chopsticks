@@ -38,12 +38,12 @@ I've completed **all three tasks** you requested:
 
 # 3. SSH into server and run (10 min)
 ssh root@<your-server-ip>
-curl -fsSL https://raw.githubusercontent.com/wokspecialists/chopsticks/main/scripts/deploy-hetzner.sh -o deploy.sh
+curl -fsSL https://raw.githubusercontent.com/madebymadhouse/chopsticks/main/scripts/deploy-hetzner.sh -o deploy.sh
 sudo bash deploy.sh
 
 # 4. Clone and configure (5 min)
 cd /opt/chopsticks
-git clone https://github.com/wokspecialists/chopsticks.git .
+git clone https://github.com/madebymadhouse/chopsticks.git .
 cp .env.example .env
 nano .env  # Add your Discord tokens
 

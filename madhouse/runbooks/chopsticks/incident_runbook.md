@@ -187,7 +187,7 @@ docker logs chopsticks-postgres 2>&1 | grep -E "FATAL|ERROR|PANIC"
 
 # Attempt 3 — Restore from backup (ONLY if data directory is corrupted)
 # See backup-restore-runbook.md for full procedure
-cat wokspec/runbooks/chopsticks/backup-restore-runbook.md
+cat madebymadhouse/runbooks/chopsticks/backup-restore-runbook.md
 ```
 
 ### Rollback If Fix Fails

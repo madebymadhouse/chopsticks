@@ -7,7 +7,7 @@
 <circle cx="66" cy="20" r="7" fill="#23a55a"/>
 <text x="400" y="26" font-size="13" font-weight="500" fill="#cdd6f4" text-anchor="middle" font-family="'UbuntuMono','Ubuntu Sans Mono','Consolas',monospace">bash  —  Chopsticks Self-Host</text>
 <text x="18" y="62" font-size="14" font-weight="700" fill="#f38ba8" text-anchor="start" font-family="'UbuntuMono','Ubuntu Sans Mono','Consolas',monospace">$</text>
-<text x="34" y="62" font-size="13" font-weight="400" fill="#89b4fa" text-anchor="start" font-family="'UbuntuMono','Ubuntu Sans Mono','Consolas',monospace">git clone https://github.com/WokSpec/Chopsticks</text>
+<text x="34" y="62" font-size="13" font-weight="400" fill="#89b4fa" text-anchor="start" font-family="'UbuntuMono','Ubuntu Sans Mono','Consolas',monospace">git clone https://github.com/madebymadhouse/chopsticks</text>
 <text x="18" y="89" font-size="13" font-weight="400" fill="#cdd6f4" text-anchor="start" font-family="'UbuntuMono','Ubuntu Sans Mono','Consolas',monospace">  Cloning into Chopsticks...  done.</text>
 <text x="18" y="116" font-size="14" font-weight="700" fill="#f38ba8" text-anchor="start" font-family="'UbuntuMono','Ubuntu Sans Mono','Consolas',monospace">$</text>
 <text x="34" y="116" font-size="13" font-weight="400" fill="#89b4fa" text-anchor="start" font-family="'UbuntuMono','Ubuntu Sans Mono','Consolas',monospace">cp .env.example .env</text>

@@ -211,7 +211,7 @@ npm test
 
 ## 📚 Documentation
 
-**Implementation Docs:** `wokspec/specs/chopsticks/features/slash-help-discoverability/`
+**Implementation Docs:** `madebymadhouse/specs/chopsticks/features/slash-help-discoverability/`
 - 01_clarify.md - Problem statement & user contexts
 - 02_market.md - Competitive analysis (MEE6, Dyno, Carl-bot)
 - 03_ux.md - User flows & friction points

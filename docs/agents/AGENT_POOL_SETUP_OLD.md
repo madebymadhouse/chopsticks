@@ -24,8 +24,8 @@ UPDATE agent_bots SET owner_user_id = 'YOUR_DISCORD_USER_ID' WHERE owner_user_id
 - Description: "Chopsticks default agent pool"
 
 **After:**
-- Name: "**WokSpec's Agent Pool**"
-- Description: "**Voice AI agent pool hosted by WokSpec**"
+- Name: "**Mad House's Agent Pool**"
+- Description: "**Voice AI agent pool hosted by Mad House**"
 
 ---
 
@@ -42,9 +42,9 @@ You can now change your pool name and description anytime!
 
 **Examples:**
 ```
-/agents pool_edit name:"WokSpec's Premium Pool" description:"Elite voice AI agents"
+/agents pool_edit name:"Mad House's Premium Pool" description:"Elite voice AI agents"
 /agents pool_edit name:"The Goot Pool"
-/agents pool_edit description:"Professional AI voice services by WokSpec"
+/agents pool_edit description:"Professional AI voice services by Mad House"
 ```
 
 ---
@@ -53,9 +53,9 @@ You can now change your pool name and description anytime!
 
 ```
 Pool ID:     default
-Name:        WokSpec's Agent Pool
-Description: Voice AI agent pool hosted by WokSpec
-Owner:       WokSpec (YOUR_DISCORD_USER_ID)
+Name:        Mad House's Agent Pool
+Description: Voice AI agent pool hosted by Mad House
+Owner:       Mad House (YOUR_DISCORD_USER_ID)
 Visibility:  public
 Max Agents:  49
 ```

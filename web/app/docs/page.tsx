@@ -153,7 +153,7 @@ export default function DocsPage() {
           <section id="self-host" style={SECTION}>
             <h2 style={H2}>Self-hosting</h2>
             <p style={P}>Run your own instance with the full Docker stack. PostgreSQL, Redis, and Lavalink are all included.</p>
-            <CodeBlock>{`git clone https://github.com/WokSpec/Chopsticks
+            <CodeBlock>{`git clone https://github.com/madebymadhouse/chopsticks
 cd Chopsticks
 cp .env.example .env
 # Fill in your bot token, client ID, and DB credentials
@@ -228,7 +228,7 @@ FEATURE_AGENT_POOL=true`}</CodeBlock>
 4. Use /agent deploy to activate it in a voice or text channel
 
 # Want to contribute?
-- Browse open issues: github.com/WokSpec/Chopsticks/issues
+- Browse open issues: github.com/madebymadhouse/chopsticks/issues
 - Read CONTRIBUTING.md before opening a PR
 - Join the Discord to discuss ideas with the team`}</CodeBlock>
             <p style={P}>See the <a href={GITHUB + '/blob/main/CONTRIBUTING.md'} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Contributing guide</a> on GitHub to get involved.</p>
@@ -238,7 +238,7 @@ FEATURE_AGENT_POOL=true`}</CodeBlock>
             <h2 style={H2}>Contributing</h2>
             <p style={P}>Pull requests are welcome. For major changes, open an issue first to discuss the approach.</p>
             <CodeBlock>{`# Development setup
-git clone https://github.com/WokSpec/Chopsticks
+git clone https://github.com/madebymadhouse/chopsticks
 cd Chopsticks
 npm install
 cp .env.example .env

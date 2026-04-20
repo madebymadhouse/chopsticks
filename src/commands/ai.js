@@ -69,7 +69,7 @@ export function moderateWithKeywords(text) {
 }
 
 const PROVIDER_CHOICES = [
-  { name: "Eral — WokSpec AI (default)", value: "eral" },
+  { name: "Eral — Mad House AI (default)", value: "eral" },
   { name: "None — disable AI", value: "none" },
   { name: "Ollama — self-hosted", value: "ollama" },
   { name: "Anthropic / Claude", value: "anthropic" },
@@ -77,7 +77,7 @@ const PROVIDER_CHOICES = [
 ];
 
 const TOKEN_PROVIDER_CHOICES = [
-  { name: "Eral — WokSpec AI", value: "eral" },
+  { name: "Eral — Mad House AI", value: "eral" },
   { name: "Anthropic / Claude", value: "anthropic" },
   { name: "OpenAI / GPT", value: "openai" },
   { name: "Ollama — set custom URL", value: "ollama" },
@@ -412,7 +412,7 @@ async function handleChat(interaction) {
           .setColor(0x7c3aed)
           .setAuthor({ name: 'Eral' })
           .setDescription(response.slice(0, 4096))
-          .setFooter({ text: 'Powered by Eral · WokSpec AI' });
+          .setFooter({ text: 'Powered by Eral · Mad House AI' });
 
         await interaction.editReply({ embeds: [embed] });
       } catch (err) {

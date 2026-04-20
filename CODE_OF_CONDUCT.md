@@ -36,7 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement via [GitHub Issues](https://github.com/wokspec/Chopsticks/issues) (for non-sensitive matters) or directly to maintainers for sensitive reports.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement via [GitHub Issues](https://github.com/madebymadhouse/chopsticks/issues) (for non-sensitive matters) or directly to maintainers for sensitive reports.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

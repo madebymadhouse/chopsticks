@@ -25,7 +25,15 @@ jobs:
 
       - name: Run gitleaks
         run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            LOG_OPTS="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          else
+            LOG_OPTS="-n 1 ${{ github.sha }}"
+          fi
+
           docker run --rm \
             -v "$PWD:/repo" \
             ghcr.io/gitleaks/gitleaks:latest \
-            detect --source=/repo --verbose --redact --no-banner
+            git /repo \
+            --log-opts="$LOG_OPTS" \
+            --verbose --redact --no-banner

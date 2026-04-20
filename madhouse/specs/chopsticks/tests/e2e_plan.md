@@ -3,7 +3,7 @@
 > **Document type:** Planning / Specification  
 > **Status:** Draft  
 > **Last updated:** 2025  
-> **Dependency:** `wokspec/specs/chopsticks/recon/missing_inputs.json` — `sandbox_server_id` must be filled before executing sandbox setup steps.
+> **Dependency:** `madebymadhouse/specs/chopsticks/recon/missing_inputs.json` — `sandbox_server_id` must be filled before executing sandbox setup steps.
 
 ---
 
@@ -84,7 +84,7 @@ Tests that verify moderation commands produce the correct Discord API side effec
 
 ### 2.1 Prerequisites
 
-1. Read `wokspec/specs/chopsticks/recon/missing_inputs.json` and ensure `sandbox_server_id` is populated with a dedicated test Discord server ID.
+1. Read `madebymadhouse/specs/chopsticks/recon/missing_inputs.json` and ensure `sandbox_server_id` is populated with a dedicated test Discord server ID.
 2. Create a test bot application in the Discord Developer Portal (separate from the production bot).
 3. Store the test bot token as `DISCORD_TEST_TOKEN` in `.env.test`.
 4. Invite the test bot to the sandbox server with **all permissions** (integer `8` / Administrator) for ease of testing.

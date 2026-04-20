@@ -36,7 +36,7 @@
 
 ### 2. Clone and Configure
 ```bash
-git clone https://github.com/wokspec/Chopsticks.git
+git clone https://github.com/madebymadhouse/chopsticks.git
 cd Chopsticks
 cp .env.example .env
 ```
@@ -103,7 +103,7 @@ docker compose -f docker-compose.production.yml exec chopsticks-bot npm run migr
 ## TLS / Caddy
 
 The `Caddyfile` configures Caddy as the reverse proxy:
-- HTTPS for the dashboard (`dashboard.chopsticks.wokspec.org`)
+- HTTPS for the dashboard (`dashboard.chopsticks.madebymadhouse.org`)
 - Automatic Let's Encrypt certificate provisioning
 - WebSocket proxying for Socket.io
 
