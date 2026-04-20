@@ -95,7 +95,7 @@
     {
       "key": "image_gen_provider",
       "description": "For /ai image: which provider? Options: Stable Diffusion (local), user-linked DALL-E key, Replicate.",
-      "current_assumption": "User-linked API key only (WokSpec pays nothing)"
+      "current_assumption": "User-linked API key only (Mad House pays nothing)"
     },
     {
       "key": "audio_transcode_pipeline",

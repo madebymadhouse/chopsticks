@@ -1,6 +1,6 @@
 # Chopsticks — Command Reference
 
-> **Hosted by WokSpec.** Chopsticks is not self-hosted — invite the bot and all commands work immediately with no setup required.
+> **Hosted by Mad House.** Chopsticks is not self-hosted — invite the bot and all commands work immediately with no setup required.
 
 ---
 

@@ -13,7 +13,7 @@
 
 To report a vulnerability, contact the maintainers directly:
 
-1. Open a [GitHub Security Advisory](https://github.com/wokspec/Chopsticks/security/advisories/new) (preferred — private by default)
+1. Open a [GitHub Security Advisory](https://github.com/madebymadhouse/chopsticks/security/advisories/new) (preferred — private by default)
 2. Or contact the maintainers via the [Support Discord](https://discord.gg/YOUR_INVITE) in a private message
 
 ### What to include

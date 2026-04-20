@@ -2,7 +2,7 @@
 
 Scope: narrow, implementation-ready plan for voice agent model selection and per-guild configuration.
 
-Goal: Default behavior must be free for WokSpec (no paid LLM calls); admins may link their own API keys to enable paid providers. For now, the default must produce empty LLM outputs until an admin enables a provider via `/model`.
+Goal: Default behavior must be free for Mad House (no paid LLM calls); admins may link their own API keys to enable paid providers. For now, the default must produce empty LLM outputs until an admin enables a provider via `/model`.
 
 Key decisions:
 - Default provider: `none` (no LLM output)

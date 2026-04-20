@@ -7,7 +7,7 @@ import {
   MusicIcon, GamepadIcon,
 } from '../icons';
 
-const GITHUB     = 'https://github.com/WokSpec/Chopsticks';
+const GITHUB     = 'https://github.com/madebymadhouse/chopsticks';
 const BOT_INVITE = 'https://discord.com/api/oauth2/authorize?client_id=1466382874587431036&permissions=1099514858544&scope=bot%20applications.commands';
 
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
@@ -187,7 +187,7 @@ const TUTORIALS: Tutorial[] = [
     steps: [
       { heading: 'What self-hosting gives you', body: "A self-hosted instance is fully independent from the public bot. You own the data, can rename the bot globally, change its avatar, and deploy any unreleased code. The bot is MIT-licensed." },
       { heading: '1. Prerequisites', body: 'You need Docker and Docker Compose installed, a Discord application and bot token from the Developer Portal, and a PostgreSQL-compatible database (bundled in the compose file).' },
-      { heading: '2. Clone and configure', body: <span>Run <code style={cs}>git clone https://github.com/WokSpec/Chopsticks</code>. Copy <code style={cs}>.env.example</code> to <code style={cs}>.env</code> and fill in your bot token, PostgreSQL credentials, and optional Lavalink credentials for music.</span> },
+      { heading: '2. Clone and configure', body: <span>Run <code style={cs}>git clone https://github.com/madebymadhouse/chopsticks</code>. Copy <code style={cs}>.env.example</code> to <code style={cs}>.env</code> and fill in your bot token, PostgreSQL credentials, and optional Lavalink credentials for music.</span> },
       { heading: '3. Start the stack', body: <span>Run <code style={cs}>docker compose up -d</code> from the project root. This starts the bot, PostgreSQL, Redis, and a Lavalink music node. First run pulls images and may take a few minutes.</span> },
       { heading: '4. Register commands', body: <span>After the stack is up, run <code style={cs}>docker compose exec bot node scripts/deployCommands.js</code> to register slash commands with Discord. Do this once, or again if you add new slash commands.</span> },
       { heading: '5. Monitor and update', body: <span>Use <code style={cs}>docker compose logs -f bot</code> to follow logs. To update, pull the latest code and run <code style={cs}>docker compose up -d --build</code>. See the full guide at the <a href="/self-host" style={{ color: 'var(--accent)' }}>Self-Hosting page</a>.</span> },

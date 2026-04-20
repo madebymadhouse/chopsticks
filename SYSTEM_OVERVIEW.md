@@ -27,7 +27,7 @@ PostgreSQL + Redis (state and caching)
 
 ## Ecosystem Position
 
-Chopsticks is a WokSpec project. Repo: `wokspec/chopsticks`.
+Chopsticks is a Mad House project. Repo: `madebymadhouse/chopsticks`.
 
 ## Key Contacts
 

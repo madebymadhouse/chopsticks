@@ -63,7 +63,7 @@ CREATE TABLE agent_bots (
   status     TEXT NOT NULL DEFAULT 'active',
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL,
-  pool_id    TEXT DEFAULT 'pool_WokSpec',
+  pool_id    TEXT DEFAULT 'pool_MadHouse',
   profile    JSONB
 );
 ```

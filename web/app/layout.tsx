@@ -12,7 +12,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: { default: 'Chopsticks', template: '%s — Chopsticks' },
   description: 'A full-featured Discord bot with 162 prefix commands — music, moderation, economy, AI, games, leveling,  and more. Free, open source, and self-hostable.',
-  metadataBase: new URL('https://chopsticks.wokspec.org'),
+  metadataBase: new URL('https://chopsticks.madebymadhouse.org'),
   robots: { index: true, follow: true },
   openGraph: {
     siteName: 'Chopsticks',

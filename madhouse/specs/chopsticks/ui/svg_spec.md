@@ -144,7 +144,7 @@ Import token values directly from the palette JSON to keep SVG colors in sync wi
 
 ```js
 // src/utils/colorTokens.js
-import palette from '../../wokspec/specs/chopsticks/ui/color_palette.json' assert { type: 'json' };
+import palette from '../../madebymadhouse/specs/chopsticks/ui/color_palette.json' assert { type: 'json' };
 export const COLOR_TOKENS = palette.tokens;
 export const EMBED_COLORS = palette.embed_color_map;
 ```
@@ -166,7 +166,7 @@ export const EMBED_COLORS = palette.embed_color_map;
 >
 > **Preconditions:**
 > - `canvas` npm package is installed and working (`src/utils/canvas.js` or similar exists).
-> - `color_palette.json` is committed at `wokspec/specs/chopsticks/ui/color_palette.json`.
+> - `color_palette.json` is committed at `madebymadhouse/specs/chopsticks/ui/color_palette.json`.
 >
 > **Files to create / modify:**
 > - Create `src/utils/colorTokens.js` — exports `COLOR_TOKENS` and `EMBED_COLORS` from the palette JSON.

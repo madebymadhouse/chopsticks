@@ -121,15 +121,15 @@ describe("HA-10: Dashboard server — session cookie security flags", function (
 // ── TRADEMARKS.md — brand name fix ───────────────────────────────────────────
 
 describe("HA-10: TRADEMARKS.md — brand name consistency", function () {
-  it("TRADEMARKS.md uses 'WokSpec' (not 'Wok Specialists')", function () {
+  it("TRADEMARKS.md uses 'Mad House' (not 'Mad House')", function () {
     const tm = src("TRADEMARKS.md");
     assert.ok(
-      !tm.includes("Wok Specialists"),
-      "TRADEMARKS.md still has old 'Wok Specialists' brand name"
+      !tm.includes("Mad House"),
+      "TRADEMARKS.md still has old 'Mad House' brand name"
     );
     assert.ok(
-      tm.includes("WokSpec"),
-      "TRADEMARKS.md does not contain 'WokSpec'"
+      tm.includes("Mad House"),
+      "TRADEMARKS.md does not contain 'Mad House'"
     );
   });
 });

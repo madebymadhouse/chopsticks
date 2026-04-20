@@ -12,5 +12,5 @@ docker-compose*.yml
 Caddyfile
 monitoring/
 prometheus.yml/
-wokspec/
+madebymadhouse/
 data/

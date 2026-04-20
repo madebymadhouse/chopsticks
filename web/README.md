@@ -1,6 +1,6 @@
 # Chopsticks Web
 
-Standalone website for [Chopsticks](https://chopsticks.wokspec.org), the Discord bot by [Wok Specialists](https://wokspec.org).
+Standalone website for [Chopsticks](https://chopsticks.madebymadhouse.org), the Discord bot by [Mad House](https://github.com/madebymadhouse).
 
 ## Stack
 
@@ -19,11 +19,11 @@ npm run dev
 
 ```bash
 npm run build
-npx wrangler pages deploy out --project-name chopsticks-wokspec --branch main
+npx wrangler pages deploy out --project-name chopsticks-madebymadhouse --branch main
 ```
 
 ## DNS
 
 Add a CNAME record in Cloudflare DNS:
 - Name: `chopsticks`
-- Target: `chopsticks-wokspec.pages.dev`
+- Target: `chopsticks-madebymadhouse.pages.dev`

@@ -81,7 +81,7 @@ const embed = economyCard({
   bank: 8500,
   xp: 750,
   level: 12,
-  username: "WokSpec",
+  username: "Mad House",
 });
 await interaction.reply({ embeds: [embed] });
 ```
@@ -103,7 +103,7 @@ const embed = musicNowPlaying({
   url: "https://youtube.com/watch?v=dQw4w9WgXcQ",
   duration: 213000,
   position: 45000,
-  requestedBy: "WokSpec",
+  requestedBy: "Mad House",
 });
 await interaction.reply({ embeds: [embed] });
 ```

@@ -1,5 +1,5 @@
 # Redirect bare domain www to apex
-https://www.chopsticks.wokspec.org/* https://chopsticks.wokspec.org/:splat 301
+https://www.chopsticks.madebymadhouse.org/* https://chopsticks.madebymadhouse.org/:splat 301
 
 # 404 fallback — serve index for unknown paths (Next.js handles its own 404)
 /404 /404.html 200

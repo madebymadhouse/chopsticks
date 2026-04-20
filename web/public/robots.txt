@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://chopsticks.wokspec.org/sitemap.xml
+Sitemap: https://chopsticks.madebymadhouse.org/sitemap.xml

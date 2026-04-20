@@ -18,7 +18,7 @@ Chopsticks is fully self-hostable. This guide covers running your own instance, 
 ## Quick Start (Docker)
 
 ```bash
-git clone https://github.com/WokSpec/Chopsticks.git
+git clone https://github.com/madebymadhouse/chopsticks.git
 cd Chopsticks
 cp .env.example .env
 # Edit .env — fill in DISCORD_TOKEN, CLIENT_ID, BOT_OWNER_IDS at minimum

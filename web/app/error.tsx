@@ -25,7 +25,7 @@ export default function Error({
         </h1>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: '2rem' }}>
           Something broke on our end. You can try again or{' '}
-          <a href="https://github.com/WokSpec/Chopsticks/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+          <a href="https://github.com/madebymadhouse/chopsticks/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
             open an issue
           </a>.
         </p>

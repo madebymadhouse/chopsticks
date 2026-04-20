@@ -30,7 +30,7 @@ Create `src/commands/ai.js` with:
    export const meta = { guildOnly: true, userPerms: [], category: 'ai' };
    ```
 
-2. `export const data` — complete `SlashCommandBuilder` definition with all subcommands and subcommand groups exactly as specified in `wokspec/specs/chopsticks/features/ai-chat/design.md` §6 (copy-paste the definition from that file).
+2. `export const data` — complete `SlashCommandBuilder` definition with all subcommands and subcommand groups exactly as specified in `madebymadhouse/specs/chopsticks/features/ai-chat/design.md` §6 (copy-paste the definition from that file).
 
 3. `export async function execute(interaction)` — a dispatcher that reads `interaction.options.getSubcommandGroup()` and `interaction.options.getSubcommand()` and routes to stub handlers. Each stub replies ephemerally with: `"⚙️ {subcommand} — not yet implemented."`.
 
@@ -77,7 +77,7 @@ Create `src/commands/ai.js` with:
 - **`src/utils/encryption.js`** — shared AES-256-GCM helpers (`encryptToken`, `decryptToken`) extracted from `voiceConfig.js`. Re-export from `voiceConfig.js` to avoid breaking existing callers.
 
 ### Files to modify
-- **`src/commands/ai.js`** — replace `token/link` and `token/unlink` stub handlers with real implementations following the spec in `wokspec/specs/chopsticks/features/ai-chat/token_link_flow.md`.
+- **`src/commands/ai.js`** — replace `token/link` and `token/unlink` stub handlers with real implementations following the spec in `madebymadhouse/specs/chopsticks/features/ai-chat/token_link_flow.md`.
   - `token/link`: `showModal` → handle submit → validate → `upsertAiToken` or error reply.
   - `token/unlink`: ephemeral reply → `removeAiToken`.
 - **`src/utils/voiceConfig.js`** — import `encryptToken`/`decryptToken` from the new `encryption.js` instead of defining them locally (no functional change, just DRY).

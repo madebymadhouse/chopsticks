@@ -107,7 +107,7 @@ export const data = new SlashCommandBuilder()
         .addStringOption((opt) =>
           opt
             .setName('pool')
-            .setDescription('Pool ID (e.g., pool_WokSpec)')
+            .setDescription('Pool ID (e.g., pool_MadHouse)')
             .setAutocomplete(true)
             .setRequired(true)
         )

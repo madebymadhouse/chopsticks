@@ -99,7 +99,7 @@ describe("HA-1: sanitizeString — pool-name edge cases", function () {
   });
 
   it("passes through normal pool name unchanged", function () {
-    const name = "WokSpec's Official Pool";
+    const name = "Mad House's Official Pool";
     const result = sanitizeString(name);
     assert.equal(result, name);
   });

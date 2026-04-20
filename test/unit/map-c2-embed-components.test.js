@@ -229,8 +229,8 @@ describe("MAP-C2 — musicNowPlaying()", function () {
   });
 
   it("shows requestedBy in footer", function () {
-    const json = musicNowPlaying({ title: "Song", requestedBy: "WokSpec" }).toJSON();
-    assert.ok(json.footer?.text.includes("WokSpec"));
+    const json = musicNowPlaying({ title: "Song", requestedBy: "Mad House" }).toJSON();
+    assert.ok(json.footer?.text.includes("Mad House"));
   });
 
   it("handles missing fields gracefully", function () {

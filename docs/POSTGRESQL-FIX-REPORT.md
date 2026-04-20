@@ -303,7 +303,7 @@ docker compose -f docker-compose.production.yml restart bot
 
 - **Bot Status Report:** `docs/STATUS-REPORT.md`
 - **Help System Guide:** `docs/features/help-system-implementation.md`
-- **Planning Docs:** `wokspec/specs/chopsticks/`
+- **Planning Docs:** `madebymadhouse/specs/chopsticks/`
 - **Docker Compose:** `docker-compose.production.yml`
 - **Bot Source:** `src/index.js`
 
