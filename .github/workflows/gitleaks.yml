@@ -23,8 +23,9 @@ jobs:
           # Fetch full history so gitleaks can scan all commits in a PR
           fetch-depth: 0
 
-      - name: Install gitleaks
-        run: curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh -s -- -b /usr/local/bin
-
       - name: Run gitleaks
-        run: gitleaks detect --source . --verbose --redact --no-banner
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            ghcr.io/gitleaks/gitleaks:latest \
+            detect --source=/repo --verbose --redact --no-banner
